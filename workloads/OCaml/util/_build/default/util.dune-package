@@ -1,0 +1,100 @@
+(lang dune 3.14)
+(name util)
+(sections (lib .) (libexec .) (bin ../../bin))
+(files
+ (lib
+  (.private/util__Parse.cmi
+   .private/util__Parse.cmt
+   META
+   core_plus.ml
+   dune-package
+   io.ml
+   io.mli
+   opam
+   parse.ml
+   runner.ml
+   util.a
+   util.cma
+   util.cmi
+   util.cmt
+   util.cmx
+   util.cmxa
+   util.ml
+   util__Core_plus.cmi
+   util__Core_plus.cmt
+   util__Core_plus.cmx
+   util__Io.cmi
+   util__Io.cmt
+   util__Io.cmti
+   util__Io.cmx
+   util__Parse.cmx
+   util__Runner.cmi
+   util__Runner.cmt
+   util__Runner.cmx))
+ (libexec (util.cmxs))
+ (bin (util)))
+(library
+ (name util)
+ (kind normal)
+ (archives (byte util.cma) (native util.cmxa))
+ (plugins (byte util.cma) (native util.cmxs))
+ (native_archives util.a)
+ (requires
+  unix
+  qcheck
+  crowbar
+  core
+  ppx_sexp_conv.runtime-lib
+  sexplib0
+  ppx_compare.runtime-lib
+  ppx_enumerate.runtime-lib
+  ppx_hash.runtime-lib
+  ppx_here.runtime-lib
+  ppx_assert.runtime-lib
+  ppx_bench.runtime-lib
+  bin_prot
+  fieldslib
+  ppx_inline_test.config
+  ppx_inline_test.runtime-lib
+  ppx_module_timer.runtime
+  ppx_stable_witness.runtime
+  ppx_string.runtime
+  base
+  typerep
+  variantslib
+  ppx_expect.runtime
+  ppx_expect.config
+  ppx_log.types
+  ppx_log.syntax
+  base_quickcheck.ppx_quickcheck.runtime
+  base_quickcheck)
+ (main_module_name Util)
+ (modes byte native)
+ (obj_dir (private_dir .private))
+ (modules
+  (wrapped
+   (group
+    (alias
+     (obj_name util)
+     (visibility public)
+     (kind alias)
+     (source (path Util) (impl (path util.ml-gen))))
+    (name Util)
+    (modules
+     (module
+      (obj_name util__Core_plus)
+      (visibility public)
+      (source (path Core_plus) (impl (path core_plus.ml))))
+     (module
+      (obj_name util__Io)
+      (visibility public)
+      (source (path Io) (intf (path io.mli)) (impl (path io.ml))))
+     (module
+      (obj_name util__Parse)
+      (visibility private)
+      (source (path Parse) (impl (path parse.ml))))
+     (module
+      (obj_name util__Runner)
+      (visibility public)
+      (source (path Runner) (impl (path runner.ml))))))
+   (wrapped true))))

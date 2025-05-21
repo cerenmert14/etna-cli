@@ -1,0 +1,18 @@
+(include_subdirs unqualified)
+
+(library
+ (name STLC)
+ (modules
+  impl
+  spec
+  test
+  qcheckType
+  qcheckBespoke
+  crowbarBespoke
+  crowbarType
+  baseType
+  baseBespoke
+  display)
+ (libraries qcheck crowbar util core)
+ (preprocess
+  (pps ppx_jane)))

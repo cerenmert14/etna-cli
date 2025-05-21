@@ -239,7 +239,7 @@ pub(crate) fn print_diff(s1: &ExperimentSnapshot, s2: &ExperimentSnapshot) -> an
             .zip(s2.workloads.iter())
             .map(|(w1, w2)| {
                 (
-                    w1.0.name.clone() + "-" + &w1.0.language,
+                    w1.0.name.to_string() + "-" + &w1.0.language,
                     w1.1.clone(),
                     w2.1.clone(),
                 )

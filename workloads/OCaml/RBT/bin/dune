@@ -1,0 +1,4 @@
+(executable
+ (public_name RBT)
+ (name main)
+ (libraries RBT))

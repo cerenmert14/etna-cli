@@ -15,8 +15,8 @@ pub(crate) fn run() -> anyhow::Result<()> {
                 overwrite,
                 description,
             } => commands::experiment::new_experiment::invoke(name, path, overwrite, description),
-            ExperimentCommand::Run { name } => {
-                commands::experiment::run_experiment::invoke(name)
+            ExperimentCommand::Run { name, tests } => {
+                commands::experiment::run_experiment::invoke(name, tests)
             }
             ExperimentCommand::Show {
                 hash_or_name,
@@ -59,6 +59,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             } => commands::store::write::invoke(experiment_id, metric),
             StoreCommand::Query(query_option) => commands::store::query::invoke(query_option),
         },
+        Command::Analyze(analyze_command) => todo!(),
     }
 }
 
@@ -90,6 +91,9 @@ enum ExperimentCommand {
         /// [default: current directory]
         #[clap(short, long)]
         name: Option<String>,
+        /// Tests to run
+        #[clap(short, long)]
+        tests: Vec<String>,
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {
@@ -248,6 +252,17 @@ enum ConfigCommand {
 }
 
 #[derive(Debug, Subcommand)]
+enum AnalyzeCommand {
+    #[clap(name = "bucket", about = "Create bucket charts for the experiment")]
+    BucketGen {
+        /// Name of the experiment to run
+        /// [default: current directory]
+        #[clap(short, long)]
+        name: Option<String>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 enum Command {
     #[command(subcommand, name = "experiment", about = "Manage experiments")]
     Experiment(ExperimentCommand),
@@ -269,4 +284,10 @@ enum Command {
         #[clap(long, default_value = None)]
         repo_path: Option<String>,
     },
+    #[command(
+        subcommand,
+        name = "analyze",
+        about = "Run analysis on results of the experiments"
+    )]
+    Analyze(AnalyzeCommand),
 }

@@ -128,8 +128,8 @@ pub(crate) fn invoke(
 
     // Update the etna store with the current experiment
     let etna_config = EtnaConfig::get_etna_config()?;
-    let mut etna_store = Store::load(&etna_config.etna_dir.join("store.json"))
-        .context("Could not load the store")?;
+    let mut etna_store =
+        Store::load(&etna_config.store_path()).context("Could not load the store")?;
 
     let snapshot = etna_store.take_snapshot(&etna_config, &experiment_config)?;
 
@@ -141,7 +141,7 @@ pub(crate) fn invoke(
         snapshot,
     });
 
-    etna_store.save(&etna_config.etna_dir.join("store.json"))?;
+    etna_store.save(&etna_config.store_path())?;
 
     Ok(())
 }

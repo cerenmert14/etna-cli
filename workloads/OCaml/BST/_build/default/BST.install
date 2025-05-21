@@ -1,0 +1,8 @@
+lib: [
+  "_build/install/default/lib/BST/META"
+  "_build/install/default/lib/BST/dune-package"
+  "_build/install/default/lib/BST/opam"
+]
+bin: [
+  "_build/install/default/bin/BST"
+]

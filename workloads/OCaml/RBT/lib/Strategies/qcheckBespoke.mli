@@ -1,0 +1,1 @@
+val qcheck_bespoke : Impl.rbt QCheck.arbitrary

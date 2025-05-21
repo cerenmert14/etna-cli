@@ -1,10 +1,7 @@
-
 use anyhow::Context;
 use lib::{handle_jq_query, handle_specialized_query};
 
-use crate::{
-    cli::QueryOption, config::EtnaConfig, store::Store
-};
+use crate::{cli::QueryOption, config::EtnaConfig, store::Store};
 
 mod lib;
 

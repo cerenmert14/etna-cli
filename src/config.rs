@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use crate::{store::Store, workload::Workload};
+use crate::{
+    store::Store,
+    workload::{Workload, WorkloadMetadata},
+};
 use anyhow::Context;
 use serde_derive::{Deserialize, Serialize};
 
@@ -11,7 +14,7 @@ use serde_derive::{Deserialize, Serialize};
 pub(crate) struct ExperimentConfig {
     pub name: String,
     pub description: String,
-    pub workloads: Vec<Workload>,
+    pub workloads: Vec<WorkloadMetadata>,
     #[serde(skip)]
     #[serde(default)]
     pub path: PathBuf,

@@ -5,7 +5,7 @@ use anyhow::Context;
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
     experiment, git_driver, store,
-    workload::Workload,
+    workload::{Workload, WorkloadMetadata},
 };
 
 pub(crate) fn invoke(
@@ -13,6 +13,12 @@ pub(crate) fn invoke(
     language: String,
     workload: String,
 ) -> anyhow::Result<()> {
+    log::debug!(
+        "adding workload '{}/{}' to {:?}",
+        language,
+        workload,
+        experiment_name
+    );
     // Get etna configuration
     let etna_config = EtnaConfig::get_etna_config().context("Failed to get etna config")?;
     // Get the current experiment
@@ -72,7 +78,7 @@ pub(crate) fn invoke(
         ))?;
 
     // Add the workload to the config
-    experiment_config.workloads.push(Workload {
+    experiment_config.workloads.push(WorkloadMetadata {
         language: language.clone(),
         name: workload.clone(),
     });
