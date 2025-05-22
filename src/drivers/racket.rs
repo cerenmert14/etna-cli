@@ -58,11 +58,19 @@ pub(crate) fn run_experiment(
             test.workload.as_str(),
         )?;
 
+        let cfg: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&experiment_config.path).unwrap())
+                .unwrap();
+
+        let tags: HashMap<String, Vec<String>> =
+            serde_json::from_value(cfg.get("tags").unwrap().clone()).unwrap();
+
         driver.build(
             &workload_dir,
             &workload.check_steps,
             &workload.build_steps,
             &HashMap::new(),
+            &tags,
         )?;
 
         for (strategy, property) in test.tasks.iter() {
@@ -88,7 +96,12 @@ pub(crate) fn run_experiment(
                 short_ciruit: false,
                 seeds: None,
             };
-            driver.run(&run_config, &workload.run_step, &HashMap::from(params))?;
+            driver.run(
+                &run_config,
+                &workload.run_step,
+                &HashMap::from(params),
+                &tags,
+            )?;
         }
 
         Ok(())

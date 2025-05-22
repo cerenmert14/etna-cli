@@ -1,9 +1,12 @@
 use std::{collections::HashMap, hash::Hash, path::PathBuf};
 
+use anyhow::Context;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{property::Property, strategy::Strategy};
 use marauders::Variation;
+
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Step {
@@ -15,24 +18,67 @@ pub(crate) struct Step {
 }
 
 impl Step {
-    pub(crate) fn realize(&self, params: &HashMap<String, String>) -> anyhow::Result<Vec<Step>> {
-        let mut step = self.clone();
-
+    pub(crate) fn realize(
+        &self,
+        params: &HashMap<String, String>,
+        tags: &HashMap<String, Vec<String>>,
+    ) -> anyhow::Result<Vec<Step>> {
+        let step = self.clone();
+        let mut steps = vec![];
+        // elaboration step
+        let mut elaborates = vec![];
         for (key, value) in params.iter() {
-            step.command = step.command.replace(&format!("${}", key), value);
-            step.args = step
+            println!("key {}", key);
+            println!("step.command {}", step.command);
+            println!("step.args {:?}", step.args);
+            if step.command.contains(&format!("!{}", key)) {
+                elaborates.push(key.clone());
+            }
+            if step
                 .args
                 .iter()
-                .map(|arg| arg.replace(&format!("${}", key), value))
-                .collect();
-            step.params = step
-                .params
-                .iter()
-                .map(|param| param.replace(&format!("${}", key), value))
-                .collect();
+                .any(|arg| arg.contains(&format!("!{}", key)))
+            {
+                elaborates.push(key.clone());
+            }
+        }
+        println!("elobrates {:?}", elaborates);
+        let all_elaborations = elaborates
+            .iter()
+            .map(|key| {
+                tags.get(key)
+                    .expect(format!("missing tag {}", key).as_str())
+                    .clone()
+            })
+            .multi_cartesian_product()
+            .collect::<Vec<Vec<_>>>();
+
+        for elaboration_set in all_elaborations {
+            let mut step = step.clone();
+            for (i, val) in elaboration_set.iter().enumerate() {
+                println!("wtf is happening");
+                step.command = step.command.replace(&format!("!{}", val), &elaborates[i]);
+                step.args = step
+                    .args
+                    .iter()
+                    .map(|arg| arg.replace(&format!("!{}", val), &elaborates[i]))
+                    .collect();
+            }
+            steps.push(step);
         }
 
-        Ok(step)
+        for step in steps.iter_mut() {
+            for (key, value) in params.iter() {
+                step.command = step.command.replace(&format!("${}", key), value);
+                step.args = step
+                    .args
+                    .iter()
+                    .map(|arg| arg.replace(&format!("${}", key), value))
+                    .collect();
+            }
+        }
+
+        Ok(steps)
     }
 }
 

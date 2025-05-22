@@ -1,14 +1,17 @@
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf}, process::Stdio,
+    path::{Path, PathBuf},
+    process::Stdio,
 };
 
 use anyhow::Context as _;
 use chrono::Duration;
 use process_control::{ChildExt as _, Control as _};
-use tabled::grid::config;
 
-use crate::{commands::store, workload::{Language, Step, Workload}};
+use crate::{
+    commands::store,
+    workload::{Language, Step, Workload},
+};
 
 pub(crate) struct RunConfig {
     pub(crate) workload_dir: PathBuf,
@@ -117,12 +120,20 @@ pub(crate) trait Driver {
         run_config: &RunConfig,
         run_step: &Step,
         params: &HashMap<String, String>,
+        tags: &HashMap<String, Vec<String>>,
     ) -> anyhow::Result<()> {
         for i in 0..run_config.trials {
             log::debug!("running trial {}", i);
 
             // Run the Racket command
-            let step = run_step.realize(params)?;
+            let run_steps = run_step.realize(params, tags)?;
+            anyhow::ensure!(
+                run_steps.len() == 1,
+                "Expected exactly one run step, got {}",
+                run_steps.len()
+            );
+            // unwrap here is fine because we just checked the length
+            let step = run_steps.get(0).unwrap();
 
             log::debug!(
                 "running {}",
@@ -183,14 +194,27 @@ pub(crate) trait Driver {
         check_steps: &Vec<Step>,
         build_steps: &Vec<Step>,
         params: &HashMap<String, String>,
+        tags: &HashMap<String, Vec<String>>,
     ) -> anyhow::Result<()> {
         change_dir(build_dir, &|| {
             println!("running check commands...");
+            let check_steps = check_steps
+                .iter()
+                .map(|step| step.realize(params, tags))
+                .collect::<Vec<_>>();
+
+            anyhow::ensure!(check_steps.iter().all(anyhow::Result::is_ok));
+
+            let check_steps = check_steps
+                .into_iter()
+                .map(anyhow::Result::unwrap)
+                .flatten()
+                .collect::<Vec<_>>();
+
             for step in check_steps.iter() {
                 println!("running check command: {}", step.command);
                 println!("with args: {:?}", step.args);
                 println!("with params: {:?}", step.params);
-                let step = step.realize(params)?;
                 log::debug!(
                     "running check step: {}",
                     step.command.clone() + " " + &step.args.join(" ")
@@ -203,16 +227,39 @@ pub(crate) trait Driver {
                 let output = cmd.output().context("Failed to execute check command")?;
 
                 if !output.status.success() {
-                    println!("[✗] '{}' failed", step.command.clone() + " " + &step.args.join(" "));
+                    println!(
+                        "[✗] '{}' failed",
+                        step.command.clone() + " " + &step.args.join(" ")
+                    );
                     anyhow::bail!("check command failed with status: {}", output.status);
                 } else {
-                    println!("[✓] '{}' passed", step.command.clone() + " " + &step.args.join(" "));
+                    println!(
+                        "[✓] '{}' passed",
+                        step.command.clone() + " " + &step.args.join(" ")
+                    );
                 }
             }
             println!("check commands are successfull.");
             println!("running build commands...");
+
+            let build_steps = build_steps
+                .iter()
+                .map(|step| step.realize(params, tags))
+                .collect::<Vec<_>>();
+
+            anyhow::ensure!(build_steps.iter().all(anyhow::Result::is_ok));
+
+            let build_steps = build_steps
+                .into_iter()
+                .map(anyhow::Result::unwrap)
+                .flatten()
+                .collect::<Vec<_>>();
+
             for step in build_steps.iter() {
-                let step = step.realize(params)?;
+                println!("running check command: {}", step.command);
+                println!("with args: {:?}", step.args);
+                println!("with params: {:?}", step.params);
+
                 log::debug!(
                     "running build step: {}",
                     step.command.clone() + " " + &step.args.join(" ")

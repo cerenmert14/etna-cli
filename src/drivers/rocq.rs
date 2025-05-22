@@ -67,11 +67,21 @@ pub(crate) fn run_experiment(
             ("language".to_string(), test.language.clone()),
         ];
 
+        let config_path = workload_dir.join("config").with_extension("json");
+
+        let cfg: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&config_path).unwrap())
+                .unwrap();
+
+        let tags: HashMap<String, Vec<String>> =
+            serde_json::from_value(cfg.get("tags").unwrap().clone()).unwrap();
+
         driver.build(
             &workload_dir,
             &workload.check_steps,
             &workload.build_steps,
-            &HashMap::from(params)
+            &HashMap::from(params),
+            &tags,
         )?;
 
         for (strategy, property) in test.tasks.iter() {
@@ -97,7 +107,12 @@ pub(crate) fn run_experiment(
                 short_ciruit: false,
                 seeds: None,
             };
-            driver.run(&run_config, &workload.run_step, &HashMap::from(params))?;
+            driver.run(
+                &run_config,
+                &workload.run_step,
+                &HashMap::from(params),
+                &tags,
+            )?;
         }
 
         Ok(())
