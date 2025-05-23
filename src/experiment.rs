@@ -63,6 +63,8 @@ where
 pub(crate) struct Test {
     pub(crate) language: String,
     pub(crate) workload: String,
+    pub(crate) trials: usize,
+    pub(crate) timeout: usize,
     pub(crate) mutations: Vec<String>,
     #[serde(
         serialize_with = "serialize_test",

@@ -375,12 +375,12 @@ pub(crate) trait Driver {
                 let run_config = RunConfig {
                     workload_dir: workload_dir.clone(),
                     experiment_id: snapshot.experiment.clone(),
-                    trials: 10,
+                    trials: test.trials,
                     workload: test.workload.clone(),
                     strategy: strategy.to_string(),
                     mutations: test.mutations.clone(),
                     property: property.to_string(),
-                    timeout: 5,
+                    timeout: test.timeout,
                     short_ciruit: false,
                     seeds: None,
                 };
