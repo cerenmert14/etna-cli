@@ -1,0 +1,17 @@
+[
+    {
+        "language": "Rocq",
+        "workload": "BST",
+        "mutations": ["insert_1"],
+        "tasks": [
+            {
+                "strategy": "BespokeGenerator",
+                "property": "test_prop_InsertPost"
+            },
+            {
+                "strategy": "BespokeGenerator",
+                "property": "test_prop_InsertPost"
+            }
+        ]
+    }
+]
