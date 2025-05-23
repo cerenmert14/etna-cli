@@ -316,7 +316,9 @@ pub(crate) trait Driver {
             snapshot: ExperimentSnapshot,
         ) -> anyhow::Result<()> {
             let lang = marauders::Language::name_to_language(&test.language, &vec![])
-                .context("language is not known or supported")?;
+                .with_context(|| {
+                    format!("language '{}' is not known or supported", test.language)
+                })?;
             let glob = format!("*.{}", lang.file_extension());
 
             for variant in test.mutations.iter() {

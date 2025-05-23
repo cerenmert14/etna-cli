@@ -898,7 +898,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 [[package]]
 name = "marauders"
 version = "0.0.11"
-source = "git+https://github.com/alpaylan/marauders.git?branch=main#6d15e87653fb408393bc0ef831ff49bd9fd0df73"
+source = "git+https://github.com/alpaylan/marauders.git?branch=main#57380c6aa4afdb242decd03190330f84f3286879"
 dependencies = [
  "anyhow",
  "clap",
