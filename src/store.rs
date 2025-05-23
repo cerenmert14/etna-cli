@@ -117,6 +117,7 @@ impl Store {
 
 impl Store {
     pub(crate) fn get_experiment_by_name(&self, name: &str) -> anyhow::Result<&Experiment> {
+        log::trace!("getting latest experiment by name '{name}'");
         let experiments = self
             .experiments
             .iter()
@@ -151,6 +152,7 @@ impl Store {
     }
 
     pub(crate) fn get_all_experiments_by_name(&self, name: &str) -> Vec<&Experiment> {
+        log::trace!("getting all experiments by name '{name}'");
         self.experiments
             .iter()
             .filter(|experiment| experiment.name == name)
@@ -158,10 +160,11 @@ impl Store {
     }
 
     pub(crate) fn get_experiment_by_id(&self, hash: &str) -> anyhow::Result<&Experiment> {
+        log::trace!("getting the experiment by id '{hash}'");
         self.experiments
             .iter()
             .find(|experiment| experiment.id == hash)
-            .context("Experiment not found")
+            .with_context(|| format!("experiment with id '{hash}' not found"))
     }
 }
 

@@ -19,10 +19,10 @@ pub(crate) fn run() -> anyhow::Result<()> {
                 commands::experiment::run_experiment::invoke(name, tests)
             }
             ExperimentCommand::Show {
-                hash_or_name,
-                is_name,
+                hash,
+                name,
                 show_all,
-            } => commands::experiment::show_experiment::invoke(hash_or_name, is_name, show_all),
+            } => commands::experiment::show_experiment::invoke(hash, name, show_all),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -97,11 +97,12 @@ enum ExperimentCommand {
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {
-        /// Hash or name of the experiment
-        hash_or_name: String,
-        /// Is the provided string a hash or a name
-        #[clap(short = 'n', long, default_value = "false")]
-        is_name: bool,
+        /// Name
+        #[clap(long)]
+        name: Option<String>,
+        /// Hash
+        #[clap(long)]
+        hash: Option<String>,
         /// Show all the experiments
         #[clap(short = 'a', long, default_value = "false")]
         show_all: bool,

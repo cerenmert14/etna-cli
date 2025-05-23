@@ -1,22 +1,38 @@
 use crate::{config::EtnaConfig, store::Store};
 
-pub(crate) fn invoke(hash_or_name: String, is_name: bool, show_all: bool) -> anyhow::Result<()> {
+
+pub(crate) fn invoke(hash: Option<String>, name: Option<String>, show_all: bool) -> anyhow::Result<()> {
+    #[derive(Debug)]
+    enum HashOrName {
+        Hash,
+        Name
+    }
+    use HashOrName::*;
+
+    let (typ, val) = match (hash, name) {
+        (Some(_), Some(_)) => anyhow::bail!("cannot set both hash and name for the experiment"),
+        (Some(hash), _) => (Hash, hash),
+        (_, Some(name)) => (Name, name),
+        (None, None) => anyhow::bail!("has to set either hash or name"),
+    };
+
+    log::trace!("showing experiment ({val}: {typ:?}) (show_all: {show_all})");
     let etna_config = EtnaConfig::get_etna_config()?;
 
     let store = Store::load(&etna_config.store_path())?;
 
-    match (is_name, show_all) {
-        (true, true) => {
-            let experiments = store.get_all_experiments_by_name(&hash_or_name);
+    match (typ, show_all) {
+        (Name, true) => {
+            let experiments = store.get_all_experiments_by_name(&val);
             for experiment in experiments {
                 println!("{:#?}", experiment);
             }
         }
-        (true, false) => {
-            println!("{:#?}", store.get_experiment_by_name(&hash_or_name)?);
+        (Name, false) => {
+            println!("{:#?}", store.get_experiment_by_name(&val)?);
         }
-        (false, _) => {
-            println!("{:#?}", store.get_experiment_by_id(&hash_or_name)?);
+        (Hash, _) => {
+            println!("{:#?}", store.get_experiment_by_id(&val)?);
         }
     };
 

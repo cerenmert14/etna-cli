@@ -3,15 +3,15 @@ use log::{info, warn};
 
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
-    drivers,
+    driver::{self, DefaultDriver, Driver},
     experiment::Test,
     git_driver, python_driver,
     store::Store,
 };
 
 pub(crate) fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Result<()> {
+    log::trace!("running experiment with name '{:?}'", experiment_name);
     let etna_config = EtnaConfig::get_etna_config()?;
-    log::debug!("experiment_name: {:?}", experiment_name);
     let experiment_config = match experiment_name {
         Some(name) => ExperimentConfig::from_etna_config(&name, &etna_config).context(format!(
             "Failed to get experiment config for '{}'",
@@ -60,21 +60,10 @@ pub(crate) fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> any
     }
 
     // python_driver::run_experiment(&etna_config, &experiment_config, snapshot)?;
+    let driver = DefaultDriver {};
+
     for test in &tests {
-        match test.language.as_str() {
-            "Racket" => {
-                log::debug!("running Racket experiment");
-                drivers::racket::run_experiment(test, &experiment_config, snapshot.clone())?
-            }
-            "Rocq" => {
-                log::debug!("running Rocq experiment");
-                drivers::rocq::run_experiment(test, &experiment_config, snapshot.clone())?
-            }
-            _ => {
-                log::warn!("Unsupported language: {}", test.language);
-                return Err(anyhow::anyhow!("Unsupported language: {}", test.language));
-            }
-        }
+        driver.run_experiment(test, &experiment_config, snapshot.clone())?;
     }
 
     Ok(())

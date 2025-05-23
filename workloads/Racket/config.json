@@ -1,0 +1,28 @@
+{
+    "check_steps": [],
+    "build_steps": [
+        {
+            "Command": {
+                "command": "raco",
+                "args": [
+                    "exe",
+                    "main.rkt"
+                ]
+            }
+        }
+    ],
+    "run_step": {
+        "Command": {
+            "command": "$workload_path/main",
+            "args": [
+                "$property",
+                "$strategy"
+            ],
+            "params": [
+                "workload_path",
+                "property",
+                "strategy"
+            ]
+        }
+    }
+}

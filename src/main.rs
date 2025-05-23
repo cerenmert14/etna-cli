@@ -1,7 +1,7 @@
 mod cli;
 mod commands;
 mod config;
-mod drivers;
+mod driver;
 mod experiment;
 mod git_driver;
 mod property;
@@ -13,9 +13,7 @@ mod workload;
 
 fn main() -> anyhow::Result<()> {
     // Initialize the logger
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
-        .init();
+    env_logger::init();
 
     // Invoke the CLI
     cli::run()

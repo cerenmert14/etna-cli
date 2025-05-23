@@ -7,11 +7,18 @@ use std::{
 use anyhow::Context as _;
 use chrono::Duration;
 use process_control::{ChildExt as _, Control as _};
+use serde_json::Map;
 
 use crate::{
     commands::store,
     workload::{Language, Step, Workload},
 };
+
+use anyhow::Context;
+
+use process_control::{ChildExt, Control};
+
+use crate::experiment::{ExperimentSnapshot, Test};
 
 pub(crate) struct RunConfig {
     pub(crate) workload_dir: PathBuf,
@@ -25,8 +32,6 @@ pub(crate) struct RunConfig {
     pub(crate) short_ciruit: bool,
     pub(crate) seeds: Option<Vec<u64>>,
 }
-
-pub(crate) struct DriverConfig {}
 
 pub(crate) fn change_dir(path: &Path, cmd: &dyn Fn() -> anyhow::Result<()>) -> anyhow::Result<()> {
     // Change the current working directory to the specified path
@@ -49,8 +54,17 @@ pub(crate) fn change_dir(path: &Path, cmd: &dyn Fn() -> anyhow::Result<()>) -> a
 fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Language> {
     let language_path = experiment_path.join("workloads").join(language);
     let config_path = language_path.join("config").with_extension("json");
-    let language: Language =
-        serde_json::from_str(&std::fs::read_to_string(config_path).unwrap()).unwrap();
+
+    let language: Language = serde_json::from_str(
+        &std::fs::read_to_string(&config_path)
+            .with_context(|| format!("could not read config at '{}'", config_path.display()))?,
+    )
+    .with_context(|| {
+        format!(
+            "config file at '{}' is not a valid Language",
+            config_path.display()
+        )
+    })?;
 
     Ok(language)
 }
@@ -135,10 +149,24 @@ pub(crate) trait Driver {
             // unwrap here is fine because we just checked the length
             let step = run_steps.get(0).unwrap();
 
-            log::debug!(
-                "running {}",
-                step.command.clone() + " " + &step.args.join(" ")
-            );
+            log::debug!("running {}", step);
+            let mut params = HashMap::new();
+            let step_params = step.params();
+
+            if step_params.contains(&"strategy") {
+                params.insert("strategy".to_string(), run_config.strategy.clone());
+            }
+            if step_params.contains(&"property") {
+                params.insert("property".to_string(), run_config.property.clone());
+            }
+            if step_params.contains(&"workload_path") {
+                params.insert(
+                    "workload_path".to_string(),
+                    run_config.workload_dir.display().to_string(),
+                );
+            }
+
+            let step = step.decide(&params, tags);
 
             let mut cmd = std::process::Command::new(&step.command);
             let cmd = step.args.iter().fold(&mut cmd, |cmd, arg| cmd.arg(arg));
@@ -212,14 +240,9 @@ pub(crate) trait Driver {
                 .collect::<Vec<_>>();
 
             for step in check_steps.iter() {
-                println!("running check command: {}", step.command);
-                println!("with args: {:?}", step.args);
-                println!("with params: {:?}", step.params);
-                log::debug!(
-                    "running check step: {}",
-                    step.command.clone() + " " + &step.args.join(" ")
-                );
+                log::debug!("running check step: {}", step);
                 // Run the check command
+                let step = step.decide(params, tags);
                 let mut cmd = std::process::Command::new(&step.command);
 
                 let cmd = step.args.iter().fold(&mut cmd, |cmd, arg| cmd.arg(arg));
@@ -256,15 +279,10 @@ pub(crate) trait Driver {
                 .collect::<Vec<_>>();
 
             for step in build_steps.iter() {
-                println!("running check command: {}", step.command);
-                println!("with args: {:?}", step.args);
-                println!("with params: {:?}", step.params);
-
-                log::debug!(
-                    "running build step: {}",
-                    step.command.clone() + " " + &step.args.join(" ")
-                );
                 // Run the build command
+                log::debug!("running build step: {}", step);
+                let step = step.decide(params, tags);
+                log::debug!("step is evaluated to '{step}'");
                 let mut cmd = std::process::Command::new(&step.command);
                 let cmd = step.args.iter().fold(&mut cmd, |cmd, arg| cmd.arg(arg));
                 let output = cmd.output().context("Failed to execute build command")?;
@@ -282,5 +300,112 @@ pub(crate) trait Driver {
         })
     }
 
-    fn config(&self) -> DriverConfig;
+    fn run_experiment(
+        &self,
+        test: &Test,
+        experiment_config: &crate::config::ExperimentConfig,
+        snapshot: ExperimentSnapshot,
+    ) -> anyhow::Result<()>
+    where
+        Self: Sized,
+    {
+        pub(crate) fn aux(
+            driver: &dyn Driver,
+            test: &Test,
+            experiment_config: &crate::config::ExperimentConfig,
+            snapshot: ExperimentSnapshot,
+        ) -> anyhow::Result<()> {
+            for variant in test.mutations.iter() {
+                marauders::run_set_command(&experiment_config.path, variant)?;
+            }
+
+            let workload_dir = experiment_config
+                .path
+                .join("workloads")
+                .join(test.language.as_str())
+                .join(test.workload.as_str());
+
+            let workload: Workload = load_workload(
+                &experiment_config.path,
+                test.language.as_str(),
+                test.workload.as_str(),
+            )?;
+
+            // todo: there's a bug when two params share a prefix, fix it.
+            let params = [(
+                "workload_path".to_string(),
+                workload_dir.display().to_string(),
+            )];
+
+            let config_path = workload_dir.join("config").with_extension("json");
+
+            let cfg: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(&config_path).unwrap()).unwrap();
+
+            let tags: HashMap<String, Vec<String>> = serde_json::from_value(
+                cfg.get("tags")
+                    .unwrap_or(&serde_json::Value::Object(Map::new()))
+                    .clone(),
+            )
+            .unwrap();
+
+            driver.build(
+                &workload_dir,
+                &workload.check_steps,
+                &workload.build_steps,
+                &HashMap::from(params),
+                &tags,
+            )?;
+
+            for (strategy, property) in test.tasks.iter() {
+                let params = [
+                    (
+                        "workload_path".to_string(),
+                        workload_dir.display().to_string(),
+                    ),
+                    ("property".to_string(), property.clone()),
+                    ("strategy".to_string(), strategy.clone()),
+                ];
+
+                // Run the experiment
+                let run_config = RunConfig {
+                    workload_dir: workload_dir.clone(),
+                    experiment_id: snapshot.experiment.clone(),
+                    trials: 10,
+                    workload: test.workload.clone(),
+                    strategy: strategy.to_string(),
+                    mutations: test.mutations.clone(),
+                    property: property.to_string(),
+                    timeout: 5,
+                    short_ciruit: false,
+                    seeds: None,
+                };
+                driver.run(
+                    &run_config,
+                    &workload.run_step,
+                    &HashMap::from(params),
+                    &tags,
+                )?;
+            }
+
+            Ok(())
+        }
+
+        let result = aux(self, test, experiment_config, snapshot);
+        if let Err(e) = &result {
+            log::error!("Experiment failed with error: {}", e);
+        } else {
+            log::info!("Experiment completed successfully");
+        }
+
+        marauders::run_reset_command(&experiment_config.path)?;
+        result
+    }
+}
+
+pub struct DefaultDriver;
+impl Driver for DefaultDriver {
+    fn init(&self) {
+        log::info!("Initialized default ETNA driver.");
+    }
 }
