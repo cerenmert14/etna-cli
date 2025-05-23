@@ -107,7 +107,6 @@ impl Step {
                 elaborates.push(param);
             }
         }
-        println!("elobrates {:?}", elaborates);
         let all_elaborations = elaborates
             .iter()
             .map(|key| {
@@ -121,7 +120,6 @@ impl Step {
         for elaboration_set in all_elaborations {
             let mut step = step.clone();
             for (i, val) in elaboration_set.iter().enumerate() {
-                println!("wtf is happening");
                 step.replace(&format!("!{}", val), &elaborates[i]);
             }
             steps.push(step);

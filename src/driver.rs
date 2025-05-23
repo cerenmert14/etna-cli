@@ -136,20 +136,20 @@ pub(crate) trait Driver {
         params: &HashMap<String, String>,
         tags: &HashMap<String, Vec<String>>,
     ) -> anyhow::Result<()> {
+        let run_steps = run_step.realize(params, tags)?;
+        anyhow::ensure!(
+            run_steps.len() == 1,
+            "Expected exactly one run step, got {}",
+            run_steps.len()
+        );
+        // unwrap here is fine because we just checked the length
+        let step = run_steps.get(0).unwrap();
+
+        log::info!("running '{}'", step);
+
         for i in 0..run_config.trials {
-            log::debug!("running trial {}", i);
+            log::trace!("running trial {}", i);
 
-            // Run the Racket command
-            let run_steps = run_step.realize(params, tags)?;
-            anyhow::ensure!(
-                run_steps.len() == 1,
-                "Expected exactly one run step, got {}",
-                run_steps.len()
-            );
-            // unwrap here is fine because we just checked the length
-            let step = run_steps.get(0).unwrap();
-
-            log::debug!("running {}", step);
             let mut params = HashMap::new();
             let step_params = step.params();
 
@@ -209,7 +209,7 @@ pub(crate) trait Driver {
                 }
             };
 
-            log::debug!("result: {}", result);
+            log::info!("writing result '{}' to store", result);
             store::write::invoke(run_config.experiment_id.clone(), result.to_string())?;
         }
 
@@ -225,7 +225,7 @@ pub(crate) trait Driver {
         tags: &HashMap<String, Vec<String>>,
     ) -> anyhow::Result<()> {
         change_dir(build_dir, &|| {
-            println!("running check commands...");
+            log::info!("running check commands...");
             let check_steps = check_steps
                 .iter()
                 .map(|step| step.realize(params, tags))
@@ -250,20 +250,20 @@ pub(crate) trait Driver {
                 let output = cmd.output().context("Failed to execute check command")?;
 
                 if !output.status.success() {
-                    println!(
+                    log::info!(
                         "[✗] '{}' failed",
                         step.command.clone() + " " + &step.args.join(" ")
                     );
                     anyhow::bail!("check command failed with status: {}", output.status);
                 } else {
-                    println!(
+                    log::info!(
                         "[✓] '{}' passed",
                         step.command.clone() + " " + &step.args.join(" ")
                     );
                 }
             }
-            println!("check commands are successfull.");
-            println!("running build commands...");
+            log::info!("check commands are successfull.");
+            log::info!("running build commands...");
 
             let build_steps = build_steps
                 .iter()
@@ -288,13 +288,13 @@ pub(crate) trait Driver {
                 let output = cmd.output().context("Failed to execute build command")?;
 
                 if !output.status.success() {
-                    println!("[✗] '{}' failed", step.command);
+                    log::info!("[✗] '{}' failed", step.command);
                     anyhow::bail!("build command failed with status: {}", output.status);
                 } else {
-                    println!("[✓] '{}' passed", step.command);
+                    log::info!("[✓] '{}' passed", step.command);
                 }
             }
-            println!("build commands are successfull.");
+            log::info!("build commands are successfull.");
 
             Ok(())
         })
@@ -315,8 +315,12 @@ pub(crate) trait Driver {
             experiment_config: &crate::config::ExperimentConfig,
             snapshot: ExperimentSnapshot,
         ) -> anyhow::Result<()> {
+            let lang = marauders::Language::name_to_language(&test.language, &vec![])
+                .context("language is not known or supported")?;
+            let glob = format!("*.{}", lang.file_extension());
+
             for variant in test.mutations.iter() {
-                marauders::run_set_command(&experiment_config.path, variant)?;
+                marauders::run_set_command(&experiment_config.path, variant, Some(glob.as_str()))?;
             }
 
             let workload_dir = experiment_config
