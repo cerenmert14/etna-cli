@@ -90,6 +90,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             StoreCommand::Query(query_option) => commands::store::query::invoke(query_option),
         },
         Command::Analyze(_analyze_command) => todo!(),
+        Command::Check { restore, remove } => commands::check::integrity::invoke(restore, remove),
     }
     .context("Aborting run due to an error")
 }
@@ -233,6 +234,15 @@ enum Command {
         /// Overwrite the existing configuration
         #[clap(short, long, default_value = "false")]
         overwrite: bool,
+    },
+    #[command(name = "check", about = "Run checks on etna")]
+    Check {
+        /// Restore the store from the backup
+        #[clap(long, default_value = "false")]
+        restore: bool,
+        /// Remove the store
+        #[clap(long, default_value = "false")]
+        remove: bool,
     },
     #[command(
         subcommand,
