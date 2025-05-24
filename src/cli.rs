@@ -50,16 +50,17 @@ pub(crate) fn run() -> anyhow::Result<()> {
                 name,
                 path,
                 overwrite,
+                register,
                 description,
-            } => commands::experiment::new_experiment::invoke(name, path, overwrite, description),
+            } => commands::experiment::new::invoke(name, path, overwrite, register, description),
             ExperimentCommand::Run { name, tests } => {
-                commands::experiment::run_experiment::invoke(name, tests)
+                commands::experiment::run::invoke(name, tests)
             }
             ExperimentCommand::Show {
                 hash,
                 name,
                 show_all,
-            } => commands::experiment::show_experiment::invoke(hash, name, show_all),
+            } => commands::experiment::show::invoke(hash, name, show_all),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -112,6 +113,10 @@ enum ExperimentCommand {
         /// Overwrite the existing experiment
         #[clap(short = 'o', long)]
         overwrite: bool,
+        /// Register the experiment in the store
+        /// [default: false]
+        #[clap(short = 'r', long)]
+        register: bool,
         /// Description of the experiment
         /// [default: A description of the experiment]
         #[clap(short = 'd', long)]

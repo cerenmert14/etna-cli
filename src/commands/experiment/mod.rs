@@ -1,3 +1,3 @@
-pub mod new_experiment;
-pub mod run_experiment;
-pub mod show_experiment;
+pub mod new;
+pub mod run;
+pub mod show;
