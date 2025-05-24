@@ -35,11 +35,13 @@ pub fn invoke(
 
     // get etna directory
     let repo_dir = if let Ok(repo_dir) =
-        std::env::var("ETNA_REPO_DIR").context("ETNA_REPO_DIR environment variable not set")
+        std::env::var("ETNA_DIR").context("ETNA_DIR environment variable not set")
     {
         PathBuf::from(repo_dir)
     } else {
-        etna_config.repo_dir.clone()
+        std::env::current_dir()
+            .context("Failed to get current directory")?
+            .join("etna")
     };
 
     // Get the workload path
@@ -99,7 +101,7 @@ pub fn invoke(
     let mut store =
         store::Store::load(&etna_config.store_path()).context("Failed to load store")?;
 
-    let snapshot = store.take_snapshot(&etna_config, &experiment_config)?;
+    let snapshot = store.take_snapshot(&experiment_config)?;
 
     store.experiments.insert(experiment::Experiment {
         name: experiment_config.name,

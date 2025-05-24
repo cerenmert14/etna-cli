@@ -133,15 +133,7 @@ pub(crate) fn commit_remove_workload(
     Ok(())
 }
 
-pub(crate) fn clone_etna(path: &PathBuf) -> anyhow::Result<()> {
-    // Clone the etna repository
-    git2::Repository::clone("https://github.com/jwshii/etna.git", path)
-        .context("Failed to clone ETNA repository")?;
-
-    Ok(())
-}
-
-pub(crate) fn change_branch(repo_path: &PathBuf, branch: &str) -> anyhow::Result<()> {
+pub(crate) fn _change_branch(repo_path: &PathBuf, branch: &str) -> anyhow::Result<()> {
     // Change the branch of the etna repository
     let git_repo = git2::Repository::open(repo_path).context("Failed to open git repository")?;
     let mut remote = git_repo
@@ -207,7 +199,7 @@ pub(crate) fn hash(repo_path: &Path, index_path: &Path) -> anyhow::Result<String
 }
 
 /// Get the hash of the head of a git repository
-pub(crate) fn head_hash(repo_path: &Path) -> anyhow::Result<String> {
+pub(crate) fn _head_hash(repo_path: &Path) -> anyhow::Result<String> {
     let git_repo = git2::Repository::open(repo_path).context("Failed to open git repository")?;
     let head = git_repo.head().context("Failed to get head")?;
     let head = head.peel_to_commit().context("Failed to peel to commit")?;
@@ -223,7 +215,6 @@ pub(crate) fn print_diff(s1: &ExperimentSnapshot, s2: &ExperimentSnapshot) -> an
             s1.experiment.clone(),
             s2.experiment.clone(),
         ),
-        ("etna".to_string(), s1.etna.clone(), s2.etna.clone()),
     ];
 
     table.extend(

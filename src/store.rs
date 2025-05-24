@@ -4,9 +4,9 @@ use anyhow::{Context, Ok};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
-    config::{EtnaConfig, ExperimentConfig},
+    config::ExperimentConfig,
     experiment::{Experiment, ExperimentSnapshot},
-    snapshot::{self, Snapshot, SnapshotType},
+    snapshot::{self, Snapshot},
     workload::WorkloadMetadata,
 };
 
@@ -48,19 +48,8 @@ impl Store {
 
     pub(crate) fn take_snapshot(
         &mut self,
-        etna_config: &EtnaConfig,
         experiment_config: &ExperimentConfig,
     ) -> anyhow::Result<ExperimentSnapshot> {
-        let etna_snapshot = snapshot::Snapshot::head(
-            &etna_config.repo_dir,
-            SnapshotType::Etna {
-                branch: etna_config.branch.clone(),
-            },
-        )
-        .context("Failed to take etna snapshot")?;
-
-        self.snapshots.insert(etna_snapshot.clone());
-
         let experiment_snapshot = snapshot::Snapshot::take(
             &experiment_config.path,
             &PathBuf::from("*"),
@@ -108,7 +97,6 @@ impl Store {
 
         Ok(ExperimentSnapshot {
             experiment: experiment_snapshot.hash,
-            etna: etna_snapshot.hash,
             scripts: vec![("Collect.py".to_string(), collection_script_snapshot.hash)],
             workloads: workload_snapshots,
         })

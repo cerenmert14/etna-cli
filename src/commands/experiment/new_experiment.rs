@@ -57,13 +57,24 @@ pub fn invoke(
 ) -> anyhow::Result<()> {
     // Create a new directory for the experiment
     // If the path is not provided, use the current directory
+    log::trace!("creating new experiment with name '{name}'");
     let path = if let Some(path) = path {
         path
     } else {
         std::env::current_dir().context("Failed to get current directory")?
     };
 
+    // Create the config file
     let experiment_path = path.join(&name);
+    let config_path = experiment_path.join("config.toml");
+    let description = description.unwrap_or_else(|| "A description of the experiment".to_string());
+    let experiment_config = ExperimentConfig::new(&name, &description, experiment_path.clone());
+    log::trace!("reading etna configuration");
+    let etna_config = EtnaConfig::get_etna_config().context("Could not read etna configuration, did you run `etna setup` before creating an experiment?")?;
+    let store_path = etna_config.store_path();
+    let mut etna_store = Store::load(&store_path)
+        .with_context(|| format!("Could not load the store at '{}'", store_path.display()))?;
+
     if experiment_path.exists() {
         if !overwrite {
             anyhow::bail!(
@@ -71,20 +82,29 @@ pub fn invoke(
                 fs::canonicalize(path)?.display()
             );
         }
-        fs::remove_dir_all(&experiment_path)
-            .context("Failed to remove existing experiment directory")?;
+        fs::remove_dir_all(&experiment_path).with_context(|| {
+            format!(
+                "Failed to remove existing experiment directory at '{}'",
+                experiment_path.display()
+            )
+        })?;
     }
 
-    std::fs::create_dir(&experiment_path).context("Failed to create experiment directory")?;
-
-    // Create the config file
-    let config_path = experiment_path.join("config.toml");
-    let description = description.unwrap_or_else(|| "A description of the experiment".to_string());
-    let experiment_config = ExperimentConfig::new(&name, &description, experiment_path);
+    std::fs::create_dir(&experiment_path).with_context(|| {
+        format!(
+            "Failed to create experiment directory at '{}'",
+            experiment_path.display()
+        )
+    })?;
 
     std::fs::write(
         &config_path,
-        toml::to_string(&experiment_config).context("Failed to serialize configuration")?,
+        toml::to_string(&experiment_config).with_context(|| {
+            format!(
+                "Failed to serialize configuration at '{}'",
+                config_path.display()
+            )
+        })?,
     )
     .context("Failed to create config file")?;
 
@@ -124,37 +144,43 @@ pub fn invoke(
         ))?;
         std::fs::create_dir_all(parent)?;
         std::fs::write(&path, content).context(format!(
-            "Failed to create template file '{}'",
+            "Failed to create template file at '{}'",
             path.display()
         ))?;
     }
 
     // Create the workloads directory
     let workloads_path = experiment_config.path.join("workloads");
-    std::fs::create_dir(&workloads_path).context("Failed to create workloads directory")?;
+    std::fs::create_dir(&workloads_path).with_context(|| {
+        format!(
+            "Failed to create workloads directory at '{}'",
+            workloads_path.display()
+        )
+    })?;
 
     // Initialize a git repository
     git_driver::initialize_git_repo(
         &experiment_config.path,
         format!("Automated initialization commit for experiment '{}'", name).as_str(),
     )?;
-
-    // Update the etna store with the current experiment
-    let etna_config = EtnaConfig::get_etna_config()?;
-    let mut etna_store =
-        Store::load(&etna_config.store_path()).context("Could not load the store")?;
-
-    let snapshot = etna_store.take_snapshot(&etna_config, &experiment_config)?;
+    let snapshot = etna_store.take_snapshot(&experiment_config)?;
 
     etna_store.experiments.insert(Experiment {
-        name,
+        name: name.clone(),
         id: snapshot.experiment.clone(),
         description: experiment_config.description,
-        path: experiment_config.path,
+        path: experiment_config.path.clone(),
         snapshot,
     });
 
-    etna_store.save(&etna_config.store_path())?;
+    etna_store.save(&store_path).with_context(|| {
+        format!(
+            "Failed to save the etna store at '{}'",
+            store_path.display()
+        )
+    })?;
+
+    log::info!("Experiment '{name}' created successfully at '{}'", experiment_config.path.display());
 
     Ok(())
 }

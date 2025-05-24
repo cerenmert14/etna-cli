@@ -27,7 +27,6 @@ impl Experiment {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub(crate) struct ExperimentSnapshot {
     pub experiment: String,
-    pub etna: String,
     pub scripts: Vec<(String, String)>,
     pub workloads: Vec<(WorkloadMetadata, String)>,
 }

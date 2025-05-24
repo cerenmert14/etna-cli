@@ -14,8 +14,6 @@ pub(crate) struct Snapshot {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum SnapshotType {
-    #[serde(rename = "etna")]
-    Etna { branch: String },
     #[serde(rename = "script")]
     Script { name: String },
     #[serde(rename = "workload")]
@@ -48,8 +46,8 @@ impl SnapshotType {
 }
 
 impl Snapshot {
-    pub(crate) fn head(repo_path: &Path, typ: SnapshotType) -> anyhow::Result<Self> {
-        let hash = git_driver::head_hash(repo_path)?;
+    pub(crate) fn _head(repo_path: &Path, typ: SnapshotType) -> anyhow::Result<Self> {
+        let hash = git_driver::_head_hash(repo_path)?;
         Ok(Self {
             path: repo_path.to_path_buf(),
             typ,

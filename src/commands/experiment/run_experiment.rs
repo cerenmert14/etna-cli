@@ -22,7 +22,7 @@ pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Re
 
     let mut store = Store::load(&etna_config.store_path())?;
 
-    let snapshot = Store::take_snapshot(&mut store, &etna_config, &experiment_config)?;
+    let snapshot = Store::take_snapshot(&mut store, &experiment_config)?;
 
     let experiment = store.get_experiment_by_name(&experiment_config.name)?;
 

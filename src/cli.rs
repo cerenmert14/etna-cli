@@ -1,12 +1,41 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
+use anyhow::Context;
 use clap::{Parser, Subcommand};
 
 use etna::commands::{self, store::query::QueryOption};
+use fern::colors::ColoredLevelConfig;
 
 fn main() -> anyhow::Result<()> {
     // Initialize the logger
-    env_logger::init();
+    let color_config = ColoredLevelConfig::new()
+        .info(fern::colors::Color::Green)
+        .debug(fern::colors::Color::Blue)
+        .trace(fern::colors::Color::Cyan)
+        .error(fern::colors::Color::Red);
+
+    let log_level = env::var("RUST_LOG")
+        .ok()
+        .and_then(|lvl| lvl.parse::<log::LevelFilter>().ok());
+
+    fern::Dispatch::new()
+        .level(log_level.unwrap_or(log::LevelFilter::Info))
+        .format(move |out, message, record| match record.level() {
+            log::Level::Info if log_level.is_none() => out.finish(format_args!("{}", message,)),
+            log::Level::Info
+            | log::Level::Error
+            | log::Level::Warn
+            | log::Level::Debug
+            | log::Level::Trace => out.finish(format_args!(
+                "[{}][{}] {}",
+                color_config.color(record.level()),
+                record.target(),
+                message
+            )),
+        })
+        .chain(std::io::stdout())
+        .apply()
+        .context("Failed to initialize the logger")?;
 
     // Invoke the CLI
     run()
@@ -50,16 +79,9 @@ pub(crate) fn run() -> anyhow::Result<()> {
             } => commands::workload::list_workloads::invoke(experiment, language, kind),
         },
         Command::Config(cl) => match cl {
-            ConfigCommand::ChangeBranch { branch } => {
-                commands::config::change_branch::invoke(branch)
-            }
             ConfigCommand::Show => commands::config::show::invoke(),
         },
-        Command::Setup {
-            overwrite,
-            branch,
-            repo_path,
-        } => commands::config::setup::invoke(overwrite, branch, repo_path),
+        Command::Setup { overwrite } => commands::config::setup::invoke(overwrite),
         Command::Store(store_command) => match store_command {
             StoreCommand::Write {
                 experiment_id,
@@ -69,6 +91,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
         },
         Command::Analyze(_analyze_command) => todo!(),
     }
+    .context("Aborting run due to an error")
 }
 
 #[derive(Parser, Debug)]
@@ -180,15 +203,6 @@ enum StoreCommand {
 
 #[derive(Debug, Subcommand)]
 enum ConfigCommand {
-    #[command(
-        name = "change-branch",
-        about = "Change the branch of the etna repository"
-    )]
-    ChangeBranch {
-        /// Branch to clone the etna repository
-        #[clap(short, long)]
-        branch: String,
-    },
     #[command(name = "show", about = "Show the current configuration")]
     Show,
 }
@@ -219,12 +233,6 @@ enum Command {
         /// Overwrite the existing configuration
         #[clap(short, long, default_value = "false")]
         overwrite: bool,
-        /// Branch to clone the etna repository
-        #[clap(short, long, default_value = "main")]
-        branch: String,
-        /// Repository path, if already cloned
-        #[clap(long, default_value = None)]
-        repo_path: Option<String>,
     },
     #[command(
         subcommand,

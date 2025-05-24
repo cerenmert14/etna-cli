@@ -72,25 +72,16 @@ impl ExperimentConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct EtnaConfig {
     pub etna_dir: PathBuf,
-    pub repo_dir: PathBuf,
-    pub venv_dir: PathBuf,
-    pub branch: String,
     pub configured: bool,
 }
 
 impl EtnaConfig {
-    pub(crate) fn new(branch: String) -> anyhow::Result<Self> {
+    pub(crate) fn new() -> anyhow::Result<Self> {
         let etna_dir = Self::get_etna_dir()?;
-
-        let repo_dir = etna_dir.join("etna");
-        let venv_dir = etna_dir.join(".venv");
         let configured = false;
 
         Ok(Self {
             etna_dir,
-            repo_dir,
-            venv_dir,
-            branch,
             configured,
         })
     }
@@ -106,19 +97,32 @@ impl EtnaConfig {
         if let Ok(file) = std::fs::File::open(&config_path) {
             serde_json::from_reader(file).context("Failed to read config.json")
         } else {
-            Err(anyhow::anyhow!("Failed to read config.json"))
+            anyhow::bail!(format!(
+                "Failed to read configuration at '{}'",
+                config_path.display()
+            ))
         }
     }
 
-    pub(crate) fn save(&self) -> anyhow::Result<()> {
-        let config_path = self.config_path();
-        let file = std::fs::File::create(&config_path).context("Failed to create config file")?;
-        serde_json::to_writer_pretty(file, self).context("Failed to write config.json")
+    pub(crate) fn _save(&self) -> anyhow::Result<()> {
+        let config_path = self._config_path();
+        let file = std::fs::File::create(&config_path).with_context(|| {
+            format!(
+                "Failed to create configuration file at '{}'",
+                config_path.display()
+            )
+        })?;
+        serde_json::to_writer_pretty(file, self).with_context(|| {
+            format!(
+                "Failed to write to the configuration file at '{}'",
+                config_path.display()
+            )
+        })
     }
 }
 
 impl EtnaConfig {
-    pub(crate) fn config_path(&self) -> PathBuf {
+    pub(crate) fn _config_path(&self) -> PathBuf {
         self.etna_dir.join("config.json")
     }
 
