@@ -2,7 +2,7 @@ use anyhow::Context;
 
 use crate::store::Metric;
 
-pub(crate) fn invoke(experiment_id: String, metric: String) -> anyhow::Result<()> {
+pub fn invoke(experiment_id: String, metric: String) -> anyhow::Result<()> {
     // Get Etna configuration
     let etna_config =
         crate::config::EtnaConfig::get_etna_config().context("Failed to get etna config")?;

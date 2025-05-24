@@ -4,9 +4,7 @@ use std::{
     process::Stdio,
 };
 
-use anyhow::Context as _;
 use chrono::Duration;
-use process_control::{ChildExt as _, Control as _};
 use serde_json::Map;
 
 use crate::{
@@ -106,7 +104,7 @@ pub(crate) fn load_workload(
 
     let language = load_language(experiment_path, language)?;
 
-    Ok((Workload {
+    Ok(Workload {
         name: workload.to_string(),
         language: language.name,
         dir: workload_path,
@@ -123,7 +121,7 @@ pub(crate) fn load_workload(
             vec![language.run_step.clone()]
         })[0]
             .clone(),
-    }))
+    })
 }
 
 pub(crate) trait Driver {
@@ -143,7 +141,7 @@ pub(crate) trait Driver {
             run_steps.len()
         );
         // unwrap here is fine because we just checked the length
-        let step = run_steps.get(0).unwrap();
+        let step = run_steps.first().unwrap();
 
         log::info!("running '{}'", step);
 
@@ -219,8 +217,8 @@ pub(crate) trait Driver {
     fn build(
         &self,
         build_dir: &Path,
-        check_steps: &Vec<Step>,
-        build_steps: &Vec<Step>,
+        check_steps: &[Step],
+        build_steps: &[Step],
         params: &HashMap<String, String>,
         tags: &HashMap<String, Vec<String>>,
     ) -> anyhow::Result<()> {
@@ -235,8 +233,7 @@ pub(crate) trait Driver {
 
             let check_steps = check_steps
                 .into_iter()
-                .map(anyhow::Result::unwrap)
-                .flatten()
+                .flat_map(anyhow::Result::unwrap)
                 .collect::<Vec<_>>();
 
             for step in check_steps.iter() {
@@ -274,8 +271,7 @@ pub(crate) trait Driver {
 
             let build_steps = build_steps
                 .into_iter()
-                .map(anyhow::Result::unwrap)
-                .flatten()
+                .flat_map(anyhow::Result::unwrap)
                 .collect::<Vec<_>>();
 
             for step in build_steps.iter() {

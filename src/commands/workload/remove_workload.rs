@@ -7,7 +7,7 @@ use crate::{
     git_driver,
 };
 
-pub(crate) fn invoke(
+pub fn invoke(
     experiment_name: Option<String>,
     language: String,
     workload: String,

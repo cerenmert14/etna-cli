@@ -3,7 +3,7 @@ use log::info;
 
 use crate::{git_driver, python_driver};
 
-pub(crate) fn invoke(branch: String) -> anyhow::Result<()> {
+pub fn invoke(branch: String) -> anyhow::Result<()> {
     // Get etna configuration
     let mut etna_config = crate::config::EtnaConfig::get_etna_config()?;
 

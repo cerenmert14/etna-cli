@@ -7,7 +7,7 @@ use crate::{
     config::{EtnaConfig, ExperimentConfig},
     experiment::{Experiment, ExperimentSnapshot},
     snapshot::{self, Snapshot, SnapshotType},
-    workload::{Workload, WorkloadMetadata},
+    workload::WorkloadMetadata,
 };
 
 #[derive(Debug, Default, Deserialize, Serialize)]

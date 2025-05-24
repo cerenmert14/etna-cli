@@ -10,11 +10,7 @@ use crate::{config::EtnaConfig, git_driver, python_driver, store::Store};
 /// 2. Create ~/.etna/config.json file
 /// 3. Clone and install the etna repository
 /// 4. Create ~/.etna/store.json file
-pub(crate) fn invoke(
-    overwrite: bool,
-    branch: String,
-    repo_path: Option<String>,
-) -> anyhow::Result<()> {
+pub fn invoke(overwrite: bool, branch: String, repo_path: Option<String>) -> anyhow::Result<()> {
     info!("Setting up etna-cli");
     // Get the home directory
     let home_dir = dirs::home_dir().context("Failed to get home directory")?;

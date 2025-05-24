@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, path::PathBuf};
 
-use anyhow::Context;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -40,7 +39,7 @@ impl Step {
             Step::Command { params, .. } => params.iter().map(|p| p.as_str()).collect(),
             Step::Match { value, options } => [
                 vec![value.as_str()],
-                options.values().map(|o| o.params()).flatten().collect(),
+                options.values().flat_map(|o| o.params()).collect(),
             ]
             .concat(),
         }
@@ -111,7 +110,7 @@ impl Step {
             .iter()
             .map(|key| {
                 tags.get(*key)
-                    .expect(format!("missing tag {}", key).as_str())
+                    .unwrap_or_else(|| panic!("missing tag {}", key))
                     .clone()
             })
             .multi_cartesian_product()
@@ -120,7 +119,7 @@ impl Step {
         for elaboration_set in all_elaborations {
             let mut step = step.clone();
             for (i, val) in elaboration_set.iter().enumerate() {
-                step.replace(&format!("!{}", val), &elaborates[i]);
+                step.replace(&format!("!{}", val), elaborates[i]);
             }
             steps.push(step);
         }

@@ -2,7 +2,15 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use crate::commands;
+use etna::commands::{self, store::query::QueryOption};
+
+fn main() -> anyhow::Result<()> {
+    // Initialize the logger
+    env_logger::init();
+
+    // Invoke the CLI
+    run()
+}
 
 pub(crate) fn run() -> anyhow::Result<()> {
     let cli = Args::parse();
@@ -59,7 +67,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             } => commands::store::write::invoke(experiment_id, metric),
             StoreCommand::Query(query_option) => commands::store::query::invoke(query_option),
         },
-        Command::Analyze(analyze_command) => todo!(),
+        Command::Analyze(_analyze_command) => todo!(),
     }
 }
 
@@ -168,73 +176,6 @@ enum StoreCommand {
     },
     #[command(subcommand, name = "query", about = "Query the store")]
     Query(QueryOption),
-}
-
-#[derive(Debug, Subcommand)]
-pub(crate) enum QueryOption {
-    #[clap(name = "--jq", about = "JQ Query")]
-    Jq {
-        /// Query string
-        query_string: String,
-    },
-    #[clap(name = "--experiment-by-id", about = "Get an experiment by id")]
-    ExperimentById {
-        /// Experiment ID
-        experiment_id: String,
-    },
-    #[clap(name = "--experiment-by-name", about = "Get an experiment by name")]
-    ExperimentByName {
-        /// Experiment Name
-        experiment_name: String,
-    },
-    #[clap(
-        name = "--all-experiments-by-name",
-        about = "Get all experiment for a given name"
-    )]
-    AllExperimentsByName {
-        /// Experiment Name
-        experiment_name: String,
-    },
-    #[clap(
-        name = "--metrics-by-experiment-id",
-        about = "Get all metrics for a given experiment id"
-    )]
-    MetricsByExperimentId {
-        /// Experiment ID
-        experiment_id: String,
-    },
-    #[clap(
-        name = "--metrics-by-fields",
-        about = "Get all metrics that match the given fields"
-    )]
-    MetricsByFields {
-        /// Fields to match
-        fields_json_string: String,
-    },
-    #[clap(
-        name = "--snapshots-by-fields",
-        about = "Get all snapshots that match the given fields"
-    )]
-    SnapshotsByFields {
-        /// Fields to match
-        fields_json_string: String,
-    },
-    #[clap(
-        name = "--snapshots-by-name",
-        about = "Get all snapshots for a given name"
-    )]
-    SnapshotsByName {
-        /// Snapshot Name
-        snapshot_name: String,
-    },
-    #[clap(
-        name = "--snapshot-by-hash",
-        about = "Get the snapshot for a given hash"
-    )]
-    SnapshotByHash {
-        /// Snapshot Hash
-        snapshot_hash: String,
-    },
 }
 
 #[derive(Debug, Subcommand)]

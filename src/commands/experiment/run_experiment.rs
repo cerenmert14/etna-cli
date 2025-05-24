@@ -3,13 +3,13 @@ use log::{info, warn};
 
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
-    driver::{self, DefaultDriver, Driver},
+    driver::{DefaultDriver, Driver},
     experiment::Test,
-    git_driver, python_driver,
+    git_driver,
     store::Store,
 };
 
-pub(crate) fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Result<()> {
+pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Result<()> {
     log::trace!("running experiment with name '{:?}'", experiment_name);
     let etna_config = EtnaConfig::get_etna_config()?;
     let experiment_config = match experiment_name {
@@ -28,7 +28,7 @@ pub(crate) fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> any
 
     let tests = tests
         .iter()
-        .map(|test| {
+        .flat_map(|test| {
             let test_path = experiment
                 .path
                 .join("tests")
@@ -38,7 +38,6 @@ pub(crate) fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> any
                 serde_json::from_str(&std::fs::read_to_string(test_path).unwrap()).unwrap();
             test
         })
-        .flatten()
         .collect::<Vec<Test>>();
 
     info!(
@@ -61,7 +60,7 @@ pub(crate) fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> any
 
     // python_driver::run_experiment(&etna_config, &experiment_config, snapshot)?;
     let driver = DefaultDriver {};
-
+    driver.init();
     for test in &tests {
         driver.run_experiment(test, &experiment_config, snapshot.clone())?;
     }

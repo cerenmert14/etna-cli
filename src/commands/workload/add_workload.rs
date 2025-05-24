@@ -5,10 +5,10 @@ use anyhow::Context;
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
     experiment, git_driver, store,
-    workload::{Workload, WorkloadMetadata},
+    workload::WorkloadMetadata,
 };
 
-pub(crate) fn invoke(
+pub fn invoke(
     experiment_name: Option<String>,
     language: String,
     workload: String,

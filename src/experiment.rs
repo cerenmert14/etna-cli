@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize as _, Serialize as _};
 use serde_derive::{Deserialize, Serialize};
 
-use crate::workload::{Workload, WorkloadMetadata};
+use crate::workload::WorkloadMetadata;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Hash, Eq, Clone)]
 pub(crate) struct Experiment {
@@ -38,7 +38,7 @@ struct TestWrapper<'a> {
     property: &'a str,
 }
 
-fn serialize_test<S>(test: &Vec<(String, String)>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_test<S>(test: &[(String, String)], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {

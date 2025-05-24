@@ -3,10 +3,10 @@ use tabled::settings::{Extract, Style};
 
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
-    workload::{Workload, WorkloadMetadata},
+    workload::WorkloadMetadata,
 };
 
-pub(crate) fn invoke(
+pub fn invoke(
     experiment_name: Option<String>,
     language: String,
     kind: String,

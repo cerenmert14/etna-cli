@@ -6,7 +6,7 @@ use crate::{
     experiment::ExperimentSnapshot,
 };
 
-pub(crate) fn run_experiment(
+pub(crate) fn _run_experiment(
     etna_config: &EtnaConfig,
     _experiment_config: &ExperimentConfig,
     snapshot: ExperimentSnapshot,

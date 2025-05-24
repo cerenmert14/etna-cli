@@ -3,7 +3,7 @@ use tabled::{
     Table,
 };
 
-pub(crate) fn invoke() -> anyhow::Result<()> {
+pub fn invoke() -> anyhow::Result<()> {
     let etna_config = crate::config::EtnaConfig::get_etna_config()?;
     let table = vec![
         ("", "".to_string()),

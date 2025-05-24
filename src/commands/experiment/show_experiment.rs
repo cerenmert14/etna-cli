@@ -1,11 +1,10 @@
 use crate::{config::EtnaConfig, store::Store};
 
-
-pub(crate) fn invoke(hash: Option<String>, name: Option<String>, show_all: bool) -> anyhow::Result<()> {
+pub fn invoke(hash: Option<String>, name: Option<String>, show_all: bool) -> anyhow::Result<()> {
     #[derive(Debug)]
     enum HashOrName {
         Hash,
-        Name
+        Name,
     }
     use HashOrName::*;
 

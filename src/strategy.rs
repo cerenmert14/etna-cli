@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]

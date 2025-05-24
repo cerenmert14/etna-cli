@@ -1,5 +1,5 @@
 [package]
-name = "etna-cli"
+name = "etna"
 version = "0.1.0"
 edition = "2021"
 
@@ -23,3 +23,11 @@ serde_derive = "1.0.210"
 serde_json = "1.0.128"
 tabled = "0.16.0"
 toml = "0.8.19"
+
+[[bin]]
+name = "etna"
+path = "src/cli.rs"
+
+[[bin]]
+name = "etna-server"
+path = "src/server.rs"

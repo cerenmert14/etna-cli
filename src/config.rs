@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{
-    store::Store,
-    workload::{Workload, WorkloadMetadata},
-};
+use crate::{store::Store, workload::WorkloadMetadata};
 use anyhow::Context;
 use serde_derive::{Deserialize, Serialize};
 

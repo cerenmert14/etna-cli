@@ -14,7 +14,6 @@ use crate::{
 /// The directory structure is as follows:
 ///
 /// path/name/
-/// |
 /// |-------config.toml
 /// |-------Collect.py
 /// |-------Query.py
@@ -22,12 +21,18 @@ use crate::{
 /// |-------Visualize.py
 /// |-------workloads/
 ///         |-------[language-1]/
+///                 |-------config.json
 ///                 |-------[workload-1]
+///                         |-------config.json
 ///                 |-------[workload-2]
+///                         |-------config.json
+///         |-------...
+/// |-------tests
+///         |-------t1.json
+///         |-------t2.json
 ///         |-------...
 /// |-------.git
 /// |-------.gitignore
-/// |-------.venv
 ///
 /// # Arguments
 /// * `name` - Name of the new experiment
@@ -44,8 +49,7 @@ use crate::{
 /// Query.py - A default script to query the collected data
 /// Analyze.py - A default script to analyze the collected data
 /// Visualize.py - A default script to visualize the collected data
-
-pub(crate) fn invoke(
+pub fn invoke(
     name: String,
     path: Option<std::path::PathBuf>,
     overwrite: bool,
@@ -106,10 +110,19 @@ pub(crate) fn invoke(
             ".gitignore",
             std::include_str!("../../../templates/.gitignoret"),
         ),
+        (
+            "tests/t1.json",
+            std::include_str!("../../../templates/tests/t1.json"),
+        ),
     ];
 
     for (path, content) in template_files.iter() {
         let path = experiment_config.path.join(path);
+        let parent = path.parent().context(format!(
+            "Failed to get parent directory for '{}'",
+            path.display()
+        ))?;
+        std::fs::create_dir_all(parent)?;
         std::fs::write(&path, content).context(format!(
             "Failed to create template file '{}'",
             path.display()
