@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"  # Trigger on version tags like v1.0.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup target add x86_64-unknown-linux-gnu
+
+      - name: Build for Linux binaries
+        run: cargo build --release --target x86_64-unknown-linux-gnu
+      
+      - name: Upload Linux binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: tjq-x86_64-unknown-linux-gnu
+          path: target/x86_64-unknown-linux-gnu/release/tjq
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Windows target
+        run: rustup target add x86_64-pc-windows-msvc
+
+      - name: Build Windows binary
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: tjq-x86_64-pc-windows-msvc
+          path: target/x86_64-pc-windows-msvc/release/tjq.exe
+
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+      - name: Build macOS binaries
+        run: |
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+
+      - name: Upload macOS x86_64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: tjq-x86_64-apple-darwin
+          path: target/x86_64-apple-darwin/release/tjq
+        
+      - name: Upload macOS aarch64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: tjq-aarch64-apple-darwin
+          path: target/aarch64-apple-darwin/release/tjq
