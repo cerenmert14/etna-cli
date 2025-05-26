@@ -1,0 +1,19 @@
+[
+    {
+        "language": "Racket",
+        "workload": "BST",
+        "mutations": ["insert_1"],
+        "trials": 10,
+        "timeout": 60,
+        "tasks": [
+            {
+                "strategy": "RackcheckBespoke",
+                "property": "test_prop_InsertPost"
+            },
+            {
+                "strategy": "RackcheckBespoke",
+                "property": "test_prop_InsertPost"
+            }
+        ]
+    }
+]

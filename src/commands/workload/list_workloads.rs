@@ -3,10 +3,10 @@ use tabled::settings::{Extract, Style};
 
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
-    workload::Workload,
+    workload::WorkloadMetadata,
 };
 
-pub(crate) fn invoke(
+pub fn invoke(
     experiment_name: Option<String>,
     language: String,
     kind: String,
@@ -26,13 +26,13 @@ pub(crate) fn invoke(
                 .workloads
                 .iter()
                 .filter(|workload| language == "all" || language == workload.language)
-                .collect::<Vec<&Workload>>();
+                .collect::<Vec<&WorkloadMetadata>>();
 
             languages.sort_by(|a, b| a.language.cmp(&b.language).then(a.name.cmp(&b.name)));
 
             let mut table = vec![("Language", "Name")];
             for workload in languages {
-                table.push((workload.language.as_str(), workload.name.as_str()));
+                table.push((&workload.language, &workload.name));
             }
 
             let mut table = tabled::Table::new(table);

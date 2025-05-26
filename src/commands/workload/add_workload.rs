@@ -5,14 +5,20 @@ use anyhow::Context;
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
     experiment, git_driver, store,
-    workload::Workload,
+    workload::WorkloadMetadata,
 };
 
-pub(crate) fn invoke(
+pub fn invoke(
     experiment_name: Option<String>,
     language: String,
     workload: String,
 ) -> anyhow::Result<()> {
+    log::debug!(
+        "adding workload '{}/{}' to {:?}",
+        language,
+        workload,
+        experiment_name
+    );
     // Get etna configuration
     let etna_config = EtnaConfig::get_etna_config().context("Failed to get etna config")?;
     // Get the current experiment
@@ -29,11 +35,13 @@ pub(crate) fn invoke(
 
     // get etna directory
     let repo_dir = if let Ok(repo_dir) =
-        std::env::var("ETNA_REPO_DIR").context("ETNA_REPO_DIR environment variable not set")
+        std::env::var("ETNA_DIR").context("ETNA_DIR environment variable not set")
     {
         PathBuf::from(repo_dir)
     } else {
-        etna_config.repo_dir.clone()
+        std::env::current_dir()
+            .context("Failed to get current directory")?
+            .join("etna")
     };
 
     // Get the workload path
@@ -72,7 +80,7 @@ pub(crate) fn invoke(
         ))?;
 
     // Add the workload to the config
-    experiment_config.workloads.push(Workload {
+    experiment_config.workloads.push(WorkloadMetadata {
         language: language.clone(),
         name: workload.clone(),
     });
@@ -93,7 +101,7 @@ pub(crate) fn invoke(
     let mut store =
         store::Store::load(&etna_config.store_path()).context("Failed to load store")?;
 
-    let snapshot = store.take_snapshot(&etna_config, &experiment_config)?;
+    let snapshot = store.take_snapshot(&experiment_config)?;
 
     store.experiments.insert(experiment::Experiment {
         name: experiment_config.name,

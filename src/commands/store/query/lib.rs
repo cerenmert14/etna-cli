@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    cli::QueryOption,
+    commands::store::query::QueryOption,
     store::{self, ExperimentQuery, MetricQuery, Queriable, SpecializedQuery, Store},
 };
 

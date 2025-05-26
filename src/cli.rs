@@ -1,8 +1,45 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
+use anyhow::Context;
 use clap::{Parser, Subcommand};
 
-use crate::commands;
+use etna::commands::{self, store::query::QueryOption};
+use fern::colors::ColoredLevelConfig;
+
+fn main() -> anyhow::Result<()> {
+    // Initialize the logger
+    let color_config = ColoredLevelConfig::new()
+        .info(fern::colors::Color::Green)
+        .debug(fern::colors::Color::Blue)
+        .trace(fern::colors::Color::Cyan)
+        .error(fern::colors::Color::Red);
+
+    let log_level = env::var("RUST_LOG")
+        .ok()
+        .and_then(|lvl| lvl.parse::<log::LevelFilter>().ok());
+
+    fern::Dispatch::new()
+        .level(log_level.unwrap_or(log::LevelFilter::Info))
+        .format(move |out, message, record| match record.level() {
+            log::Level::Info if log_level.is_none() => out.finish(format_args!("{}", message,)),
+            log::Level::Info
+            | log::Level::Error
+            | log::Level::Warn
+            | log::Level::Debug
+            | log::Level::Trace => out.finish(format_args!(
+                "[{}][{}] {}",
+                color_config.color(record.level()),
+                record.target(),
+                message
+            )),
+        })
+        .chain(std::io::stdout())
+        .apply()
+        .context("Failed to initialize the logger")?;
+
+    // Invoke the CLI
+    run()
+}
 
 pub(crate) fn run() -> anyhow::Result<()> {
     let cli = Args::parse();
@@ -13,16 +50,17 @@ pub(crate) fn run() -> anyhow::Result<()> {
                 name,
                 path,
                 overwrite,
+                register,
                 description,
-            } => commands::experiment::new_experiment::invoke(name, path, overwrite, description),
-            ExperimentCommand::Run { name } => {
-                commands::experiment::run_experiment::invoke(name)
+            } => commands::experiment::new::invoke(name, path, overwrite, register, description),
+            ExperimentCommand::Run { name, tests } => {
+                commands::experiment::run::invoke(name, tests)
             }
             ExperimentCommand::Show {
-                hash_or_name,
-                is_name,
+                hash,
+                name,
                 show_all,
-            } => commands::experiment::show_experiment::invoke(hash_or_name, is_name, show_all),
+            } => commands::experiment::show::invoke(hash, name, show_all),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -42,16 +80,9 @@ pub(crate) fn run() -> anyhow::Result<()> {
             } => commands::workload::list_workloads::invoke(experiment, language, kind),
         },
         Command::Config(cl) => match cl {
-            ConfigCommand::ChangeBranch { branch } => {
-                commands::config::change_branch::invoke(branch)
-            }
             ConfigCommand::Show => commands::config::show::invoke(),
         },
-        Command::Setup {
-            overwrite,
-            branch,
-            repo_path,
-        } => commands::config::setup::invoke(overwrite, branch, repo_path),
+        Command::Setup { overwrite } => commands::config::setup::invoke(overwrite),
         Command::Store(store_command) => match store_command {
             StoreCommand::Write {
                 experiment_id,
@@ -59,7 +90,10 @@ pub(crate) fn run() -> anyhow::Result<()> {
             } => commands::store::write::invoke(experiment_id, metric),
             StoreCommand::Query(query_option) => commands::store::query::invoke(query_option),
         },
+        Command::Analyze(_analyze_command) => todo!(),
+        Command::Check { restore, remove } => commands::check::integrity::invoke(restore, remove),
     }
+    .context("Aborting run due to an error")
 }
 
 #[derive(Parser, Debug)]
@@ -75,10 +109,15 @@ enum ExperimentCommand {
     New {
         /// Name of the new experiment
         name: String,
+        /// An optional root path, if not provided, the current directory is used
         path: Option<PathBuf>,
         /// Overwrite the existing experiment
         #[clap(short = 'o', long)]
         overwrite: bool,
+        /// Register the experiment in the store
+        /// [default: false]
+        #[clap(short = 'r', long)]
+        register: bool,
         /// Description of the experiment
         /// [default: A description of the experiment]
         #[clap(short = 'd', long)]
@@ -90,14 +129,18 @@ enum ExperimentCommand {
         /// [default: current directory]
         #[clap(short, long)]
         name: Option<String>,
+        /// Tests to run
+        #[clap(short, long)]
+        tests: Vec<String>,
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {
-        /// Hash or name of the experiment
-        hash_or_name: String,
-        /// Is the provided string a hash or a name
-        #[clap(short = 'n', long, default_value = "false")]
-        is_name: bool,
+        /// Name
+        #[clap(long)]
+        name: Option<String>,
+        /// Hash
+        #[clap(long)]
+        hash: Option<String>,
         /// Show all the experiments
         #[clap(short = 'a', long, default_value = "false")]
         show_all: bool,
@@ -113,11 +156,11 @@ enum WorkloadCommand {
         experiment: Option<String>,
         /// Language of the workload
         /// [default: coq]
-        /// [possible_values(coq, haskell, racket)]
+        /// [possible_values(coq, haskell, racket, ocaml)]
         language: String,
         /// Workload to be added
         /// [default: bst]
-        /// [possible_values(bst, rbt, stlc, ifc)]
+        /// [possible_values(bst, rbt, stlc, systemf, ifc)]
         workload: String,
     },
     #[clap(name = "remove", about = "Remove a workload from the experiment")]
@@ -141,12 +184,10 @@ enum WorkloadCommand {
         experiment: Option<String>,
         /// Language of the workload
         /// [possible_values(coq, haskell, racket)]
-        /// [default: all]
         #[clap(short, long, default_value = "all")]
         language: String,
         /// Available or experiment workloads
         /// [possible_values(available, experiment)]
-        /// [default: experiment]
         #[clap(short, long, default_value = "experiment")]
         kind: String,
     },
@@ -166,85 +207,20 @@ enum StoreCommand {
 }
 
 #[derive(Debug, Subcommand)]
-pub(crate) enum QueryOption {
-    #[clap(name = "--jq", about = "JQ Query")]
-    Jq {
-        /// Query string
-        query_string: String,
-    },
-    #[clap(name = "--experiment-by-id", about = "Get an experiment by id")]
-    ExperimentById {
-        /// Experiment ID
-        experiment_id: String,
-    },
-    #[clap(name = "--experiment-by-name", about = "Get an experiment by name")]
-    ExperimentByName {
-        /// Experiment Name
-        experiment_name: String,
-    },
-    #[clap(
-        name = "--all-experiments-by-name",
-        about = "Get all experiment for a given name"
-    )]
-    AllExperimentsByName {
-        /// Experiment Name
-        experiment_name: String,
-    },
-    #[clap(
-        name = "--metrics-by-experiment-id",
-        about = "Get all metrics for a given experiment id"
-    )]
-    MetricsByExperimentId {
-        /// Experiment ID
-        experiment_id: String,
-    },
-    #[clap(
-        name = "--metrics-by-fields",
-        about = "Get all metrics that match the given fields"
-    )]
-    MetricsByFields {
-        /// Fields to match
-        fields_json_string: String,
-    },
-    #[clap(
-        name = "--snapshots-by-fields",
-        about = "Get all snapshots that match the given fields"
-    )]
-    SnapshotsByFields {
-        /// Fields to match
-        fields_json_string: String,
-    },
-    #[clap(
-        name = "--snapshots-by-name",
-        about = "Get all snapshots for a given name"
-    )]
-    SnapshotsByName {
-        /// Snapshot Name
-        snapshot_name: String,
-    },
-    #[clap(
-        name = "--snapshot-by-hash",
-        about = "Get the snapshot for a given hash"
-    )]
-    SnapshotByHash {
-        /// Snapshot Hash
-        snapshot_hash: String,
-    },
+enum ConfigCommand {
+    #[command(name = "show", about = "Show the current configuration")]
+    Show,
 }
 
 #[derive(Debug, Subcommand)]
-enum ConfigCommand {
-    #[command(
-        name = "change-branch",
-        about = "Change the branch of the etna repository"
-    )]
-    ChangeBranch {
-        /// Branch to clone the etna repository
+enum AnalyzeCommand {
+    #[clap(name = "bucket", about = "Create bucket charts for the experiment")]
+    BucketGen {
+        /// Name of the experiment to run
+        /// [default: current directory]
         #[clap(short, long)]
-        branch: String,
+        name: Option<String>,
     },
-    #[command(name = "show", about = "Show the current configuration")]
-    Show,
 }
 
 #[derive(Debug, Subcommand)]
@@ -262,11 +238,20 @@ enum Command {
         /// Overwrite the existing configuration
         #[clap(short, long, default_value = "false")]
         overwrite: bool,
-        /// Branch to clone the etna repository
-        #[clap(short, long, default_value = "main")]
-        branch: String,
-        /// Repository path, if already cloned
-        #[clap(long, default_value = None)]
-        repo_path: Option<String>,
     },
+    #[command(name = "check", about = "Run checks on etna")]
+    Check {
+        /// Restore the store from the backup
+        #[clap(long, default_value = "false")]
+        restore: bool,
+        /// Remove the store
+        #[clap(long, default_value = "false")]
+        remove: bool,
+    },
+    #[command(
+        subcommand,
+        name = "analyze",
+        about = "Run analysis on results of the experiments"
+    )]
+    Analyze(AnalyzeCommand),
 }

@@ -4,10 +4,10 @@ use anyhow::{Context, Ok};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
-    config::{EtnaConfig, ExperimentConfig},
+    config::ExperimentConfig,
     experiment::{Experiment, ExperimentSnapshot},
-    snapshot::{self, Snapshot, SnapshotType},
-    workload::Workload,
+    snapshot::{self, Snapshot},
+    workload::WorkloadMetadata,
 };
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -28,7 +28,10 @@ impl Store {
 
     pub(crate) fn load(path: &PathBuf) -> anyhow::Result<Self> {
         if !path.exists() {
-            anyhow::bail!("Store file does not exist");
+            anyhow::bail!(
+                "Failed to load the store, store file does not exist at {}",
+                path.display()
+            );
         }
 
         let content = std::fs::read_to_string(path)?;
@@ -45,19 +48,8 @@ impl Store {
 
     pub(crate) fn take_snapshot(
         &mut self,
-        etna_config: &EtnaConfig,
         experiment_config: &ExperimentConfig,
     ) -> anyhow::Result<ExperimentSnapshot> {
-        let etna_snapshot = snapshot::Snapshot::head(
-            &etna_config.repo_dir,
-            SnapshotType::Etna {
-                branch: etna_config.branch.clone(),
-            },
-        )
-        .context("Failed to take etna snapshot")?;
-
-        self.snapshots.insert(etna_snapshot.clone());
-
         let experiment_snapshot = snapshot::Snapshot::take(
             &experiment_config.path,
             &PathBuf::from("*"),
@@ -80,7 +72,7 @@ impl Store {
 
         self.snapshots.insert(collection_script_snapshot.clone());
 
-        let workload_snapshots: Vec<(Workload, String)> = experiment_config
+        let workload_snapshots: Vec<(WorkloadMetadata, String)> = experiment_config
             .workloads
             .iter()
             .map(|workload| {
@@ -91,8 +83,8 @@ impl Store {
                         .join(PathBuf::from(&workload.name))
                         .join("*"),
                     snapshot::SnapshotType::Workload {
-                        name: workload.name.clone(),
-                        language: workload.language.clone(),
+                        name: workload.name.to_string(),
+                        language: workload.language.to_string(),
                     },
                 )
                 .context("Failed to take workloads snapshot")?;
@@ -105,7 +97,6 @@ impl Store {
 
         Ok(ExperimentSnapshot {
             experiment: experiment_snapshot.hash,
-            etna: etna_snapshot.hash,
             scripts: vec![("Collect.py".to_string(), collection_script_snapshot.hash)],
             workloads: workload_snapshots,
         })
@@ -114,6 +105,7 @@ impl Store {
 
 impl Store {
     pub(crate) fn get_experiment_by_name(&self, name: &str) -> anyhow::Result<&Experiment> {
+        log::trace!("getting latest experiment by name '{name}'");
         let experiments = self
             .experiments
             .iter()
@@ -148,6 +140,7 @@ impl Store {
     }
 
     pub(crate) fn get_all_experiments_by_name(&self, name: &str) -> Vec<&Experiment> {
+        log::trace!("getting all experiments by name '{name}'");
         self.experiments
             .iter()
             .filter(|experiment| experiment.name == name)
@@ -155,10 +148,11 @@ impl Store {
     }
 
     pub(crate) fn get_experiment_by_id(&self, hash: &str) -> anyhow::Result<&Experiment> {
+        log::trace!("getting the experiment by id '{hash}'");
         self.experiments
             .iter()
             .find(|experiment| experiment.id == hash)
-            .context("Experiment not found")
+            .with_context(|| format!("experiment with id '{hash}' not found"))
     }
 }
 
