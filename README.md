@@ -9,7 +9,7 @@ ETNA CLI is a command line interface that allows you to interact with the ETNA B
 To install the ETNA CLI, you can use the following CURL command:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/alpaylan/etna-cli/releases/download/v0.0.1/etna-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/alpaylan/etna-cli/releases/download/v0.1.0/etna-installer.sh | sh
 ```
 
 ## Usage
