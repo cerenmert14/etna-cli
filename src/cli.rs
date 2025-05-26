@@ -109,6 +109,7 @@ enum ExperimentCommand {
     New {
         /// Name of the new experiment
         name: String,
+        /// An optional root path, if not provided, the current directory is used
         path: Option<PathBuf>,
         /// Overwrite the existing experiment
         #[clap(short = 'o', long)]
@@ -155,11 +156,11 @@ enum WorkloadCommand {
         experiment: Option<String>,
         /// Language of the workload
         /// [default: coq]
-        /// [possible_values(coq, haskell, racket)]
+        /// [possible_values(coq, haskell, racket, ocaml)]
         language: String,
         /// Workload to be added
         /// [default: bst]
-        /// [possible_values(bst, rbt, stlc, ifc)]
+        /// [possible_values(bst, rbt, stlc, systemf, ifc)]
         workload: String,
     },
     #[clap(name = "remove", about = "Remove a workload from the experiment")]
@@ -183,12 +184,10 @@ enum WorkloadCommand {
         experiment: Option<String>,
         /// Language of the workload
         /// [possible_values(coq, haskell, racket)]
-        /// [default: all]
         #[clap(short, long, default_value = "all")]
         language: String,
         /// Available or experiment workloads
         /// [possible_values(available, experiment)]
-        /// [default: experiment]
         #[clap(short, long, default_value = "experiment")]
         kind: String,
     },
