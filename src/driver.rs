@@ -9,6 +9,7 @@ use serde_json::Map;
 
 use crate::{
     commands::store,
+    config::ExperimentConfig,
     workload::{Language, Step, Workload},
 };
 
@@ -83,7 +84,7 @@ pub(crate) fn get_step(
         }
     }
 
-    log::warn!("Step '{}' not found, using default step", step_index);
+    log::debug!("Step '{}' not found, using default step", step_index);
     language_steps()
 }
 
@@ -129,6 +130,7 @@ pub(crate) trait Driver {
 
     fn run(
         &self,
+        experiment_config: &ExperimentConfig,
         run_config: &RunConfig,
         run_step: &Step,
         params: &HashMap<String, String>,
@@ -143,7 +145,7 @@ pub(crate) trait Driver {
         // unwrap here is fine because we just checked the length
         let step = run_steps.first().unwrap();
 
-        log::info!("running '{}'", step);
+        log::info!("running the trials via '{}'", step);
 
         for i in 0..run_config.trials {
             log::trace!("running trial {}", i);
@@ -206,9 +208,54 @@ pub(crate) trait Driver {
                     }
                 }
             };
+            let mut result = serde_json::from_str::<serde_json::Value>(result)
+                .with_context(|| format!("Failed to parse result: '{}'", result))?;
+
+            let obj = result
+                .as_object_mut()
+                .context("the printed metric is not a valid json object")?;
+            obj.insert(
+                "workload".to_string(),
+                serde_json::Value::String(run_config.workload.clone()),
+            );
+            obj.insert(
+                "experiment".to_string(),
+                serde_json::Value::String(run_config.experiment_id.clone()),
+            );
+            obj.insert(
+                "strategy".to_string(),
+                serde_json::Value::String(run_config.strategy.clone()),
+            );
+            obj.insert(
+                "property".to_string(),
+                serde_json::Value::String(run_config.property.clone()),
+            );
+            obj.insert(
+                "mutations".to_string(),
+                serde_json::Value::Array(
+                    run_config
+                        .mutations
+                        .iter()
+                        .map(|m| serde_json::Value::String(m.clone()))
+                        .collect(),
+                ),
+            );
+            obj.insert("trial".to_string(), serde_json::Value::Number(i.into()));
+            obj.insert(
+                "timestamp".to_string(),
+                serde_json::Value::String(chrono::Utc::now().to_rfc3339()),
+            );
+            obj.insert(
+                "timeout".to_string(),
+                serde_json::Value::Number(run_config.timeout.into()),
+            );
 
             log::info!("writing result '{}' to store", result);
-            store::write::invoke(run_config.experiment_id.clone(), result.to_string())?;
+            store::write::invoke(
+                Some(experiment_config),
+                run_config.experiment_id.clone(),
+                result.to_string(),
+            )?;
         }
 
         Ok(())
@@ -240,6 +287,7 @@ pub(crate) trait Driver {
                 log::debug!("running check step: {}", step);
                 // Run the check command
                 let step = step.decide(params, tags);
+                log::debug!("step is evaluated to '{step}'");
                 let mut cmd = std::process::Command::new(&step.command);
 
                 let cmd = step.args.iter().fold(&mut cmd, |cmd, arg| cmd.arg(arg));
@@ -284,10 +332,10 @@ pub(crate) trait Driver {
                 let output = cmd.output().context("Failed to execute build command")?;
 
                 if !output.status.success() {
-                    log::info!("[✗] '{}' failed", step.command);
+                    log::info!("[✗] '{}' failed", step);
                     anyhow::bail!("build command failed with status: {}", output.status);
                 } else {
-                    log::info!("[✓] '{}' passed", step.command);
+                    log::info!("[✓] '{}' passed", step);
                 }
             }
             log::info!("build commands are successfull.");
@@ -383,6 +431,7 @@ pub(crate) trait Driver {
                     seeds: None,
                 };
                 driver.run(
+                    &experiment_config,
                     &run_config,
                     &workload.run_step,
                     &HashMap::from(params),

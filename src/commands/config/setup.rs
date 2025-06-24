@@ -42,7 +42,7 @@ pub fn invoke(overwrite: bool) -> anyhow::Result<()> {
     if !store_path.exists() {
         info!("Creating store.json");
         let file = std::fs::File::create(&store_path).context("Failed to create store.json")?;
-        serde_json::to_writer_pretty(file, &Store::default())
+        serde_json::to_writer_pretty(file, &Store::new(store_path.clone()))
             .context("Failed to write to store.json")?;
     }
 

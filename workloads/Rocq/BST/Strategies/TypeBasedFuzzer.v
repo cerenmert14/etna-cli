@@ -1,4 +1,4 @@
-(* From QuickChick Require Import QuickChick. Import QcNotation.
+From QuickChick Require Import QuickChick. Import QcNotation.
 From Coq Require Import List. Import ListNotations.
 From Coq Require Import ZArith.
 From ExtLib Require Import Monad.
@@ -187,4 +187,4 @@ Definition test_prop_UnionUnionAssoc (t1t2t3 : Tree * Tree * Tree) :=
 Definition test_prop_UnionUnionAssoc_fuzzer :=
   fun (u : unit) => fuzzLoopWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) arbitrary fuzz show test_prop_UnionUnionAssoc.
 
-! FuzzChick test_prop_UnionUnionAssoc (test_prop_UnionUnionAssoc_fuzzer tt). *)
+(*! FuzzChick test_prop_UnionUnionAssoc (test_prop_UnionUnionAssoc_fuzzer tt). *)

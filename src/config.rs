@@ -8,22 +8,24 @@ use serde_derive::{Deserialize, Serialize};
 /// It contains the name of the experiment, a description of the experiment, and a list of workloads
 /// to be executed.
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct ExperimentConfig {
+pub struct ExperimentConfig {
     pub name: String,
     pub description: String,
     pub workloads: Vec<WorkloadMetadata>,
     #[serde(skip)]
     #[serde(default)]
     pub path: PathBuf,
+    pub store: PathBuf,
 }
 
 impl ExperimentConfig {
-    pub(crate) fn new(name: &str, description: &str, path: PathBuf) -> Self {
+    pub fn new(name: String, description: String, path: PathBuf, store: PathBuf) -> Self {
         Self {
-            name: name.to_string(),
-            description: description.to_string(),
+            name,
+            description,
             workloads: vec![],
             path,
+            store,
         }
     }
 

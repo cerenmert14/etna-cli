@@ -1,14 +1,14 @@
-use std::{fmt::Display, path::Path};
+use std::{fmt::Display, path::PathBuf};
 
 use anyhow::Context;
 
 use crate::{config::EtnaConfig, store};
 
-enum IntegrityFault<'a> {
-    ExperimentNotFound { name: &'a str, path: &'a Path },
+enum IntegrityFault {
+    ExperimentNotFound { name: String, path: PathBuf },
 }
 
-impl<'a> Display for IntegrityFault<'a> {
+impl Display for IntegrityFault {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             IntegrityFault::ExperimentNotFound { name, path } => {
@@ -40,7 +40,7 @@ pub fn invoke(restore: bool, remove: bool) -> anyhow::Result<()> {
     // Get etna configuration
     let etna_config = EtnaConfig::get_etna_config().context("Failed to get etna config")?;
     // Load the store
-    let store =
+    let mut store =
         store::Store::load(&etna_config.store_path()).context("Failed to load the store")?;
     // Check the integrity of the store
     for experiment in store.experiments.iter() {
@@ -54,8 +54,8 @@ pub fn invoke(restore: bool, remove: bool) -> anyhow::Result<()> {
                         experiment.path.display()
                     );
                     integrity_faults.push(IntegrityFault::ExperimentNotFound {
-                        name: &experiment.name,
-                        path: &experiment.path,
+                        name: experiment.name.clone(),
+                        path: experiment.path.clone(),
                     })
                 }
             }
@@ -66,8 +66,8 @@ pub fn invoke(restore: bool, remove: bool) -> anyhow::Result<()> {
                     experiment.path.display()
                 );
                 integrity_faults.push(IntegrityFault::ExperimentNotFound {
-                    name: &experiment.name,
-                    path: &experiment.path,
+                    name: experiment.name.clone(),
+                    path: experiment.path.clone(),
                 });
             }
         }
@@ -81,12 +81,8 @@ pub fn invoke(restore: bool, remove: bool) -> anyhow::Result<()> {
             log::info!("fixing '{}'", integrity_fault);
             match integrity_fault {
                 IntegrityFault::ExperimentNotFound { name, .. } => {
-                    let mut store = store::Store::load(&etna_config.store_path())
-                        .context("Failed to load the store")?;
                     store.experiments.retain(|e| e.name != *name);
-                    store
-                        .save(&etna_config.store_path())
-                        .context("Failed to save the store")?;
+                    store.save().context("Failed to save the store")?;
                     log::info!("\tremoved experiment {} from the store", name);
                 }
             }

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fmt::Display, path::PathBuf};
 
 use serde::{Deserialize as _, Serialize as _};
 use serde_derive::{Deserialize, Serialize};
@@ -70,4 +70,14 @@ pub(crate) struct Test {
         deserialize_with = "deserialize_test"
     )]
     pub(crate) tasks: Vec<(String, String)>,
+}
+
+impl Display for Test {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "(language: {}, workload: {}, trials: {}, timeout: {}, mutations: {:?}, tasks: {:?})",
+            self.language, self.workload, self.trials, self.timeout, self.mutations, self.tasks
+        )
+    }
 }

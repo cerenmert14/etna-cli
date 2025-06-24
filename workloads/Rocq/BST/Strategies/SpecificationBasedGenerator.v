@@ -1,4 +1,4 @@
-(* From QuickChick Require Import QuickChick. Import QcNotation.
+From QuickChick Require Import QuickChick. Import QcNotation.
 From Coq Require Import List. Import ListNotations.
 From ExtLib Require Import Monad.
 Import MonadNotation.
@@ -190,4 +190,4 @@ Definition test_prop_UnionUnionAssoc   :=
   prop_UnionUnionAssoc t1 t2 t3)))
 .
 
-! QuickChick test_prop_UnionUnionAssoc. *)
+(*! QuickChick test_prop_UnionUnionAssoc. *)

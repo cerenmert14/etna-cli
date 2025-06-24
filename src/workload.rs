@@ -18,7 +18,7 @@ impl Display for Command {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) enum Step {
+pub enum Step {
     #[serde()]
     Command {
         command: String,
@@ -70,15 +70,22 @@ impl Step {
     }
 
     pub(crate) fn contains(&self, k: &str) -> bool {
-        match self {
+        let result = match self {
             Step::Command { command, args, .. } => {
-                command.contains(k) && args.iter().any(|a| a.contains(k))
+                command.contains(k) || args.iter().any(|a| a.contains(k))
             }
             Step::Match { options, .. } => options.values().any(|s| s.contains(k)),
+        };
+        if result {
+            log::trace!("step '{self}' contains key '{k}'");
+        } else {
+            log::trace!("step '{self}' does not contain key '{k}'");
         }
+        result
     }
 
     pub(crate) fn replace(&mut self, s1: &str, s2: &str) {
+        let original_step = self.clone();
         match self {
             Step::Command { command, args, .. } => {
                 *command = command.replace(s1, s2);
@@ -90,6 +97,7 @@ impl Step {
                 }
             }
         }
+        log::debug!("replaced step: '{}' with '{}'", original_step, self);
     }
 
     pub(crate) fn realize(
@@ -119,7 +127,7 @@ impl Step {
         for elaboration_set in all_elaborations {
             let mut step = step.clone();
             for (i, val) in elaboration_set.iter().enumerate() {
-                step.replace(&format!("!{}", val), elaborates[i]);
+                step.replace(&format!("!{}", elaborates[i]), val);
             }
             steps.push(step);
         }
@@ -141,7 +149,7 @@ impl Display for Step {
             Step::Match { value, options } => {
                 write!(f, "match '{}': ", value)?;
                 for (k, step) in options {
-                    write!(f, "({} => {})", k, step)?;
+                    write!(f, "\n\t({} => {})", k, step)?;
                 }
                 Ok(())
             }
@@ -150,28 +158,28 @@ impl Display for Step {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Hash, Eq)]
-pub(crate) struct WorkloadMetadata {
-    pub(crate) name: String,
-    pub(crate) language: String,
+pub struct WorkloadMetadata {
+    pub name: String,
+    pub language: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-pub(crate) struct Workload {
-    pub(crate) name: String,
-    pub(crate) language: String,
-    pub(crate) dir: PathBuf,
-    pub(crate) properties: Vec<Property>,
-    pub(crate) variations: Vec<Variation>,
-    pub(crate) strategies: Vec<Strategy>,
-    pub(crate) build_steps: Vec<Step>,
-    pub(crate) check_steps: Vec<Step>,
-    pub(crate) run_step: Step,
+pub struct Workload {
+    pub name: String,
+    pub language: String,
+    pub dir: PathBuf,
+    pub properties: Vec<Property>,
+    pub variations: Vec<Variation>,
+    pub strategies: Vec<Strategy>,
+    pub build_steps: Vec<Step>,
+    pub check_steps: Vec<Step>,
+    pub run_step: Step,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-pub(crate) struct Language {
-    pub(crate) name: String,
-    pub(crate) build_steps: Vec<Step>,
-    pub(crate) check_steps: Vec<Step>,
-    pub(crate) run_step: Step,
+pub struct Language {
+    pub name: String,
+    pub build_steps: Vec<Step>,
+    pub check_steps: Vec<Step>,
+    pub run_step: Step,
 }

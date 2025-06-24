@@ -1,6 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Property {
+pub struct Property {
     pub name: String,
 }

@@ -26,7 +26,8 @@ pub fn invoke(
         .ok_or(anyhow::anyhow!("No experiment name provided"))
         .and_then(|n| ExperimentConfig::from_etna_config(&n, &etna_config))
         .or_else(|_| ExperimentConfig::from_current_dir())
-        .context("No experiment name is provided, and the current directory is not an experiment directory")?;
+        .context("No experiment name is provided, and the current directory is not an experiment directory")
+        .context("Try running `etna workload add` in an experiment directory, or explicitly specify the experiment name with `etna workload add --experiment <NAME>`")?;
 
     // Check if the workload already exists
     if experiment_config.has_workload(&language, &workload) {
@@ -34,15 +35,9 @@ pub fn invoke(
     }
 
     // get etna directory
-    let repo_dir = if let Ok(repo_dir) =
-        std::env::var("ETNA_DIR").context("ETNA_DIR environment variable not set")
-    {
-        PathBuf::from(repo_dir)
-    } else {
-        std::env::current_dir()
-            .context("Failed to get current directory")?
-            .join("etna")
-    };
+    let repo_dir = std::env::var("ETNA_DIR")
+        .and_then(|repo_dir| Ok(PathBuf::from(repo_dir)))
+        .context("ETNA_DIR environment variable not set")?;
 
     // Get the workload path
     let workload_path = repo_dir.join("workloads").join(&language).join(&workload);
@@ -79,6 +74,33 @@ pub fn invoke(
             dest_path.display()
         ))?;
 
+    // if language config exists, copy it
+    let language_config_path = repo_dir
+        .join("workloads")
+        .join(&language)
+        .join("config.json");
+
+    if language_config_path.exists() {
+        log::debug!(
+            "Copying language config from '{}' to '{}'",
+            language_config_path.display(),
+            dest_path.display()
+        );
+
+        let dest_language_config_path = dest_path
+            .canonicalize()?
+            .parent()
+            .context("Parent does not exist")?
+            .join("config.json");
+
+        std::fs::copy(&language_config_path, &dest_language_config_path).context(format!(
+            "Failed to copy language config from '{}' to '{}'",
+            fs::canonicalize(language_config_path)
+                .context("Failed to get canonical path")?
+                .display(),
+            dest_language_config_path.display()
+        ))?;
+    }
     // Add the workload to the config
     experiment_config.workloads.push(WorkloadMetadata {
         language: language.clone(),
@@ -98,22 +120,26 @@ pub fn invoke(
         .with_context(|| format!("Failed to commit adding '{language}/{workload}'"))?;
 
     // Add the snapshot to the store
-    let mut store =
-        store::Store::load(&etna_config.store_path()).context("Failed to load store")?;
+    let mut store = store::Store::load(&experiment_config.store).context("Failed to load store")?;
 
     let snapshot = store.take_snapshot(&experiment_config)?;
 
     store.experiments.insert(experiment::Experiment {
-        name: experiment_config.name,
+        name: experiment_config.name.clone(),
         id: snapshot.experiment.clone(),
         description: experiment_config.description,
         path: experiment_config.path,
         snapshot,
     });
 
-    store
-        .save(&etna_config.store_path())
-        .context("Failed to save store")?;
+    store.save().context("Failed to save store")?;
+
+    log::info!(
+        "Workload '{}/{}' added to experiment '{}'",
+        language,
+        workload,
+        experiment_config.name
+    );
 
     Ok(())
 }

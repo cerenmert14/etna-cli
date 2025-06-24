@@ -10,19 +10,21 @@ use crate::{
     workload::WorkloadMetadata,
 };
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Store {
-    pub metrics: Vec<Metric>,
-    pub snapshots: HashSet<Snapshot>,
+    pub path: PathBuf,
     pub experiments: HashSet<Experiment>,
+    pub snapshots: HashSet<Snapshot>,
+    pub metrics: Vec<Metric>,
 }
 
 impl Store {
-    pub(crate) fn default() -> Self {
+    pub(crate) fn new(path: PathBuf) -> Self {
         Store {
-            metrics: Vec::new(),
-            snapshots: HashSet::new(),
             experiments: HashSet::new(),
+            snapshots: HashSet::new(),
+            metrics: Vec::new(),
+            path,
         }
     }
 
@@ -40,10 +42,9 @@ impl Store {
         Ok(store)
     }
 
-    pub(crate) fn save(&self, path: &PathBuf) -> anyhow::Result<()> {
+    pub(crate) fn save(&self) -> anyhow::Result<()> {
         let content = serde_json::to_string_pretty(self)?;
-
-        std::fs::write(path, content).context("Failed to write store file")
+        std::fs::write(&self.path, content).context("Failed to write store file")
     }
 
     pub(crate) fn take_snapshot(

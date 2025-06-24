@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use anyhow::Context;
 
@@ -51,10 +51,11 @@ use crate::{
 /// Visualize.py - A default script to visualize the collected data
 pub fn invoke(
     name: String,
-    path: Option<std::path::PathBuf>,
+    path: Option<PathBuf>,
     overwrite: bool,
     register: bool,
     description: Option<String>,
+    use_local_store: bool,
 ) -> anyhow::Result<()> {
     // Create a new directory for the experiment
     // If the path is not provided, use the current directory
@@ -65,17 +66,40 @@ pub fn invoke(
         std::env::current_dir().context("Failed to get current directory")?
     };
 
+    log::trace!("reading etna configuration");
+
+    let global_store = EtnaConfig::get_etna_config().context("Could not read etna configuration, did you run `etna setup` before creating an experiment?")?.store_path();
+    let local_store = if use_local_store {
+        log::info!(
+            "using a local store for experiment '{name}' at '{}'",
+            path.join(&name).join("store.json").display()
+        );
+        path.join(&name).join("store.json")
+    } else {
+        global_store.clone()
+    };
     // Create the config file
     let experiment_path = path.join(&name);
     let config_path = experiment_path.join("config.toml");
     let description = description.unwrap_or_else(|| "A description of the experiment".to_string());
-    let experiment_config = ExperimentConfig::new(&name, &description, experiment_path.clone());
-    log::trace!("reading etna configuration");
-    let etna_config = EtnaConfig::get_etna_config().context("Could not read etna configuration, did you run `etna setup` before creating an experiment?")?;
-    let store_path = etna_config.store_path();
-    let mut etna_store = Store::load(&store_path)
-        .with_context(|| format!("Could not load the store at '{}'", store_path.display()))?;
-    let experiment_ = etna_store.get_experiment_by_name(&name);
+
+    let experiment_config = ExperimentConfig::new(
+        name.clone(),
+        description,
+        experiment_path.clone(),
+        local_store.clone(),
+    );
+
+    log::trace!("loading global store at '{}'", global_store.display());
+    let mut global_store = Store::load(&global_store).with_context(|| {
+        format!(
+            "Failed to load the global store at '{}'",
+            global_store.display()
+        )
+    })?;
+    let experiment_ = global_store.get_experiment_by_name(&name);
+
+    log::trace!("running the --register and --overwrite logic");
 
     match (
         experiment_path.exists(),
@@ -97,18 +121,18 @@ pub fn invoke(
         }
         (true, false, false, true) => {
             log::debug!("--register flag is set, registering existing experiment");
-            let snapshot = etna_store.take_snapshot(&experiment_config)?;
-            etna_store.experiments.insert(Experiment {
+            let snapshot = global_store.take_snapshot(&experiment_config)?;
+            global_store.experiments.insert(Experiment {
                 name: name.clone(),
                 id: snapshot.experiment.clone(),
                 description: experiment_config.description.clone(),
                 path,
                 snapshot,
             });
-            etna_store.save(&store_path).with_context(|| {
+            global_store.save().with_context(|| {
                 format!(
                     "Failed to save the etna store at '{}'",
-                    store_path.display()
+                    global_store.path.display()
                 )
             })?;
             log::info!(
@@ -136,6 +160,10 @@ pub fn invoke(
         (false, _, false, false) => {}
     };
 
+    log::trace!(
+        "creating experiment directory at '{}'",
+        experiment_path.display()
+    );
     std::fs::create_dir(&experiment_path).with_context(|| {
         format!(
             "Failed to create experiment directory at '{}'",
@@ -143,6 +171,7 @@ pub fn invoke(
         )
     })?;
 
+    log::trace!("writing configuration file at '{}'", config_path.display());
     std::fs::write(
         &config_path,
         toml::to_string(&experiment_config).with_context(|| {
@@ -182,7 +211,13 @@ pub fn invoke(
         ),
     ];
 
+    log::trace!("creating template files in the experiment directory");
     for (path, content) in template_files.iter() {
+        log::trace!(
+            "Creating template file at '{}/{}'",
+            experiment_config.path.display(),
+            path
+        );
         let path = experiment_config.path.join(path);
         let parent = path.parent().context(format!(
             "Failed to get parent directory for '{}'",
@@ -197,6 +232,10 @@ pub fn invoke(
 
     // Create the workloads directory
     let workloads_path = experiment_config.path.join("workloads");
+    log::trace!(
+        "creating workloads directory at '{}'",
+        workloads_path.display()
+    );
     std::fs::create_dir(&workloads_path).with_context(|| {
         format!(
             "Failed to create workloads directory at '{}'",
@@ -204,27 +243,56 @@ pub fn invoke(
         )
     })?;
 
-    // Initialize a git repository
+    log::trace!(
+        "initializing git repository at '{}'",
+        experiment_config.path.display()
+    );
     git_driver::initialize_git_repo(
         &experiment_config.path,
         format!("Automated initialization commit for experiment '{}'", name).as_str(),
     )?;
-    let snapshot = etna_store.take_snapshot(&experiment_config)?;
 
-    etna_store.experiments.insert(Experiment {
+    log::trace!("taking snapshot for the experiment");
+    let snapshot = global_store.take_snapshot(&experiment_config)?;
+
+    global_store.experiments.insert(Experiment {
         name: name.clone(),
         id: snapshot.experiment.clone(),
-        description: experiment_config.description,
+        description: experiment_config.description.clone(),
         path: experiment_config.path.clone(),
-        snapshot,
+        snapshot: snapshot.clone(),
     });
 
-    etna_store.save(&store_path).with_context(|| {
+    log::trace!(
+        "saving the global store at '{}'",
+        global_store.path.display()
+    );
+    global_store.save().with_context(|| {
         format!(
-            "Failed to save the etna store at '{}'",
-            store_path.display()
+            "Failed to save the global store at '{}'",
+            global_store.path.display()
         )
     })?;
+
+    if use_local_store {
+        let mut local_store = Store::new(local_store);
+
+        local_store.experiments.insert(Experiment {
+            name: name.clone(),
+            id: snapshot.experiment.clone(),
+            description: experiment_config.description,
+            path: experiment_config.path.clone(),
+            snapshot,
+        });
+
+        log::trace!("saving the local store at '{}'", local_store.path.display());
+        local_store.save().with_context(|| {
+            format!(
+                "Failed to save the local store at '{}'",
+                local_store.path.display()
+            )
+        })?;
+    }
 
     log::info!(
         "Experiment '{name}' created successfully at '{}'",

@@ -20,6 +20,7 @@ fn main() -> anyhow::Result<()> {
 
     fern::Dispatch::new()
         .level(log_level.unwrap_or(log::LevelFilter::Info))
+        .level_for("marauders", log::LevelFilter::Error)
         .format(move |out, message, record| match record.level() {
             log::Level::Info if log_level.is_none() => out.finish(format_args!("{}", message,)),
             log::Level::Info
@@ -52,7 +53,8 @@ pub(crate) fn run() -> anyhow::Result<()> {
                 overwrite,
                 register,
                 description,
-            } => commands::experiment::new::invoke(name, path, overwrite, register, description),
+                local_store,
+            } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
             ExperimentCommand::Run { name, tests } => {
                 commands::experiment::run::invoke(name, tests)
             }
@@ -72,7 +74,8 @@ pub(crate) fn run() -> anyhow::Result<()> {
                 experiment,
                 language,
                 workload,
-            } => commands::workload::remove_workload::invoke(experiment, language, workload),
+            } => commands::workload::remove_workload::invoke(experiment, language, workload)
+                .context("Try running `etna workload remove` in an experiment directory, or explicitly specify the experiment name with `etna workload remove --experiment <NAME>`"),
             WorkloadCommand::ListWorkloads {
                 experiment,
                 language,
@@ -87,7 +90,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             StoreCommand::Write {
                 experiment_id,
                 metric,
-            } => commands::store::write::invoke(experiment_id, metric),
+            } => commands::store::write::invoke(None, experiment_id, metric),
             StoreCommand::Query(query_option) => commands::store::query::invoke(query_option),
         },
         Command::Analyze(_analyze_command) => todo!(),
@@ -122,6 +125,10 @@ enum ExperimentCommand {
         /// [default: A description of the experiment]
         #[clap(short = 'd', long)]
         description: Option<String>,
+        /// Does the experiment use a local store instead of the global store
+        /// [default: false]
+        #[clap(short = 's', long, default_value = "false")]
+        local_store: bool,
     },
     #[clap(name = "run", about = "Run an experiment")]
     Run {

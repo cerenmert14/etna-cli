@@ -12,6 +12,11 @@ use crate::{
 pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Result<()> {
     log::trace!("running experiment with name '{:?}'", experiment_name);
     let etna_config = EtnaConfig::get_etna_config()?;
+
+    if tests.is_empty() {
+        anyhow::bail!("No tests provided. Please specify at least one test to run.");
+    }
+
     let experiment_config = match experiment_name {
         Some(name) => ExperimentConfig::from_etna_config(&name, &etna_config).context(format!(
             "Failed to get experiment config for '{}'",
@@ -20,7 +25,7 @@ pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Re
         None => ExperimentConfig::from_current_dir().context("No experiment name is provided, and the current directory is not an experiment directory"),
     }?;
 
-    let mut store = Store::load(&etna_config.store_path())?;
+    let mut store = Store::load(&experiment_config.store)?;
 
     let snapshot = Store::take_snapshot(&mut store, &experiment_config)?;
 
@@ -39,7 +44,6 @@ pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Re
             test
         })
         .collect::<Vec<Test>>();
-
     info!(
         "Taking snapshot for the experiment {}",
         experiment_config.name
@@ -55,13 +59,14 @@ pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Re
 
         let experiment = experiment.with_snapshot(snapshot.clone());
         store.experiments.insert(experiment);
-        store.save(&etna_config.store_path())?;
+        store.save()?;
     }
 
     // python_driver::run_experiment(&etna_config, &experiment_config, snapshot)?;
     let driver = DefaultDriver {};
     driver.init();
     for test in &tests {
+        info!("Running test: {}", test);
         driver.run_experiment(test, &experiment_config, snapshot.clone())?;
     }
 

@@ -1,15 +1,24 @@
 use anyhow::Context;
 
-use crate::store::Metric;
+use crate::{
+    config::{EtnaConfig, ExperimentConfig},
+    store::{Metric, Store},
+};
 
-pub fn invoke(experiment_id: String, metric: String) -> anyhow::Result<()> {
-    // Get Etna configuration
-    let etna_config =
-        crate::config::EtnaConfig::get_etna_config().context("Failed to get etna config")?;
-
+pub fn invoke(
+    experiment_config: Option<&ExperimentConfig>,
+    experiment_id: String,
+    metric: String,
+) -> anyhow::Result<()> {
+    let store_path = if let Some(cfg) = experiment_config {
+        &cfg.store
+    } else {
+        // Get Etna configuration
+        let etna_config = EtnaConfig::get_etna_config().context("Failed to get etna config")?;
+        &etna_config.store_path()
+    };
     // Load the Store
-    let mut store =
-        crate::store::Store::load(&etna_config.store_path()).context("Failed to load the store")?;
+    let mut store = Store::load(&store_path).context("Failed to load the store")?;
 
     // Deserialize the metric
     let data: serde_json::Value = serde_json::from_str(&metric).context(format!(
@@ -23,9 +32,7 @@ pub fn invoke(experiment_id: String, metric: String) -> anyhow::Result<()> {
         data,
     });
 
-    store
-        .save(&etna_config.store_path())
-        .context("Failed to save the store")?;
+    store.save().context("Failed to save the store")?;
 
     Ok(())
 }

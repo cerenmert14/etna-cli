@@ -86,6 +86,14 @@
         ],
         "TypeBasedFuzzer": [
             "fuzzer"
+        ],
+        "generator": [
+            "BespokeGenerator",
+            "SpecificationBasedGenerator",
+            "TypeBasedGenerator"
+        ],
+        "fuzzer": [
+            "TypeBasedFuzzer"
         ]
     }
 }
