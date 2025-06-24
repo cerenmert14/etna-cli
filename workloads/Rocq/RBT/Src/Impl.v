@@ -47,23 +47,24 @@ Definition balance (col: Color) (tl: Tree) (key: Z) (val: Z) (tr: Tree) : Tree :
     match col, tl, key, val, tr with
     (*! *)
     | B, (T R (T R a x vx b) y vy c), z, vz, d => T R (T B a x vx b) y vy (T B c z vz d)
-(*!! swap_cd *)
-(*! 
+    (*!! swap_cd *)
+    (*!
     | B, (T R (T R a x vx b) y vy c), z, vz, d => T R (T B a x vx b) y vy (T B d z vz c) 
-*)
+    *)
+    (* !*)
     | B, (T R a x vx (T R b y vy c)), z, vz, d => T R (T B a x vx b) y vy (T B c z vz d)
-(*! *)
+    (*! *)
     | B, a, x, vx, (T R (T R b y vy c) z vz d) => T R (T B a x vx b) y vy (T B c z vz d)
-(*!! swap_bc *)
-(*!
+    (*!! swap_bc *)
+    (*!
     | B, a, x, vx, (T R (T R b y vy c) z vz d) => T R (T B a x vx c) y vy (T B b z vz d)
-*)
+    *)
+    (* !*)
     | B, a, x, vx, (T R b y vy (T R c z vz d)) => T R (T B a x vx b) y vy (T B c z vz d)
     | rb, a, x, vx, b => T rb a x vx b
     end.
 
-(* ----------
- *)
+(* ---------- *)
 Set Warnings "-non-recursive, -fixpoints".
 Fixpoint insert (key: Z) (val: Z) (t: Tree) : Tree :=
     let fix ins (x: Z) (vx: Z) (s: Tree) : Tree :=
@@ -75,6 +76,7 @@ Fixpoint insert (key: Z) (val: Z) (t: Tree) : Tree :=
     (*!
     T B E x vx E
     *)
+    (* !*)
     | x, vx, (T rb a y vy b) =>
     (*! *)
     if x <?? y then balance rb (ins x vx a) y vy b
@@ -107,6 +109,7 @@ Fixpoint insert (key: Z) (val: Z) (t: Tree) : Tree :=
     else if y <?? x then T rb a y vy (insert x vx b)
     else T rb a y vx b
     *)
+    (* !*)
     end
     in blacken (ins key val t).
 
@@ -119,13 +122,14 @@ Definition balLeft (tl: Tree) (k: Z) (v: Z) (tr: Tree) : option Tree :=
     | (T R a x vx b), y, vy, c => Some (T R (T B a x vx b) y vy c)
     | bl, x, vx, (T B a y vy b) => Some (balance B bl x vx (T R a y vy b))
     | bl, x, vx, (T R (T B a y vy b) z vz c) =>
-  (*! *)
+    (*! *)
     c' <- (redden c) ;;
     Some (T R (T B bl x vx a) y vy (balance B b z vz c'))
-  (*!! miscolor_balLeft *)
-  (*!
-  Some (T R (T B bl x vx a) y vy (balance B b z vz c) )
-  *)
+    (*!! miscolor_balLeft *)
+    (*!
+    Some (T R (T B bl x vx a) y vy (balance B b z vz c) )
+    *)
+    (* !*)
     | _, _, _, _ => None
     end.
 
@@ -142,6 +146,7 @@ Definition balRight (tl: Tree) (k: Z) (v: Z) (tr: Tree) : option Tree :=
     (*!
         Some (T R (balance B a x vx b) y vy (T B c z vz bl) )
     *)
+    (* !*)
     | _, _, _, _ => None
     end.
 
@@ -160,6 +165,7 @@ Fixpoint _join (t1: Tree) (t2: Tree) (f: nat) : option Tree :=
                 Some (T R (T R a x vx b') z vz (T R c' y vy d))
             (*!! miscolor_join_1 *)
             (*! Some(T R (T B a x vx b') z vz (T B c' y vy d)) *)
+            (* !*)
             | Some(bc) => Some(T R a x vx (T R bc y vy d))
             end
         | (T B a x vx b), (T B c y vy d) =>
@@ -172,6 +178,7 @@ Fixpoint _join (t1: Tree) (t2: Tree) (f: nat) : option Tree :=
             (*!
             Some(T R (T R a x vx b') z vz (T R c' y vy d))
             *)
+            (* !*)
             | Some(bc) =>
                 balLeft a x vx (T B bc y vy d)
             end
@@ -223,6 +230,7 @@ Fixpoint del (x: Z) (s: Tree) (f: nat) : option Tree :=
             else if x <?? y then delRight x a y vy b f'
             else join a b
             *)
+            (* !*)
         end
     end
 with delLeft (x: Z) (dl: Tree) (dy: Z) (dvy: Z) (dr: Tree) (f: nat): option Tree :=
@@ -262,6 +270,7 @@ Definition delete (x: Z) (t: Tree) : option Tree :=
     (*!
     del x t fuel
     *)
+    (* !*)
     .
 
 

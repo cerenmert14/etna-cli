@@ -21,6 +21,7 @@ fn main() -> anyhow::Result<()> {
     fern::Dispatch::new()
         .level(log_level.unwrap_or(log::LevelFilter::Info))
         .level_for("marauders", log::LevelFilter::Error)
+        .level_for("ignore", log::LevelFilter::Error)
         .format(move |out, message, record| match record.level() {
             log::Level::Info if log_level.is_none() => out.finish(format_args!("{}", message,)),
             log::Level::Info

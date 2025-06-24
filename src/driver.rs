@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     process::Stdio,
+    sync::WaitTimeoutResult,
 };
 
 use chrono::Duration;
@@ -165,8 +166,9 @@ pub(crate) trait Driver {
                     run_config.workload_dir.display().to_string(),
                 );
             }
-
-            let step = step.decide(&params, tags);
+            let old_step = step;
+            let step = old_step.decide(&params, tags);
+            log::trace!("step '{old_step}' is evaluated to '{step}' with params: {params:?}");
 
             let mut cmd = std::process::Command::new(&step.command);
             let cmd = step.args.iter().fold(&mut cmd, |cmd, arg| cmd.arg(arg));
@@ -183,79 +185,114 @@ pub(crate) trait Driver {
                         .context("Failed to convert duration")?,
                 )
                 .terminate_for_timeout()
-                .wait()?
-                .context("process timed out")?;
+                .wait();
 
-            if !output.status.success() {
-                anyhow::bail!("Run command failed with status: {}", output.status);
-            }
+            match output {
+                Err(_) => {
+                    log::warn!("Process timed out after {} seconds", run_config.timeout);
 
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            log::debug!("stdout: {}", stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            log::debug!("stderr: {}", stderr);
-            // look for the result between [| and |]
-            let result = match (stdout.find("[|"), stdout.find("|]")) {
-                (Some(start), Some(end)) => &stdout[start + 2..end],
-                _ => {
-                    log::warn!("No result found in stdout");
-                    match (stderr.find("[|"), stderr.find("|]")) {
-                        (Some(start), Some(end)) => &stderr[start + 2..end],
-                        _ => {
-                            log::warn!("No result found in stderr");
-                            anyhow::bail!("No result found in stdout or stderr");
-                        }
+                    log::info!("writing timed out result to store");
+
+                    let result = serde_json::json!({
+                        "workload": run_config.workload,
+                        "experiment": run_config.experiment_id,
+                        "strategy": run_config.strategy,
+                        "property": run_config.property,
+                        "mutations": run_config.mutations,
+                        "trial": i,
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "timeout": run_config.timeout,
+                        "status": "timed_out",
+                    });
+
+                    store::write::invoke(
+                        Some(experiment_config),
+                        run_config.experiment_id.clone(),
+                        result.to_string(),
+                    )?;
+
+                    if run_config.short_ciruit {
+                        log::info!("Short-circuiting the experiment due to timeout");
+                        break;
+                    } else {
+                        anyhow::bail!("Process timed out, but short-circuit is not enabled");
                     }
                 }
-            };
-            let mut result = serde_json::from_str::<serde_json::Value>(result)
-                .with_context(|| format!("Failed to parse result: '{}'", result))?;
+                Ok(output) => {
+                    let output = output.ok_or(anyhow::anyhow!("Failed to get process output, it might have been killed or failed to start"))?;
 
-            let obj = result
-                .as_object_mut()
-                .context("the printed metric is not a valid json object")?;
-            obj.insert(
-                "workload".to_string(),
-                serde_json::Value::String(run_config.workload.clone()),
-            );
-            obj.insert(
-                "experiment".to_string(),
-                serde_json::Value::String(run_config.experiment_id.clone()),
-            );
-            obj.insert(
-                "strategy".to_string(),
-                serde_json::Value::String(run_config.strategy.clone()),
-            );
-            obj.insert(
-                "property".to_string(),
-                serde_json::Value::String(run_config.property.clone()),
-            );
-            obj.insert(
-                "mutations".to_string(),
-                serde_json::Value::Array(
-                    run_config
-                        .mutations
-                        .iter()
-                        .map(|m| serde_json::Value::String(m.clone()))
-                        .collect(),
-                ),
-            );
-            obj.insert("trial".to_string(), serde_json::Value::Number(i.into()));
-            obj.insert(
-                "timestamp".to_string(),
-                serde_json::Value::String(chrono::Utc::now().to_rfc3339()),
-            );
-            obj.insert(
-                "timeout".to_string(),
-                serde_json::Value::Number(run_config.timeout.into()),
-            );
+                    if !output.status.success() {
+                        anyhow::bail!("Run command failed with status: {}", output.status);
+                    }
 
-            log::info!("writing result '{}' to store", result);
-            store::write::invoke(
-                Some(experiment_config),
-                run_config.experiment_id.clone(),
-                result.to_string(),
-            )?;
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    log::debug!("stdout: {}", stdout);
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    log::debug!("stderr: {}", stderr);
+                    // look for the result between [| and |]
+                    let result = match (stdout.find("[|"), stdout.find("|]")) {
+                        (Some(start), Some(end)) => &stdout[start + 2..end],
+                        _ => {
+                            log::warn!("No result found in stdout");
+                            match (stderr.find("[|"), stderr.find("|]")) {
+                                (Some(start), Some(end)) => &stderr[start + 2..end],
+                                _ => {
+                                    log::warn!("No result found in stderr");
+                                    anyhow::bail!("No result found in stdout or stderr");
+                                }
+                            }
+                        }
+                    };
+                    let mut result = serde_json::from_str::<serde_json::Value>(result)
+                        .with_context(|| format!("Failed to parse result: '{}'", result))?;
+
+                    let obj = result
+                        .as_object_mut()
+                        .context("the printed metric is not a valid json object")?;
+                    obj.insert(
+                        "workload".to_string(),
+                        serde_json::Value::String(run_config.workload.clone()),
+                    );
+                    obj.insert(
+                        "experiment".to_string(),
+                        serde_json::Value::String(run_config.experiment_id.clone()),
+                    );
+                    obj.insert(
+                        "strategy".to_string(),
+                        serde_json::Value::String(run_config.strategy.clone()),
+                    );
+                    obj.insert(
+                        "property".to_string(),
+                        serde_json::Value::String(run_config.property.clone()),
+                    );
+                    obj.insert(
+                        "mutations".to_string(),
+                        serde_json::Value::Array(
+                            run_config
+                                .mutations
+                                .iter()
+                                .map(|m| serde_json::Value::String(m.clone()))
+                                .collect(),
+                        ),
+                    );
+                    obj.insert("trial".to_string(), serde_json::Value::Number(i.into()));
+                    obj.insert(
+                        "timestamp".to_string(),
+                        serde_json::Value::String(chrono::Utc::now().to_rfc3339()),
+                    );
+                    obj.insert(
+                        "timeout".to_string(),
+                        serde_json::Value::Number(run_config.timeout.into()),
+                    );
+
+                    log::info!("writing result '{}' to store", result);
+                    store::write::invoke(
+                        Some(experiment_config),
+                        run_config.experiment_id.clone(),
+                        result.to_string(),
+                    )?;
+                }
+            }
         }
 
         Ok(())

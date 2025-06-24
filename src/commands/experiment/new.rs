@@ -206,8 +206,16 @@ pub fn invoke(
             std::include_str!("../../../templates/.gitignoret"),
         ),
         (
-            "tests/t1.json",
-            std::include_str!("../../../templates/tests/t1.json"),
+            "tests/bst.json",
+            std::include_str!("../../../templates/tests/bst.json"),
+        ),
+        (
+            "tests/rbt.json",
+            std::include_str!("../../../templates/tests/rbt.json"),
+        ),
+        (
+            "tests/stlc.json",
+            std::include_str!("../../../templates/tests/stlc.json"),
         ),
     ];
 
