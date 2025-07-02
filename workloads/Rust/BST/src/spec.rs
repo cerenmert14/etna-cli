@@ -1,4 +1,6 @@
-use crate::bst::*;
+use crate::implementation::{Tree, delete, find, insert, union};
+
+
 
 fn tree_eq(t1: &Tree, t2: &Tree) -> bool {
     to_list(t1) == to_list(t2)
@@ -27,10 +29,7 @@ fn is_bst(t: &Tree) -> bool {
     match t {
         Tree::E => true,
         Tree::T(l, k, _, r) => {
-            is_bst(l)
-                && is_bst(r)
-                && all(&keys(l), |k2| *k2 < *k)
-                && all(&keys(r), |k2| *k2 > *k)
+            is_bst(l) && is_bst(r) && all(&keys(l), |k2| *k2 < *k) && all(&keys(r), |k2| *k2 > *k)
         }
     }
 }
@@ -105,48 +104,42 @@ pub fn prop_insert_valid(t: Tree, k: i32, v: i32) -> bool {
     is_bst(&t) && is_bst(&insert(k, v, t))
 }
 
-pub fn prop_delete_valid(t: &Tree, k: i32) -> bool {
-    is_bst(t) && is_bst(&delete(k, t.clone()))
+pub fn prop_delete_valid(t: Tree, k: i32) -> bool {
+    is_bst(&t) && is_bst(&delete(k, t.clone()))
 }
 
-pub fn prop_union_valid(t1: &Tree, t2: &Tree) -> bool {
-    is_bst(t1) && is_bst(t2) && is_bst(&union(t1.clone(), t2.clone()))
+pub fn prop_union_valid(t1: Tree, t2: Tree) -> bool {
+    is_bst(&t1) && is_bst(&t2) && is_bst(&union(t1.clone(), t2.clone()))
 }
 
 pub fn prop_insert_post(t: Tree, k: i32, k2: i32, v: i32) -> bool {
-    is_bst(&t)
-        && find(k2, &insert(k, v, t.clone()))
-            == if k == k2 { Some(v) } else { find(k2, &t) }
+    is_bst(&t) && find(k2, &insert(k, v, t.clone())) == if k == k2 { Some(v) } else { find(k2, &t) }
 }
 
-pub fn prop_delete_post(t: &Tree, k: i32, k2: i32) -> bool {
-    is_bst(t)
-        && find(k2, &delete(k, t.clone()))
-            == if k == k2 { None } else { find(k2, t) }
+pub fn prop_delete_post(t: Tree, k: i32, k2: i32) -> bool {
+    is_bst(&t) && find(k2, &delete(k, t.clone())) == if k == k2 { None } else { find(k2, &t) }
 }
 
-pub fn prop_union_post(t1: &Tree, t2: &Tree, k: i32) -> bool {
-    is_bst(t1) && is_bst(t2) && {
+pub fn prop_union_post(t1: Tree, t2: Tree, k: i32) -> bool {
+    is_bst(&t1) && is_bst(&t2) && {
         let lhs = find(k, &union(t1.clone(), t2.clone()));
-        let rhs = find(k, t1);
-        let rhs2 = find(k, t2);
+        let rhs = find(k, &t1);
+        let rhs2 = find(k, &t2);
         lhs == rhs.or(rhs2)
     }
 }
 
-pub fn prop_insert_model(t: &Tree, k: i32, v: i32) -> bool {
-    is_bst(t)
-        && to_list(&insert(k, v, t.clone()))
-            == l_insert((k, v), &delete_key(k, &to_list(t)))
+pub fn prop_insert_model(t: Tree, k: i32, v: i32) -> bool {
+    is_bst(&t) && to_list(&insert(k, v, t.clone())) == l_insert((k, v), &delete_key(k, &to_list(&t)))
 }
 
-pub fn prop_delete_model(t: &Tree, k: i32) -> bool {
-    is_bst(t) && to_list(&delete(k, t.clone())) == delete_key(k, &to_list(t))
+pub fn prop_delete_model(t: Tree, k: i32) -> bool {
+    is_bst(&t) && to_list(&delete(k, t.clone())) == delete_key(k, &to_list(&t))
 }
 
-pub fn prop_union_model(t1: &Tree, t2: &Tree) -> bool {
-    is_bst(t1)
-        && is_bst(t2)
+pub fn prop_union_model(t1: Tree, t2: Tree) -> bool {
+    is_bst(&t1)
+        && is_bst(&t2)
         && to_list(&union(t1.clone(), t2.clone()))
-            == l_sort(&l_union_by(|x, _| x, &to_list(t1), &to_list(t2)))
+            == l_sort(&l_union_by(|x, _| x, &to_list(&t1), &to_list(&t2)))
 }

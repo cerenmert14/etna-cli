@@ -17,3 +17,8 @@ ETNA_DIR="." etna workload add Rocq STLC --experiment exp1
 ETNA_DIR="." etna experiment run --name exp1 --tests bst
 ETNA_DIR="." etna experiment run --name exp1 --tests rbt
 ETNA_DIR="." etna experiment run --name exp1 --tests stlc
+
+# visualize the results
+ETNA_DIR="." etna experiment visualize --name exp1 --figure bst --tests bst
+ETNA_DIR="." etna experiment visualize --name exp1 --figure rbt --tests rbt
+ETNA_DIR="." etna experiment visualize --name exp1 --figure stlc --tests stlc

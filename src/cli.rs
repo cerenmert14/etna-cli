@@ -49,21 +49,22 @@ pub(crate) fn run() -> anyhow::Result<()> {
     match cli.command {
         Command::Experiment(exp) => match exp {
             ExperimentCommand::New {
-                name,
-                path,
-                overwrite,
-                register,
-                description,
-                local_store,
-            } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
+                        name,
+                        path,
+                        overwrite,
+                        register,
+                        description,
+                        local_store,
+                    } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
             ExperimentCommand::Run { name, tests } => {
-                commands::experiment::run::invoke(name, tests)
-            }
+                        commands::experiment::run::invoke(name, tests)
+                    }
             ExperimentCommand::Show {
-                hash,
-                name,
-                show_all,
-            } => commands::experiment::show::invoke(hash, name, show_all),
+                        hash,
+                        name,
+                        show_all,
+                    } => commands::experiment::show::invoke(hash, name, show_all),
+            ExperimentCommand::Visualize { name, figure, tests, groupby, aggby, buckets } => commands::experiment::visualize::invoke(name, figure, tests, groupby, aggby, buckets),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -152,6 +153,27 @@ enum ExperimentCommand {
         /// Show all the experiments
         #[clap(short = 'a', long, default_value = "false")]
         show_all: bool,
+    },
+    #[clap(name = "visualize", about = "Visualize the results of the experiment")]
+    Visualize {
+        /// Name of the experiment to visualize
+        #[clap(long)]
+        name: Option<String>,
+        /// Figure name
+        #[clap(long)]
+        figure: String,
+        /// Tests to visualize the results of
+        #[clap(short, long)]
+        tests: Vec<String>,
+        /// Group by fields
+        #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string()])]
+        groupby: Vec<String>,
+        /// Aggregate by fields
+        #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string(), "property".to_string(), "mutations".to_string()])]
+        aggby: Vec<String>,
+        /// Buckets to use for the visualization
+        #[clap(short, long, default_values_t = vec![0.1, 1.0, 10.0, 60.0])]
+        buckets: Vec<f64>,
     },
 }
 #[derive(Debug, Subcommand)]

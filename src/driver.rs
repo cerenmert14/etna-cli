@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     process::Stdio,
-    sync::WaitTimeoutResult,
 };
 
 use chrono::Duration;
@@ -21,6 +20,7 @@ use process_control::{ChildExt, Control};
 use crate::experiment::{ExperimentSnapshot, Test};
 
 pub(crate) struct RunConfig {
+    pub(crate) language: String,
     pub(crate) workload_dir: PathBuf,
     pub(crate) experiment_id: String,
     pub(crate) trials: usize,
@@ -194,6 +194,7 @@ pub(crate) trait Driver {
                     log::info!("writing timed out result to store");
 
                     let result = serde_json::json!({
+                        "language": run_config.language,
                         "workload": run_config.workload,
                         "experiment": run_config.experiment_id,
                         "strategy": run_config.strategy,
@@ -202,7 +203,7 @@ pub(crate) trait Driver {
                         "trial": i,
                         "timestamp": chrono::Utc::now().to_rfc3339(),
                         "timeout": run_config.timeout,
-                        "status": "timed_out",
+                        "result": "timed_out",
                     });
 
                     store::write::invoke(
@@ -246,44 +247,28 @@ pub(crate) trait Driver {
                     let mut result = serde_json::from_str::<serde_json::Value>(result)
                         .with_context(|| format!("Failed to parse result: '{}'", result))?;
 
-                    let obj = result
+                    log::trace!("result: {}", result);
+
+                    let metadata = serde_json::json!({
+                        "language": run_config.language,
+                        "workload": run_config.workload,
+                        "experiment": run_config.experiment_id,
+                        "strategy": run_config.strategy,
+                        "property": run_config.property,
+                        "mutations": run_config.mutations,
+                        "trial": i,
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "timeout": run_config.timeout,
+                    });
+
+                    log::trace!("metadata: {}", metadata);
+                    
+                    log::trace!("merging metadata into result");
+                    
+                    result
                         .as_object_mut()
-                        .context("the printed metric is not a valid json object")?;
-                    obj.insert(
-                        "workload".to_string(),
-                        serde_json::Value::String(run_config.workload.clone()),
-                    );
-                    obj.insert(
-                        "experiment".to_string(),
-                        serde_json::Value::String(run_config.experiment_id.clone()),
-                    );
-                    obj.insert(
-                        "strategy".to_string(),
-                        serde_json::Value::String(run_config.strategy.clone()),
-                    );
-                    obj.insert(
-                        "property".to_string(),
-                        serde_json::Value::String(run_config.property.clone()),
-                    );
-                    obj.insert(
-                        "mutations".to_string(),
-                        serde_json::Value::Array(
-                            run_config
-                                .mutations
-                                .iter()
-                                .map(|m| serde_json::Value::String(m.clone()))
-                                .collect(),
-                        ),
-                    );
-                    obj.insert("trial".to_string(), serde_json::Value::Number(i.into()));
-                    obj.insert(
-                        "timestamp".to_string(),
-                        serde_json::Value::String(chrono::Utc::now().to_rfc3339()),
-                    );
-                    obj.insert(
-                        "timeout".to_string(),
-                        serde_json::Value::Number(run_config.timeout.into()),
-                    );
+                        .context("the printed metric is not a valid json object")?
+                        .extend(metadata.as_object().unwrap().clone());
 
                     log::info!("writing result '{}' to store", result);
                     store::write::invoke(
@@ -456,6 +441,7 @@ pub(crate) trait Driver {
 
                 // Run the experiment
                 let run_config = RunConfig {
+                    language: test.language.clone(),
                     workload_dir: workload_dir.clone(),
                     experiment_id: snapshot.experiment.clone(),
                     trials: test.trials,

@@ -46,6 +46,7 @@ impl ExperimentConfig {
     }
 
     pub(crate) fn from_current_dir() -> anyhow::Result<Self> {
+        log::trace!("Attempting to load experiment config from current directory");
         Self::from_path(std::env::current_dir().context("Failed to get current directory")?)
     }
 

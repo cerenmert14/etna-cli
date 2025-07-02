@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ab_glyph = "0.2.30"
 anyhow = "1.0.88"
 chrono = "0.4.38"
 clap = { version = "4.5.17", features = ["derive"] }
@@ -11,6 +12,8 @@ dirs = "5.0.1"
 env_logger = "0.11.5"
 fern = { version = "0.7.1", features = ["colored"] }
 git2 = { version = "0.19.0", default-features = false }
+image = "0.25.6"
+imageproc = "0.25.0"
 itertools = "0.14.0"
 jaq-core = "1.5.1"
 jaq-interpret = "1.5.0"
@@ -18,10 +21,12 @@ jaq-parse = "1.0.3"
 jaq-std = "1.6.0"
 log = "0.4.22"
 marauders = { git = "https://github.com/alpaylan/marauders.git", branch = "main" }
+parse_duration = "2.1.1"
 process_control = "5.0.0"
 serde = "1.0.210"
 serde_derive = "1.0.210"
 serde_json = "1.0.128"
+serde_sexpr = "0.1.0"
 tabled = "0.16.0"
 toml = "0.8.19"
 

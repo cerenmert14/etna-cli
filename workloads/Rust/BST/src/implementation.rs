@@ -1,9 +1,13 @@
-#[derive(Debug, Clone)]
+
+
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
     E,
     T(Box<Tree>, i32, i32, Box<Tree>),
 }
 
+use serde::{Deserialize, Serialize};
 use Tree::*;
 
 const FUEL: usize = 10000;
@@ -24,15 +28,15 @@ pub(crate) fn insert(k: i32, v: i32, t: Tree) -> Tree {
             }
 */
             /*|| insert_1 */
-            /*|
             T(Box::new(E), k, v, Box::new(E))
-            */
             /*|| insert_2 */
+            /*|
             if k < k2 {
                 T(Box::new(insert(k, v, *l)), k2, v2, r)
             } else {
                 T(l, k2, v, r)
             }
+            */
             /*|| insert_3 */
             /*|
             if k < k2 {
@@ -64,7 +68,7 @@ pub(crate) fn delete(k: i32, t: Tree) -> Tree {
     match t {
         E => E,
         T(l, k2, v2, r) => {
-            // Default delete
+            /*| delete */
             if k < k2 {
                 T(Box::new(delete(k, *l)), k2, v2, r)
             } else if k2 < k {
@@ -72,9 +76,8 @@ pub(crate) fn delete(k: i32, t: Tree) -> Tree {
             } else {
                 join(*l, *r)
             }
-
-            /*
-            // delete_4
+            /*|| delete_4 */
+            /*|
             let _ = v2;
             if k < k2 {
                 delete(k, *l)
@@ -84,9 +87,8 @@ pub(crate) fn delete(k: i32, t: Tree) -> Tree {
                 join(*l, *r)
             }
             */
-
-            /*
-            // delete_5
+            /*|| delete_5 */
+            /*|
             if k2 < k {
                 T(Box::new(delete(k, *l)), k2, v2, r)
             } else if k < k2 {
@@ -95,6 +97,7 @@ pub(crate) fn delete(k: i32, t: Tree) -> Tree {
                 join(*l, *r)
             }
             */
+            /* |*/
         },
     }
 }
@@ -137,7 +140,7 @@ pub(crate) fn union_(l: Tree, r: Tree, f: usize) -> Tree {
         (E, r) => r,
         (l, E) => l,
 
-        // Default union_
+        /*| union */
         (T(l1, k, v, r1), t) => {
             T(
                 Box::new(union_(*l1, below(k, t.clone()), f1)),
@@ -146,16 +149,14 @@ pub(crate) fn union_(l: Tree, r: Tree, f: usize) -> Tree {
                 Box::new(union_(*r1, above(k, t), f1)),
             )
         }
-
-        /*
-        // union_6
+        /*|| union_6 */
+        /*|
         (T(l1, k1, v1, r1), T(l2, k2, v2, r2)) => {
             T(l1, k1, v1, Box::new(T(Box::new(union_(*r1, *l2, f1)), k2, v2, r2)))
         }
         */
-
-        /*
-        // union_7
+        /*|| union_7 */
+        /*|
         (T(l1, k1, v1, r1), T(l2, k2, v2, r2)) => {
             if k1 == k2 {
                 T(
@@ -176,9 +177,8 @@ pub(crate) fn union_(l: Tree, r: Tree, f: usize) -> Tree {
             }
         }
         */
-
-        /*
-        // union_8
+        /*|| union_8 */
+        /*|
         (T(l1, k1, v1, r1), T(l2, k2, v2, r2)) => {
             if k1 == k2 {
                 T(
@@ -199,6 +199,7 @@ pub(crate) fn union_(l: Tree, r: Tree, f: usize) -> Tree {
             }
         }
         */
+        /* |*/
     }
 }
 

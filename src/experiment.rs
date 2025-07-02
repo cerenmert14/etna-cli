@@ -27,7 +27,11 @@ impl Experiment {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub(crate) struct ExperimentSnapshot {
     pub experiment: String,
+    #[serde(default)]
     pub scripts: Vec<(String, String)>,
+    #[serde(default)]
+    pub tests: Vec<(String, String)>,
+    #[serde(default)]
     pub workloads: Vec<(WorkloadMetadata, String)>,
 }
 

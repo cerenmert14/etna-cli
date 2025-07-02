@@ -34,7 +34,7 @@ pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Re
     let tests = tests
         .iter()
         .flat_map(|test| {
-            let test_path = experiment
+            let test_path = experiment_config
                 .path
                 .join("tests")
                 .join(test)
@@ -44,6 +44,7 @@ pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Re
             test
         })
         .collect::<Vec<Test>>();
+
     info!(
         "Taking snapshot for the experiment {}",
         experiment_config.name

@@ -1,0 +1,22 @@
+[package]
+name = "bst"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# quickcheck = { git = "https://github.com/alpaylan/quickcheck.git" , branch = "master" , features = ["etna"]}
+quickcheck = { path = "/Users/akeles/Programming/projects/PbtBenchmark/quickcheck" , features = ["etna"]}
+serde = { version = "1.0.219", features = ["derive"] }
+serde_sexpr = "0.1.0"
+
+[[bin]]
+name = "bst"
+path = "src/main.rs"
+
+[[bin]]
+name = "bst-serialized"
+path = "src/main_serialized.rs"
+
+[[bin]]
+name = "bst-sampler"
+path = "src/main_sampler.rs"

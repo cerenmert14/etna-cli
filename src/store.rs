@@ -29,6 +29,7 @@ impl Store {
     }
 
     pub(crate) fn load(path: &PathBuf) -> anyhow::Result<Self> {
+        log::trace!("loading store from {}", path.display());
         if !path.exists() {
             anyhow::bail!(
                 "Failed to load the store, store file does not exist at {}",
@@ -51,6 +52,7 @@ impl Store {
         &mut self,
         experiment_config: &ExperimentConfig,
     ) -> anyhow::Result<ExperimentSnapshot> {
+        log::trace!("taking snapshot for experiment {}", experiment_config.name);
         let experiment_snapshot = snapshot::Snapshot::take(
             &experiment_config.path,
             &PathBuf::from("*"),
@@ -59,19 +61,61 @@ impl Store {
             },
         )
         .context("Failed to take experiment snapshot")?;
+        log::trace!("experiment snapshot taken: {:?}", experiment_snapshot);
 
         self.snapshots.insert(experiment_snapshot.clone());
 
-        let collection_script_snapshot = snapshot::Snapshot::take(
-            &experiment_config.path,
-            &PathBuf::from("Collect.py"),
-            snapshot::SnapshotType::Script {
-                name: "Collect.py".to_string(),
-            },
-        )
-        .context("Failed to take Collect.py snapshot")?;
+        let script_snapshots = experiment_config
+            .path
+            .join("scripts")
+            .read_dir()
+            .context("Failed to read scripts directory")?
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                if entry.path().is_file() {
+                    Some(
+                        snapshot::Snapshot::take(
+                            &experiment_config.path,
+                            &entry.path(),
+                            snapshot::SnapshotType::Script {
+                                name: entry.file_name().to_string_lossy().to_string(),
+                            },
+                        )
+                        .context("Failed to take script snapshot"),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
 
-        self.snapshots.insert(collection_script_snapshot.clone());
+        self.snapshots.extend(script_snapshots.clone());
+
+        let test_snapshots = experiment_config
+            .path
+            .join("tests")
+            .read_dir()
+            .context("Failed to read tests directory")?
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                if entry.path().is_file() {
+                    Some(
+                        snapshot::Snapshot::take(
+                            &experiment_config.path,
+                            &entry.path(),
+                            snapshot::SnapshotType::Test {
+                                name: entry.file_name().to_string_lossy().to_string(),
+                            },
+                        )
+                        .context("Failed to take test snapshot"),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        self.snapshots.extend(test_snapshots.clone());
 
         let workload_snapshots: Vec<(WorkloadMetadata, String)> = experiment_config
             .workloads
@@ -98,7 +142,14 @@ impl Store {
 
         Ok(ExperimentSnapshot {
             experiment: experiment_snapshot.hash,
-            scripts: vec![("Collect.py".to_string(), collection_script_snapshot.hash)],
+            scripts: script_snapshots
+                .into_iter()
+                .map(|s| (s.typ.name().unwrap(), s.hash))
+                .collect(),
+            tests: test_snapshots
+                .into_iter()
+                .map(|s| (s.typ.name().unwrap(), s.hash))
+                .collect(),
             workloads: workload_snapshots,
         })
     }
@@ -112,24 +163,41 @@ impl Store {
             .iter()
             .filter(|experiment| experiment.name == name)
             .collect::<Vec<&Experiment>>();
-
+        log::trace!(
+            "found {} experiments with name '{}'",
+            experiments.len(),
+            name
+        );
         let experiment_hashes = experiments
             .iter()
             .map(|experiment| experiment.id.clone())
             .collect::<Vec<String>>();
-
+        log::trace!("experiment hashes: {}", experiment_hashes.join(", "));
+        println!("snapshots: {}", self.snapshots.len());
         let snapshots = self
             .snapshots
             .iter()
             .filter(|snapshot| {
+                println!("snapshot: {:?}", snapshot);
+                println!("experiment_hashes: {:?}", experiment_hashes);
                 snapshot.typ.is_experiment() && experiment_hashes.contains(&snapshot.hash)
             })
             .collect::<Vec<&Snapshot>>();
+        log::trace!(
+            "found {} snapshots for experiments with name '{}'",
+            snapshots.len(),
+            name
+        );
 
         let latest_snapshot = snapshots
             .iter()
             .max_by(|a, b| a.typ.time().cmp(&b.typ.time()))
             .context("No snapshots found")?;
+
+        log::trace!(
+            "found latest experiment for snapshot '{}'",
+            latest_snapshot.hash
+        );
 
         let latest_experiment = self
             .experiments
@@ -137,6 +205,7 @@ impl Store {
             .find(|experiment| experiment.id == latest_snapshot.hash)
             .context("No experiment found")?;
 
+        log::trace!("found latest experiment with id '{}'", latest_experiment.id);
         Ok(latest_experiment)
     }
 

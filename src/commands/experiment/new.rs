@@ -15,10 +15,9 @@ use crate::{
 ///
 /// path/name/
 /// |-------config.toml
-/// |-------Collect.py
-/// |-------Query.py
-/// |-------Analyze.py
-/// |-------Visualize.py
+/// |-------figures/
+///         |-------fig1.png
+/// |-------scripts/
 /// |-------workloads/
 ///         |-------[language-1]/
 ///                 |-------config.json
@@ -248,6 +247,30 @@ pub fn invoke(
         format!(
             "Failed to create workloads directory at '{}'",
             workloads_path.display()
+        )
+    })?;
+
+    let scripts_path = experiment_config.path.join("scripts");
+    log::trace!(
+        "creating scripts directory at '{}'",
+        scripts_path.display()
+    );
+    std::fs::create_dir(&scripts_path).with_context(|| {
+        format!(
+            "Failed to create scripts directory at '{}'",
+            scripts_path.display()
+        )
+    })?;
+
+    let figures_path = experiment_config.path.join("figures");
+    log::trace!(
+        "creating figures directory at '{}'",
+        figures_path.display()
+    );
+    std::fs::create_dir(&figures_path).with_context(|| {
+        format!(
+            "Failed to create figures directory at '{}'",
+            figures_path.display()
         )
     })?;
 

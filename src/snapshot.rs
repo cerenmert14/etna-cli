@@ -20,6 +20,8 @@ pub(crate) enum SnapshotType {
     Workload { name: String, language: String },
     #[serde(rename = "experiment")]
     Experiment { time: String },
+    #[serde(rename = "test")]
+    Test { name: String },
 }
 
 impl SnapshotType {
@@ -40,6 +42,7 @@ impl SnapshotType {
         match self {
             Self::Script { name } => Ok(name.clone()),
             Self::Workload { name, .. } => Ok(name.clone()),
+            Self::Test { name } => Ok(name.clone()),
             _ => anyhow::bail!("name() is not supported for {:?}", self),
         }
     }
