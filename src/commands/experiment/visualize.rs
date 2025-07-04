@@ -425,7 +425,7 @@ fn draw_buckets_line(
         draw_filled_rect_mut(image, rect, cfg.fill_color);
 
         // Write the bucket label
-        let label = format!("{:.1}", end);
+        let label = format!("{}", metrics.len());
         let (text_width, text_height) = rendered_text_width_and_height(&label, &font, scale);
 
         if text_width > bucket_width {
