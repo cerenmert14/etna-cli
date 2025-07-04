@@ -167,7 +167,11 @@ pub fn invoke(
             log::debug!(
                 "Aggregated metrics for group {:?}: \n\
             Discards: {:.2}, Tests: {:.2}, Shrinks: {:.2}, Time: {:.4} seconds",
-                agg, avgs.0, avgs.1, avgs.2, avgs.3
+                agg,
+                avgs.0,
+                avgs.1,
+                avgs.2,
+                avgs.3
             );
 
             let data = serde_json::json!({
@@ -188,10 +192,7 @@ pub fn invoke(
 
     log::trace!("Aggregated metrics: {:#?}", agg_metrics);
 
-    log::trace!(
-        "Number of aggregated metrics: {}",
-        agg_metrics.len()
-    );
+    log::trace!("Number of aggregated metrics: {}", agg_metrics.len());
 
     log::trace!("Groupby fields: {:#?}", groupby);
 
@@ -322,10 +323,7 @@ pub fn invoke(
         draw_buckets_line(&mut image, buckets, cfg);
     }
 
-    let path = experiment
-        .path
-        .join("figures")
-        .join("buckets.png");
+    let path = experiment.path.join("figures").join("buckets.png");
 
     image.save(path).expect("Failed to save image");
 
@@ -401,6 +399,10 @@ fn draw_buckets_line(
 
     for ((_, end), metrics) in buckets {
         if metrics.is_empty() {
+            cfg.fill_color[0] = cfg.fill_color[0].saturating_add(color_moves[0]);
+            cfg.fill_color[1] = cfg.fill_color[1].saturating_add(color_moves[1]);
+            cfg.fill_color[2] = cfg.fill_color[2].saturating_add(color_moves[2]);
+
             continue; // Skip empty buckets
         }
 
