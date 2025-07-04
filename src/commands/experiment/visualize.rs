@@ -61,6 +61,8 @@ pub fn invoke(
         })
         .collect::<Vec<Test>>();
 
+    log::trace!("Loaded {} tests for visualization", tests.len());
+
     let metrics = tests
         .iter()
         .flat_map(|test| {
@@ -107,7 +109,7 @@ pub fn invoke(
         .multi_cartesian_product()
         .collect::<Vec<Vec<_>>>();
 
-    println!("aggs: {:?}", aggs);
+    log::trace!("Aggregated metrics by: {:#?}", aggby);
 
     let agg_metrics = aggs
         .iter()
@@ -121,8 +123,8 @@ pub fn invoke(
                         .all(|(i, g)| m.data.get(g).map_or(false, |v| agg[i] == v))
                 })
                 .collect::<Vec<_>>();
-            println!("Group: {:#?}", agg);
-            println!("Number of metrics in agg: {}", agg_metrics.len());
+            log::trace!("Group: {:#?}", agg);
+            log::trace!("Number of metrics in agg: {}", agg_metrics.len());
             let sums: (f64, f64, f64, f64) =
                 agg_metrics.iter().fold((0.0, 0.0, 0.0, 0.0), |mut acc, m| {
                     acc.0 = m
@@ -158,7 +160,7 @@ pub fn invoke(
                 sums.3 / agg_metrics.len() as f64,
             );
 
-            println!(
+            log::debug!(
                 "Aggregated metrics for group {:?}: \n\
             Discards: {:.2}, Tests: {:.2}, Shrinks: {:.2}, Time: {:.4} seconds",
                 agg, avgs.0, avgs.1, avgs.2, avgs.3

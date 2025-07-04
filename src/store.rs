@@ -173,13 +173,11 @@ impl Store {
             .map(|experiment| experiment.id.clone())
             .collect::<Vec<String>>();
         log::trace!("experiment hashes: {}", experiment_hashes.join(", "));
-        println!("snapshots: {}", self.snapshots.len());
+
         let snapshots = self
             .snapshots
             .iter()
             .filter(|snapshot| {
-                println!("snapshot: {:?}", snapshot);
-                println!("experiment_hashes: {:?}", experiment_hashes);
                 snapshot.typ.is_experiment() && experiment_hashes.contains(&snapshot.hash)
             })
             .collect::<Vec<&Snapshot>>();
