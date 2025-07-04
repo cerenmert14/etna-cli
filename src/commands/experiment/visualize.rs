@@ -93,6 +93,10 @@ pub fn invoke(
         })
         .collect::<Vec<_>>();
 
+    log::trace!("Aggregated metrics by: {:#?}", aggby);
+
+    log::trace!("metrics: {:#?}", &metrics[..5.min(metrics.len())]);
+
     let aggs = aggby
         .iter()
         .map(|g| {
@@ -109,7 +113,7 @@ pub fn invoke(
         .multi_cartesian_product()
         .collect::<Vec<Vec<_>>>();
 
-    log::trace!("Aggregated metrics by: {:#?}", aggby);
+    log::trace!("Aggregations: {:#?}", aggs);
 
     let agg_metrics = aggs
         .iter()
