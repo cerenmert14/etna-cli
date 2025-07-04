@@ -182,7 +182,14 @@ pub fn invoke(
         })
         .collect::<Vec<_>>();
 
-    println!("Aggregated metrics: {:#?}", agg_metrics);
+    log::trace!("Aggregated metrics: {:#?}", agg_metrics);
+
+    log::trace!(
+        "Number of aggregated metrics: {}",
+        agg_metrics.len()
+    );
+
+    log::trace!("Groupby fields: {:#?}", groupby);
 
     let groups = groupby
         .iter()
@@ -191,7 +198,7 @@ pub fn invoke(
                 .iter()
                 .map(|m| {
                     m.get(g)
-                        .expect(format!("Aggby field '{g}' not found").as_str())
+                        .expect(format!("Groupby field '{g}' not found").as_str())
                 })
                 .unique()
                 .collect::<Vec<_>>()
@@ -199,7 +206,7 @@ pub fn invoke(
         .multi_cartesian_product()
         .collect::<Vec<Vec<_>>>();
 
-    println!("groups: {:?}", groups);
+    log::trace!("groups: {:?}", groups);
 
     let width = 500.0;
     let height = 200.0;
@@ -228,6 +235,7 @@ pub fn invoke(
     ];
 
     for (i, group) in groups.iter().enumerate() {
+        log::trace!("Processing group {i}: {:?}", group);
         let group_metrics = agg_metrics
             .iter()
             .filter(|m| {
