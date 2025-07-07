@@ -18,7 +18,7 @@ def empty_metrics(store_path):
         store = json.load(f)
 
     # Empty the metrics
-    store['metrics'] = {}
+    store['metrics'] = []
 
     with open(store_file, 'w') as f:
         json.dump(store, f, indent=4)
