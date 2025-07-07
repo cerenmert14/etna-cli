@@ -125,7 +125,16 @@ pub fn invoke(
                     aggby
                         .iter()
                         .enumerate()
-                        .all(|(i, g)| m.data.get(g).map_or(false, |v| agg[i] == v))
+                        .all(|(i, g)| {
+                            log::trace!(
+                                "Checking if metric {} has groupby field {}: {:?} == {:?}",
+                                m.data,
+                                g,
+                                agg[i],
+                                m.data.get(g)
+                            );
+                            m.data.get(g).map_or(false, |v| agg[i] == v)
+                        })
                 })
                 .collect::<Vec<_>>();
             if agg_metrics.is_empty() {
