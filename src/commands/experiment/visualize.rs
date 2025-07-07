@@ -96,7 +96,7 @@ pub fn invoke(
 
     log::trace!("Aggregated metrics by: {:#?}", aggby);
 
-    log::trace!("metrics: {:#?}", &metrics[..5.min(metrics.len())]);
+    log::trace!("metrics: {:#?}", &metrics[..]);
 
     let aggs = aggby
         .iter()
