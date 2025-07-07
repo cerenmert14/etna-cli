@@ -172,7 +172,7 @@ enum ExperimentCommand {
         #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string(), "property".to_string(), "mutations".to_string()])]
         aggby: Vec<String>,
         /// Buckets to use for the visualization
-        #[clap(short, long, default_values_t = vec![0.1, 1.0, 10.0, 60.0])]
+        #[clap(short, long, value_parser, num_args = 1.., value_delimiter = ' ', default_values_t = vec![0.1, 1.0, 10.0, 60.0])]
         buckets: Vec<f64>,
     },
 }
