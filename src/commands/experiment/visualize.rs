@@ -118,7 +118,7 @@ pub fn invoke(
 
     let agg_metrics = aggs
         .iter()
-        .map(|agg| {
+        .filter_map(|agg| {
             let agg_metrics = metrics
                 .iter()
                 .filter(|m| {
@@ -128,6 +128,10 @@ pub fn invoke(
                         .all(|(i, g)| m.data.get(g).map_or(false, |v| agg[i] == v))
                 })
                 .collect::<Vec<_>>();
+            if agg_metrics.is_empty() {
+                log::trace!("No metrics found for group: {:?}", agg);
+                return None;
+            }
             log::trace!("Group: {:#?}", agg);
             log::trace!("Number of metrics in agg: {}", agg_metrics.len());
             let timed_out = agg_metrics.iter().find_map(|m| {
@@ -158,7 +162,7 @@ pub fn invoke(
                 });
                 log::trace!("Returning timeout data: {:#?}", data);
 
-                return data.as_object().unwrap().to_owned();
+                return data.as_object();
             }
 
             let sums: (f64, f64, f64, f64) =
@@ -218,7 +222,7 @@ pub fn invoke(
                 "time": avgs.3,
             });
 
-            data.as_object().unwrap().to_owned()
+            data.as_object()
         })
         .collect::<Vec<_>>();
 
