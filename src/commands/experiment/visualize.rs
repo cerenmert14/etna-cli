@@ -1,3 +1,4 @@
+use core::time;
 use std::{collections::HashMap, time::Duration};
 
 use ab_glyph::{Font, FontArc, FontRef, ScaleFont as _};
@@ -129,6 +130,31 @@ pub fn invoke(
                 .collect::<Vec<_>>();
             log::trace!("Group: {:#?}", agg);
             log::trace!("Number of metrics in agg: {}", agg_metrics.len());
+            let timed_out = agg_metrics.iter().find_map(|m| {
+                m.data
+                    .get("result")
+                    .and_then(serde_json::Value::as_str)
+                    .and_then(|t| if t == "timed_out" { m.data.get("timeout").and_then(serde_json::Value::as_f64) } else { None })
+            });
+
+            if let Some(timeout) = timed_out {
+                log::warn!("Some metrics in group {:?} timed out", agg);
+                let data = serde_json::json!({
+                    "language": agg[0],
+                    "workload": agg[1],
+                    "strategy": agg[2],
+                    "property": agg[3],
+                    "mutations": agg[4],
+                    "discards": f64::NAN,
+                    "tests": f64::NAN,
+                    "shrinks": f64::NAN,
+                    "time": format!("{timeout}s"),
+                });
+                log::trace!("Returning timeout data: {:#?}", data);
+
+                return data.as_object().unwrap().to_owned();
+            }
+
             let sums: (f64, f64, f64, f64) =
                 agg_metrics.iter().fold((0.0, 0.0, 0.0, 0.0), |mut acc, m| {
                     acc.0 = m
@@ -254,7 +280,9 @@ pub fn invoke(
         if buckets[0] != 0.0 {
             buckets.insert(0, 0.0);
         }
-        buckets.push(f64::INFINITY);
+        if buckets.last() != Some(&f64::INFINITY) {
+            buckets.push(f64::INFINITY);
+        }
 
         // create buckets between b[0-1], b[1-2], ..., b[n-1-n]
         let mut buckets: Vec<((f64, f64), Vec<Map<String, Value>>)> = buckets
@@ -266,7 +294,7 @@ pub fn invoke(
             let time = metric
                 .get("time")
                 .and_then(serde_json::Value::as_f64)
-                .expect("Time not found in metric data");
+                .unwrap_or(f64::MAX);
 
             for ((start, end), metrics) in &mut buckets {
                 if time >= *start && time < *end {
@@ -275,8 +303,8 @@ pub fn invoke(
             }
         }
 
-        println!(
-            "Group: {:?}\nBuckets: {:?}",
+        log::trace!(
+            "\n\tGroup: {:?}\n\tBuckets: {:?}",
             group,
             buckets
                 .iter()
