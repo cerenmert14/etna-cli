@@ -162,7 +162,7 @@ pub fn invoke(
                 });
                 log::trace!("Returning timeout data: {:#?}", data);
 
-                return data.as_object();
+                return data.as_object().cloned();
             }
 
             let sums: (f64, f64, f64, f64) =
@@ -222,7 +222,7 @@ pub fn invoke(
                 "time": avgs.3,
             });
 
-            data.as_object()
+            data.as_object().cloned()
         })
         .collect::<Vec<_>>();
 
