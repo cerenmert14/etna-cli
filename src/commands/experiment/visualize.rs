@@ -134,7 +134,13 @@ pub fn invoke(
                 m.data
                     .get("result")
                     .and_then(serde_json::Value::as_str)
-                    .and_then(|t| if t == "timed_out" { m.data.get("timeout").and_then(serde_json::Value::as_f64) } else { None })
+                    .and_then(|t| {
+                        if t == "timed_out" {
+                            m.data.get("timeout").and_then(serde_json::Value::as_f64)
+                        } else {
+                            None
+                        }
+                    })
             });
 
             if let Some(timeout) = timed_out {
@@ -347,12 +353,63 @@ pub fn invoke(
             bucket_height,
             bucket_index: i,
             fill_color: colors[i].clone(),
+            legend: false,
         };
         draw_buckets_line(&mut image, buckets, cfg);
     }
 
     let path = experiment.path.join("figures").join("buckets.png");
 
+    image.save(path).expect("Failed to save image");
+
+    // Draw the legend
+
+    let mut image = RgbImage::new(width as u32, height as u32);
+
+    draw_filled_rect_mut(
+        &mut image,
+        Rect::at(0, 0).of_size(width as u32, height as u32),
+        Rgb([255, 255, 255]),
+    );
+
+    for (i, group) in groups.iter().enumerate() {
+        log::trace!("Processing group {i}: {:?}", group);
+        let group_metrics = agg_metrics
+            .iter()
+            .filter(|m| {
+                groupby
+                    .iter()
+                    .enumerate()
+                    .all(|(i, g)| m.get(g).map_or(false, |v| group[i] == v))
+            })
+            .collect::<Vec<_>>();
+
+        if buckets[0] != 0.0 {
+            buckets.insert(0, 0.0);
+        }
+        if buckets.last() != Some(&f64::INFINITY) {
+            buckets.push(f64::INFINITY);
+        }
+
+        // create buckets between b[0-1], b[1-2], ..., b[n-1-n]
+        let buckets: Vec<((f64, f64), Vec<f64>)> = buckets
+            .windows(2)
+            .map(|w| ((w[0], w[1]), vec![0.0]))
+            .collect::<Vec<_>>();
+
+        let cfg = BucketDrawConfig {
+            width,
+            height,
+            margin,
+            bucket_height,
+            bucket_index: i,
+            legend: true,
+            fill_color: colors[i].clone(),
+        };
+        draw_buckets_line(&mut image, buckets, cfg);
+    }
+
+    let path = experiment.path.join("figures").join("legend.png");
     image.save(path).expect("Failed to save image");
 
     Ok(())
@@ -364,6 +421,7 @@ pub struct BucketDrawConfig {
     pub margin: f64,
     pub bucket_height: f64,
     pub bucket_index: usize,
+    pub legend: bool,
     pub fill_color: Rgb<u8>,
 }
 
@@ -412,7 +470,11 @@ fn draw_buckets_line(
     let mut x = cfg.margin;
     let y = cfg.margin + cfg.bucket_index as f64 * (cfg.bucket_height + cfg.margin);
 
-    let scale = cfg.bucket_height * 0.4;
+    let scale = if cfg.legend {
+        cfg.bucket_height * 0.2
+    } else {
+        cfg.bucket_height * 0.4
+    };
 
     let color_moves = [
         (240u8 - cfg.fill_color[0]) / (buckets.len() - 1) as u8,
@@ -425,7 +487,7 @@ fn draw_buckets_line(
     ))
     .expect("Failed to load font");
 
-    for ((_, end), metrics) in buckets {
+    for ((begin, end), metrics) in buckets {
         if metrics.is_empty() {
             cfg.fill_color[0] = cfg.fill_color[0].saturating_add(color_moves[0]);
             cfg.fill_color[1] = cfg.fill_color[1].saturating_add(color_moves[1]);
@@ -455,7 +517,11 @@ fn draw_buckets_line(
         draw_filled_rect_mut(image, rect, cfg.fill_color);
 
         // Write the bucket label
-        let label = format!("{}", metrics.len());
+        let label = if cfg.legend {
+            format!("{} - {}", begin, end)
+        } else {
+            format!("{}", metrics.len())
+        };
         let (text_width, text_height) = rendered_text_width_and_height(&label, &font, scale);
 
         if text_width > bucket_width {
