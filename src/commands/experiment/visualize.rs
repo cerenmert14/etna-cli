@@ -244,10 +244,10 @@ pub fn invoke(
         .collect::<Vec<Vec<_>>>();
 
     log::trace!("groups: {:?}", groups);
-
-    let width = 500.0;
-    let height = 200.0;
-    let margin = 20.0;
+    
+    let width = 4000.0;
+    let height = 1600.0;
+    let margin = 160.0;
     let bucket_height = ((height - margin) / (groups.len() as f64) - margin) as f64;
 
     let mut image = RgbImage::new(width as u32, height as u32);
