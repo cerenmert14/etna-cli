@@ -56,8 +56,8 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         description,
                         local_store,
                     } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
-            ExperimentCommand::Run { name, tests } => {
-                        commands::experiment::run::invoke(name, tests)
+            ExperimentCommand::Run { name, tests, short_circuit } => {
+                        commands::experiment::run::invoke(name, tests, short_circuit)
                     }
             ExperimentCommand::Show {
                         hash,
@@ -141,6 +141,9 @@ enum ExperimentCommand {
         /// Tests to run
         #[clap(short, long)]
         tests: Vec<String>,
+        /// Short circuit the trials if any test fails
+        #[clap(short = 's', long, default_value = "false")]
+        short_circuit: bool,
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {

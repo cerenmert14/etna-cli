@@ -9,7 +9,7 @@ use crate::{
     store::Store,
 };
 
-pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Result<()> {
+pub fn invoke(experiment_name: Option<String>, tests: Vec<String>, short_circuit: bool) -> anyhow::Result<()> {
     log::trace!("running experiment with name '{:?}'", experiment_name);
     let etna_config = EtnaConfig::get_etna_config()?;
 
@@ -68,7 +68,7 @@ pub fn invoke(experiment_name: Option<String>, tests: Vec<String>) -> anyhow::Re
     driver.init();
     for test in &tests {
         info!("Running test: {}", test);
-        driver.run_experiment(test, &experiment_config, snapshot.clone())?;
+        driver.run_experiment(test, &experiment_config, snapshot.clone(), short_circuit)?;
     }
 
     Ok(())

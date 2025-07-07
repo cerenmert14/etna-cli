@@ -29,7 +29,7 @@ pub(crate) struct RunConfig {
     pub(crate) mutations: Vec<String>,
     pub(crate) property: String,
     pub(crate) timeout: usize,
-    pub(crate) short_ciruit: bool,
+    pub(crate) short_circuit: bool,
     pub(crate) seeds: Option<Vec<u64>>,
 }
 
@@ -212,7 +212,7 @@ pub(crate) trait Driver {
                         result.to_string(),
                     )?;
 
-                    if run_config.short_ciruit {
+                    if run_config.short_circuit {
                         log::info!("Short-circuiting the experiment due to timeout");
                         anyhow::bail!(
                             "Process timed out after {} seconds, short-circuiting the experiment",
@@ -376,6 +376,7 @@ pub(crate) trait Driver {
         test: &Test,
         experiment_config: &crate::config::ExperimentConfig,
         snapshot: ExperimentSnapshot,
+        short_circuit: bool,
     ) -> anyhow::Result<()>
     where
         Self: Sized,
@@ -385,6 +386,7 @@ pub(crate) trait Driver {
             test: &Test,
             experiment_config: &crate::config::ExperimentConfig,
             snapshot: ExperimentSnapshot,
+            short_circuit: bool,
         ) -> anyhow::Result<()> {
             let lang = marauders::Language::name_to_language(&test.language, &vec![])
                 .with_context(|| {
@@ -455,7 +457,7 @@ pub(crate) trait Driver {
                     mutations: test.mutations.clone(),
                     property: property.to_string(),
                     timeout: test.timeout,
-                    short_ciruit: false,
+                    short_circuit,
                     seeds: None,
                 };
                 driver.run(
@@ -470,7 +472,7 @@ pub(crate) trait Driver {
             Ok(())
         }
 
-        let result = aux(self, test, experiment_config, snapshot);
+        let result = aux(self, test, experiment_config, snapshot, short_circuit);
         if let Err(e) = &result {
             log::error!("Experiment failed with error: {}", e);
         } else {
