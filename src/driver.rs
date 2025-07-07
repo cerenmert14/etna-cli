@@ -214,10 +214,7 @@ pub(crate) trait Driver {
 
                     if run_config.short_circuit {
                         log::info!("Short-circuiting the experiment due to timeout");
-                        anyhow::bail!(
-                            "Process timed out after {} seconds, short-circuiting the experiment",
-                            run_config.timeout
-                        );
+                        break;
                     } else {
                         log::info!("Process timed out, but short-circuit is not enabled, so continuing with the next trial");
                     }
