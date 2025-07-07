@@ -188,7 +188,7 @@ pub(crate) trait Driver {
                 .wait();
 
             match output {
-                Err(_) => {
+                Ok(None) => {
                     log::warn!("Process timed out after {} seconds", run_config.timeout);
 
                     log::info!("writing timed out result to store");
@@ -219,9 +219,7 @@ pub(crate) trait Driver {
                         anyhow::bail!("Process timed out, but short-circuit is not enabled");
                     }
                 }
-                Ok(output) => {
-                    let output = output.ok_or(anyhow::anyhow!("Failed to get process output, it might have been killed or failed to start"))?;
-
+                Ok(Some(output)) => {
                     if !output.status.success() {
                         anyhow::bail!("Run command failed with status: {}", output.status);
                     }
@@ -262,9 +260,9 @@ pub(crate) trait Driver {
                     });
 
                     log::trace!("metadata: {}", metadata);
-                    
+
                     log::trace!("merging metadata into result");
-                    
+
                     result
                         .as_object_mut()
                         .context("the printed metric is not a valid json object")?
@@ -277,6 +275,10 @@ pub(crate) trait Driver {
                         result.to_string(),
                     )?;
                 }
+                Err(err) => {
+                    log::error!("Aborting! Failed to run command '{}': {}", step.command, err);
+                    anyhow::bail!("Failed to run command '{}': {}", step.command, err);
+                },
             }
         }
 
