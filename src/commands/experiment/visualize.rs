@@ -20,6 +20,25 @@ use crate::{
     workload::Language,
 };
 
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum MetricType {
+    Discards,
+    Tests,
+    Shrinks,
+    Time,
+}
+
+impl ToString for MetricType {
+    fn to_string(&self) -> String {
+        match self {
+            MetricType::Discards => "discards",
+            MetricType::Tests => "tests",
+            MetricType::Shrinks => "shrinks",
+            MetricType::Time => "time",
+        }.to_string()
+    }
+}
+
 /// Visualize the results of an experiment for a given set of tests.
 pub fn invoke(
     experiment_name: Option<String>,
@@ -27,6 +46,7 @@ pub fn invoke(
     tests: Vec<String>,
     groupby: Vec<String>,
     aggby: Vec<String>,
+    metric: MetricType,
     mut buckets: Vec<f64>,
 ) -> anyhow::Result<()> {
     log::trace!("visualizing experiment with name '{:?}'", experiment_name);
@@ -122,19 +142,16 @@ pub fn invoke(
             let agg_metrics = metrics
                 .iter()
                 .filter(|m| {
-                    aggby
-                        .iter()
-                        .enumerate()
-                        .all(|(i, g)| {
-                            log::trace!(
-                                "Checking if metric {} has groupby field {}: {:?} == {:?}",
-                                m.data,
-                                g,
-                                agg[i],
-                                m.data.get(g)
-                            );
-                            m.data.get(g).map_or(false, |v| agg[i] == v)
-                        })
+                    aggby.iter().enumerate().all(|(i, g)| {
+                        log::trace!(
+                            "Checking if metric {} has groupby field {}: {:?} == {:?}",
+                            m.data,
+                            g,
+                            agg[i],
+                            m.data.get(g)
+                        );
+                        m.data.get(g).map_or(false, |v| agg[i] == v)
+                    })
                 })
                 .collect::<Vec<_>>();
             if agg_metrics.is_empty() {
@@ -257,7 +274,7 @@ pub fn invoke(
         .collect::<Vec<Vec<_>>>();
 
     log::trace!("groups: {:?}", groups);
-    
+
     let width = 4000.0;
     let height = 1600.0;
     let margin = 160.0;
@@ -334,7 +351,7 @@ pub fn invoke(
                     values
                         .iter()
                         .map(|m| m
-                            .get("time")
+                            .get(metric.to_string().as_str())
                             .and_then(serde_json::Value::as_f64)
                             .unwrap_or(0.0))
                         .collect::<Vec<_>>()
@@ -350,7 +367,7 @@ pub fn invoke(
                     values
                         .iter()
                         .map(|m| {
-                            m.get("time")
+                            m.get(metric.to_string().as_str())
                                 .and_then(serde_json::Value::as_f64)
                                 .unwrap_or(0.0)
                         })
@@ -371,7 +388,9 @@ pub fn invoke(
         draw_buckets_line(&mut image, buckets, cfg);
     }
 
-    let path = experiment.path.join("figures").join("buckets.png");
+    let name = format!("{}_{}.png", figure_name, metric.to_string());
+
+    let path = experiment.path.join("figures").join(name);
 
     image.save(path).expect("Failed to save image");
 
@@ -387,16 +406,6 @@ pub fn invoke(
 
     for (i, group) in groups.iter().enumerate() {
         log::trace!("Processing group {i}: {:?}", group);
-        let group_metrics = agg_metrics
-            .iter()
-            .filter(|m| {
-                groupby
-                    .iter()
-                    .enumerate()
-                    .all(|(i, g)| m.get(g).map_or(false, |v| group[i] == v))
-            })
-            .collect::<Vec<_>>();
-
         if buckets[0] != 0.0 {
             buckets.insert(0, 0.0);
         }
@@ -422,7 +431,8 @@ pub fn invoke(
         draw_buckets_line(&mut image, buckets, cfg);
     }
 
-    let path = experiment.path.join("figures").join("legend.png");
+    let name = format!("{}_{}_legend.png", figure_name, metric.to_string());
+    let path = experiment.path.join("figures").join(name);
     image.save(path).expect("Failed to save image");
 
     Ok(())

@@ -277,7 +277,25 @@ pub(crate) trait Driver {
                 }
                 Err(err) => {
                     log::error!("Aborting! Failed to run command '{}': {}", step.command, err);
-                    anyhow::bail!("Failed to run command '{}': {}", step.command, err);
+
+                    let result = serde_json::json!({
+                        "language": run_config.language,
+                        "workload": run_config.workload,
+                        "experiment": run_config.experiment_id,
+                        "strategy": run_config.strategy,
+                        "property": run_config.property,
+                        "mutations": run_config.mutations,
+                        "trial": i,
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "timeout": run_config.timeout,
+                        "result": "aborted",
+                    });
+
+                    store::write::invoke(
+                        Some(experiment_config),
+                        run_config.experiment_id.clone(),
+                        result.to_string(),
+                    )?;
                 },
             }
         }
@@ -465,7 +483,7 @@ pub(crate) trait Driver {
                     &HashMap::from(params),
                     &tags,
                 );
-                
+
                 if let Err(e) = &result {
                     log::error!("Failed to run experiment: {}", e);
                 }

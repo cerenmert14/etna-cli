@@ -3,7 +3,7 @@ use std::{env, path::PathBuf};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 
-use etna::commands::{self, store::query::QueryOption};
+use etna::commands::{self, experiment::visualize::MetricType, store::query::QueryOption};
 use fern::colors::ColoredLevelConfig;
 
 fn main() -> anyhow::Result<()> {
@@ -64,7 +64,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         name,
                         show_all,
                     } => commands::experiment::show::invoke(hash, name, show_all),
-            ExperimentCommand::Visualize { name, figure, tests, groupby, aggby, buckets } => commands::experiment::visualize::invoke(name, figure, tests, groupby, aggby, buckets),
+            ExperimentCommand::Visualize { name, figure, tests, groupby, aggby, metric, buckets } => commands::experiment::visualize::invoke(name, figure, tests, groupby, aggby, metric, buckets),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -174,6 +174,11 @@ enum ExperimentCommand {
         /// Aggregate by fields
         #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string(), "property".to_string(), "mutations".to_string()])]
         aggby: Vec<String>,
+        /// Metric to visualize
+        /// [default: "time"]
+        /// [possible_values(time, memory, size, coverage)]
+        #[clap(short, long, default_value_t = MetricType::Time)]
+        metric: MetricType,
         /// Buckets to use for the visualization
         #[clap(short, long, value_parser, num_args = 1.., value_delimiter = ' ', default_values_t = vec![0.1, 1.0, 10.0, 60.0])]
         buckets: Vec<f64>,
