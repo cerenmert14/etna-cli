@@ -28,7 +28,7 @@ pub(crate) struct RunConfig {
     pub(crate) strategy: String,
     pub(crate) mutations: Vec<String>,
     pub(crate) property: String,
-    pub(crate) timeout: usize,
+    pub(crate) timeout: f64,
     pub(crate) short_circuit: bool,
     pub(crate) seeds: Option<Vec<u64>>,
 }
@@ -457,13 +457,18 @@ pub(crate) trait Driver {
                     short_circuit,
                     seeds: None,
                 };
-                driver.run(
+
+                let result = driver.run(
                     &experiment_config,
                     &run_config,
                     &workload.run_step,
                     &HashMap::from(params),
                     &tags,
-                )?;
+                );
+                
+                if let Err(e) = &result {
+                    log::error!("Failed to run experiment: {}", e);
+                }
             }
 
             Ok(())

@@ -62,12 +62,12 @@ where
         .collect())
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub(crate) struct Test {
     pub(crate) language: String,
     pub(crate) workload: String,
     pub(crate) trials: usize,
-    pub(crate) timeout: usize,
+    pub(crate) timeout: f64,
     pub(crate) mutations: Vec<String>,
     #[serde(
         serialize_with = "serialize_test",
