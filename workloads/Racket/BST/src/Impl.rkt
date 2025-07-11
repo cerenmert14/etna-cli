@@ -38,26 +38,24 @@
        [(< k k2) (T (insert k v l) k2 v2 r)]
        [(> k k2) (T l k2 v2 (insert k v r))]
        [else (T l k2 v r)])
-
      #|!! insert_1 |#
      #|!
        (T (E) k v (E))
-      |#
-
+     |#
      #|!! insert_2 |#
      #|!
         (if (< k k2)
           (T (insert k v l) k2 v2 r)
           (T l k2 v r))
-      |#
-
+     |#
      #|!! insert_3 |#
      #|!
         (cond
           [(< k k2) (T (insert k v l) k2 v2 r)]
           [(> k k2) (T l k2 v2 (insert k v r))]
           [else (T l k2 v2 r)])
-      |#
+     |#
+     #| !|#
      ]))
 
 (define (join l r)
@@ -90,6 +88,7 @@
       [(> key k) (T l key val (delete k r))]
       [else (join l r)])
      |#
+     #| !|#
      ]))
 
 (define (below k tree)
@@ -115,12 +114,10 @@
     [(cons _ (E)) l]
     #|! |#
     [(cons (T l k v r) t) (T (union l (below k t)) k v (union r (above k t)))]
-
     #|!! union_6 |#
     #|!
          [(cons (T l1 k1 v1 r1) (T l2 k2 v2 r2)) (T l1 k1 v1 (T (union r1 l2) k2 v2 r2))]
-         |#
-
+    |#
     #|!! union_7 |#
     #|!
          [(cons (T l1 k1 v1 r1) (T l2 k2 v2 r2))
@@ -130,8 +127,7 @@
              [else (union (T l2 k2 v2 r2) (T l1 k1 v1 r1))]
            )
          ]
-         |#
-
+    |#
     #|!! union_8 |#
     #|!
          [(cons (T l1 k1 v1 r1) (T l2 k2 v2 r2))
@@ -141,7 +137,8 @@
              [else (union (T l2 k2 v2 r2) (T l1 k1 v1 r1))]
            )
          ]
-         |#
+    |#
+    #| !|#
     )
   )
 

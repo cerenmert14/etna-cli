@@ -41,24 +41,25 @@
 (define/contract (shift_ c e d)
 (number? expr? number? . -> . expr?)
     (match e 
-        [(Var n) (#|! |#
-                  if (< n c) (Var n) (Var (+ n d))
-                  #|!! shift_var_none |#
-                  #|! Var n |#
-
-                  #|!! shift_var_all |#
-                  #|! Var (+ n d) |#
-
-                  #|!! shift_var_leq |#
-                  #|! if (<= n c) (Var n) (Var (+ n d)) |#
-                 )]
+        [(Var n) (
+            #|! |#
+            if (< n c) (Var n) (Var (+ n d))
+            #|!! shift_var_none |#
+            #|!Var n |#
+            #|!! shift_var_all |#
+            #|! Var (+ n d) |#
+            #|!! shift_var_leq |#
+            #|! if (<= n c) (Var n) (Var (+ n d)) |#
+            #| !|#
+            )]
         [(Bool b) (Bool b)]
-        [(Abs t e) ( #|! |#
-                     Abs t (shift_ (+ c 1) e d)
-
-                     #|!! shift_abs_no_incr |#
-                     #|! Abs t (shift_ c e d)|#
-                    )]
+        [(Abs t e) (
+            #|! |#
+            Abs t (shift_ (+ c 1) e d)
+            #|!! shift_abs_no_incr |#
+            #|! Abs t (shift_ c e d)|#
+            #| !|#
+        )]
         [(App e1 e2) (App (shift_ c e1 d) (shift_ c e2 d))]
     )
 ) 
@@ -70,24 +71,25 @@
 (define/contract (subst n s e)
 (number? expr? expr? . -> . expr?)
     (match (list n s e)
-        [(list n s (Var m)) #|! |#
-                              (if (= m n) s (Var m))
-                              #|!! subst_var_all |#
-                              #|! s |#
-
-                              #|!! subst_var_none |#
-                              #|! (Var m) |#
-                            ]
+        [(list n s (Var m)) 
+        #|! |#
+        (if (= m n) s (Var m))
+        #|!! subst_var_all |#
+        #|! s |#
+        #|!! subst_var_none |#
+        #|! (Var m) |#
+        #| !|#
+        ]
         [(list _ _ (Bool b)) (Bool b)]
-        [(list n s (Abs t e )) (#|! |# 
-                                Abs t (subst (+ n 1) (shift 1 s) e)
-                                #|!! subst_abs_no_shift |#
-                                #|! Abs t (subst (+ n 1) s e) |#
-
-                                #|!! subst_abs_no_incr |#
-                                #|! Abs t (subst n (shift 1 s) e) |#
-
-                            )]
+        [(list n s (Abs t e )) (
+        #|! |#
+        Abs t (subst (+ n 1) (shift 1 s) e)
+        #|!! subst_abs_no_shift |#
+        #|! Abs t (subst (+ n 1) s e) |#
+        #|!! subst_abs_no_incr |#
+        #|! Abs t (subst n (shift 1 s) e) |#
+        #| !|#
+        )]
         [(list n s (App e1 e2)) (App (subst n s e1) (subst n s e2))]
     )
 )
@@ -98,9 +100,9 @@
     (shift -1 (subst 0 (shift 1 s) e))
     #|!! substTop_no_shift |#
     #|! (subst 0 s e) |#
-
     #|!! substTop_no_shift_back |#
     #|! (subst 0 (shift 1 s) e)|#
+    #| !|#
 )
 
 (define (from-maybe a1 a2)

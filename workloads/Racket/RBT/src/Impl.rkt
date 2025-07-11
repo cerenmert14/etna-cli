@@ -67,12 +67,13 @@
     [(list (B) (T (R) (T (R) a x vx b) y vy c) z vz d)
      (T (R) (T (B) a x vx b) y vy (T (B) c z vz d))
      ]
-    #|!! swap_cd|#
+    #|!! swap_cd |#
     #|!
       [(list (B) (T (R) (T (R) a x vx b) y vy c) z vz d)
              (T (R) (T (B) a x vx b) y vy (T (B) d z vz c))
       ]
     |#
+    #| !|#
     [(list (B) (T (R) a x vx (T (R) b y vy c)) z vz d)
      (T (R) (T (B) a x vx b) y vy (T (B) c z vz d))
      ]
@@ -80,12 +81,13 @@
     [(list (B) a x vx (T (R) (T (R) b y vy c) z vz d))
      (T (R) (T (B) a x vx b) y vy (T (B) c z vz d))
      ]
-    #|!! swap_bc|#
+    #|!! swap_bc |#
     #|!
       [(list (B) a x vx (T (R) (T (R) b y vy c) z vz d))
              (T (R) (T (B) a x vx c) y vy (T (B) b z vz d))
       ]
     |#
+    #| !|#
     [(list (B) a x vx (T (R) b y vy (T (R) c z vz d)))
      (T (R) (T (B) a x vx b) y vy (T (B) c z vz d))
      ]
@@ -105,6 +107,7 @@
        #|!
         (T (B) (E) x vx (E))
       |#
+      #| !|#
        ]
       [(list x vx (T rb a y vy b))
        #|! |#
@@ -116,16 +119,14 @@
        #|!! insert_1 |#
        #|!
           (T (R) (E) x vx (E))
-        |#
-
+       |#
        #|!! insert_2 |#
        #|!
           (if (< x y)
             (balance rb (ins x vx a) y vy b)
             (T rb a y vx b)
           )
-        |#
-
+       |#
        #|!! insert_3 |#
        #|!
           (cond
@@ -133,8 +134,7 @@
             [(< y x) (balance rb a y vy (ins x vx b))]
             [else (T rb a y vy b)]
           )
-        |#
-
+       |#
        #|!! no_balance_insert_1 |#
        #|!
           (cond
@@ -142,8 +142,7 @@
             [(< y x) (balance rb a y vy (ins x vx b))]
             [else (T rb a y vx b)]
           )
-        |#
-
+       |#
        #|!! no_balance_insert_2 |#
        #|!
           (cond
@@ -152,6 +151,7 @@
             [else (T rb a y vx b)]
           )
         |#
+        #| !|#
        ]
       )
     )
@@ -172,7 +172,8 @@
      #|!! miscolor_balLeft |#
      #|!
         (return (T (R) (balance (B) bl x vx b) y vy (balance (B) b z vz c)))
-      |#
+     |#
+     #| !|#
      ]
     [_ (nothing)]
     )
@@ -192,6 +193,7 @@
      #|!
       (return (T (R) (balance (B) a x vx b) y vy (T (B) c z vz bl)))
       |#
+      #| !|#
      ]
     [_ (nothing)]
     )
@@ -210,11 +212,11 @@
           [(T (R) b2 z vz c2)
            #|! |#
            (return (T (R) (T (R) a x vx b2) z vz (T (R) c2 y vy d)))
-
            #|!! miscolor_join_1 |#
            #|!
             (return (T (R) (T (B) a x vx b2) z vz (T (B) c2 y vy d)))
             |#
+            #| !|#
            ]
           [bc (return (T (R) a x vx (T (R) bc y vy d)))]
           )]
@@ -228,11 +230,11 @@
           [(T (R) b2 z vz c2)
            #|! |#
            (return (T (R) (T (B) a x vx b2) z vz (T (B) c2 y vy d)))
-
            #|!! miscolor_join_2 |#
            #|!
           (return (T (R) (T (R) a x vx b2) z vz (T (R) c2 y vy d)))
           |#
+          #| !|#
            ]
           [bc (balLeft a x vx (T (B) bc y vy d))]
           )]
@@ -298,7 +300,6 @@
        [(> x y) (delRight x a y vy b)]
        [else (join a b)]
        )
-
      #|!! delete_4 |#
      #|!
      (cond
@@ -307,7 +308,6 @@
        [else (join a b)]
        )
      |#
-
      #|!! delete_5 |#
      #|!
         (cond
@@ -315,7 +315,8 @@
           [(< x y) (delRight x a y vy b)]
           [else (join a b)]
         )
-        |#
+     |#
+     #| !|#
      ]
     )
   )
@@ -330,6 +331,7 @@
   #|!
     (del x tr)
   |#
+  #| !|#
   )
 
 (define/contract (find x t)
