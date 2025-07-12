@@ -1,10 +1,6 @@
 use std::path::Path;
 
-use crate::implementation::Tree;
-
-pub mod implementation;
-pub mod spec;
-pub mod strategies;
+use rbt::{implementation::Tree, spec};
 
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
@@ -12,7 +8,7 @@ fn main() {
         eprintln!("Usage: {} <tests> <property>", args[0]);
         eprintln!("Tests should be an s-expression that is a list of test cases.");
         eprintln!(
-            "For available properties, check https://github.com/alpaylan/etna-cli/blob/main/docs/workloads/bst.md"
+            "For available properties, check https://github.com/alpaylan/etna-cli/blob/main/docs/workloads/rbt.md"
         );
         return;
     }
@@ -63,31 +59,13 @@ fn main() {
                 }
             }
         }
-        "UnionValid" => {
-            let tests: Vec<(Tree, Tree)> = serde_lexpr::from_str(&tests).unwrap_or_else(|_| {
-                eprintln!("Failed to parse tests: '{}'", tests);
-                return vec![];
-            });
-
-            for (i, (t1, t2)) in tests.into_iter().enumerate() {
-                if !spec::prop_union_valid(t1.clone(), t2.clone()).unwrap_or(true) {
-                    eprintln!(
-                        "Test {} failed for UnionValid: ({}, {})",
-                        i,
-                        serde_lexpr::to_string(&t1)
-                            .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                        serde_lexpr::to_string(&t2)
-                            .unwrap_or_else(|_| "failed to serialize tree".to_string())
-                    );
-                }
-            }
-        }
         "InsertPost" => {
-            let tests: Vec<(Tree, i32, i32, i32)> = serde_lexpr::from_str(&tests).unwrap_or_else(|e| {
-                eprintln!("Failed to parse tests: '{}'", tests);
-                eprintln!("Error: {}", e);
-                return vec![];
-            });
+            let tests: Vec<(Tree, i32, i32, i32)> =
+                serde_lexpr::from_str(&tests).unwrap_or_else(|e| {
+                    eprintln!("Failed to parse tests: '{}'", tests);
+                    eprintln!("Error: {}", e);
+                    return vec![];
+                });
 
             for (i, (t, k, v, query_k)) in tests.into_iter().enumerate() {
                 if !spec::prop_insert_post(t.clone(), k, v, query_k).unwrap_or(true) {
@@ -118,26 +96,6 @@ fn main() {
                             .unwrap_or_else(|_| "failed to serialize tree".to_string()),
                         k,
                         query_k
-                    );
-                }
-            }
-        }
-        "UnionPost" => {
-            let tests: Vec<(Tree, Tree, i32)> = serde_lexpr::from_str(&tests).unwrap_or_else(|_| {
-                eprintln!("Failed to parse tests: '{}'", tests);
-                return vec![];
-            });
-
-            for (i, (t1, t2, k)) in tests.into_iter().enumerate() {
-                if !spec::prop_union_post(t1.clone(), t2.clone(), k).unwrap_or(true) {
-                    eprintln!(
-                        "Test {} failed for UnionPost: ({}, {}, {})",
-                        i,
-                        serde_lexpr::to_string(&t1)
-                            .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                        serde_lexpr::to_string(&t2)
-                            .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                        k
                     );
                 }
             }
@@ -179,25 +137,94 @@ fn main() {
                 }
             }
         }
-        "UnionModel" => {
-            let tests: Vec<(Tree, Tree)> = serde_lexpr::from_str(&tests).unwrap_or_else(|_| {
-                eprintln!("Failed to parse tests: '{}'", tests);
-                return vec![];
-            });
+        "InsertInsert" => {
+            let tests: Vec<(Tree, i32, i32, i32, i32)> = serde_lexpr::from_str(&tests)
+                .unwrap_or_else(|e| {
+                    eprintln!("Failed to parse tests: '{}'", tests);
+                    eprintln!("Error: {}", e);
+                    return vec![];
+                });
 
-            for (i, (t1, t2)) in tests.into_iter().enumerate() {
-                if !spec::prop_union_model(t1.clone(), t2.clone()).unwrap_or(true) {
+            for (i, (t, k, kp, v, vp)) in tests.into_iter().enumerate() {
+                if !spec::prop_insert_insert(t.clone(), k, kp, v, vp).unwrap_or(true) {
                     eprintln!(
-                        "Test {} failed for UnionModel: ({}, {})",
+                        "Test {} failed for InsertInsert: ({}, {}, {}, {}, {})",
                         i,
-                        serde_lexpr::to_string(&t1)
+                        serde_lexpr::to_string(&t)
                             .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                        serde_lexpr::to_string(&t2)
-                            .unwrap_or_else(|_| "failed to serialize tree".to_string())
+                        k,
+                        kp,
+                        v,
+                        vp
                     );
                 }
             }
         }
+        "InsertDelete" => {
+            let tests: Vec<(Tree, i32, i32, i32)> =
+                serde_lexpr::from_str(&tests).unwrap_or_else(|e| {
+                    eprintln!("Failed to parse tests: '{}'", tests);
+                    eprintln!("Error: {}", e);
+                    return vec![];
+                });
+
+            for (i, (t, k, kp, v)) in tests.into_iter().enumerate() {
+                if !spec::prop_insert_delete(t.clone(), k, kp, v).unwrap_or(true) {
+                    eprintln!(
+                        "Test {} failed for InsertDelete: ({}, {}, {}, {})",
+                        i,
+                        serde_lexpr::to_string(&t)
+                            .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                        k,
+                        kp,
+                        v,
+                    );
+                }
+            }
+        }
+        "DeleteInsert" => {
+            let tests: Vec<(Tree, i32, i32, i32)> =
+                serde_lexpr::from_str(&tests).unwrap_or_else(|e| {
+                    eprintln!("Failed to parse tests: '{}'", tests);
+                    eprintln!("Error: {}", e);
+                    return vec![];
+                });
+
+            for (i, (t, k, kp, v)) in tests.into_iter().enumerate() {
+                if !spec::prop_delete_insert(t.clone(), k, kp, v).unwrap_or(true) {
+                    eprintln!(
+                        "Test {} failed for DeleteInsert: ({}, {}, {}, {})",
+                        i,
+                        serde_lexpr::to_string(&t)
+                            .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                        k,
+                        kp,
+                        v,
+                    );
+                }
+            }
+        }
+        "DeleteDelete" => {
+            let tests: Vec<(Tree, i32, i32)> = serde_lexpr::from_str(&tests).unwrap_or_else(|e| {
+                eprintln!("Failed to parse tests: '{}'", tests);
+                eprintln!("Error: {}", e);
+                return vec![];
+            });
+
+            for (i, (t, k, kp)) in tests.into_iter().enumerate() {
+                if !spec::prop_delete_delete(t.clone(), k, kp).unwrap_or(true) {
+                    eprintln!(
+                        "Test {} failed for DeleteDelete: ({}, {}, {})",
+                        i,
+                        serde_lexpr::to_string(&t)
+                            .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                        k,
+                        kp,
+                    );
+                }
+            }
+        }
+
         _ => {
             eprintln!("Unknown property: {}", property);
         }

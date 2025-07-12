@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, path::PathBuf};
 
-use itertools::Itertools;
+use itertools::Itertools as _;
 use serde::{Deserialize, Serialize};
 
 use crate::{property::Property, strategy::Strategy};

@@ -1,0 +1,29 @@
+{
+    "name": "Rust",
+    "check_steps": [],
+    "build_steps": [
+        {
+            "Command": {
+                "command": "cargo",
+                "args": [
+                    "build",
+                    "--release"
+                ]
+            }
+        }
+    ],
+    "run_step": {
+        "Command": {
+            "command": "$workload_path/target/release/rbt",
+            "args": [
+                "$strategy",
+                "$property"
+            ],
+            "params": [
+                "workload_path",
+                "property",
+                "strategy"
+            ]
+        }
+    }
+}

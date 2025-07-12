@@ -1,5 +1,5 @@
 [package]
-name = "bst"
+name = "rbt"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,13 +11,13 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde-lexpr = "0.1.3"
 
 [[bin]]
-name = "bst"
+name = "rbt"
 path = "src/main.rs"
 
 [[bin]]
-name = "bst-serialized"
+name = "rbt-serialized"
 path = "src/main_serialized.rs"
 
 [[bin]]
-name = "bst-sampler"
+name = "rbt-sampler"
 path = "src/main_sampler.rs"

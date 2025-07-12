@@ -1,8 +1,15 @@
 # Todo's
 
+@alperen
+
 - [ ] Cross-language comparison 
 - [ ] When auto-generating tests, tailor them to the specific languages (change tests/bst.json..)
 - [ ] Check how ("command": "$workload_path/build") works
+- [ ] Get Rust workloads fully done
+  - [ ] BST
+  - [ ] RBT
+  - [ ] STLC
+  - [ ] (not for now) System F
 
 @ceren
 

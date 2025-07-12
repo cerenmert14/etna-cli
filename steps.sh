@@ -8,17 +8,17 @@ cargo install --path .
 etna setup
 
 # create a new experiment and add workloads
-ETNA_DIR="." etna experiment new exp1 --local-store
-ETNA_DIR="." etna workload add Rocq BST --experiment exp1
-ETNA_DIR="." etna workload add Rocq RBT --experiment exp1
-ETNA_DIR="." etna workload add Rocq STLC --experiment exp1
+ETNA_DIR="." etna experiment new exp3 --local-store
+ETNA_DIR="." etna workload add Racket BST --experiment exp3
+ETNA_DIR="." etna workload add Racket RBT --experiment exp3
+ETNA_DIR="." etna workload add Racket STLC --experiment exp3
 
 # run the experiment with different tests
-ETNA_DIR="." etna experiment run --name exp1 --tests bst
-ETNA_DIR="." etna experiment run --name exp1 --tests rbt
-ETNA_DIR="." etna experiment run --name exp1 --tests stlc
+ETNA_DIR="." etna experiment run --name exp3 --tests bst
+ETNA_DIR="." etna experiment run --name exp3 --tests rbt
+ETNA_DIR="." etna experiment run --name exp3 --tests stlc
 
 # visualize the results
-ETNA_DIR="." etna experiment visualize --name exp1 --figure bst --tests bst
-ETNA_DIR="." etna experiment visualize --name exp1 --figure rbt --tests rbt
-ETNA_DIR="." etna experiment visualize --name exp1 --figure stlc --tests stlc
+ETNA_DIR="." etna experiment visualize --name exp3 --figure bst --tests bst
+ETNA_DIR="." etna experiment visualize --name exp3 --figure rbt --tests rbt
+ETNA_DIR="." etna experiment visualize --name exp3 --figure stlc --tests stlc

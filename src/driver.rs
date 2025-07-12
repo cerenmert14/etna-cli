@@ -99,7 +99,19 @@ pub(crate) fn load_workload(
         .join(language)
         .join(workload);
 
+    anyhow::ensure!(
+        workload_path.exists(),
+        "Workload directory not found at '{}'",
+        workload_path.display()
+    );
+
     let config_path = workload_path.join("config").with_extension("json");
+
+    anyhow::ensure!(
+        config_path.exists(),
+        "Config file not found at '{}'",
+        config_path.display()
+    );
 
     let workload_config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(config_path).unwrap()).unwrap();
@@ -276,7 +288,11 @@ pub(crate) trait Driver {
                     )?;
                 }
                 Err(err) => {
-                    log::error!("Aborting! Failed to run command '{}': {}", step.command, err);
+                    log::error!(
+                        "Aborting! Failed to run command '{}': {}",
+                        step.command,
+                        err
+                    );
 
                     let result = serde_json::json!({
                         "language": run_config.language,
@@ -296,7 +312,7 @@ pub(crate) trait Driver {
                         run_config.experiment_id.clone(),
                         result.to_string(),
                     )?;
-                },
+                }
             }
         }
 
