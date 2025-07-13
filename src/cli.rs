@@ -55,10 +55,8 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         register,
                         description,
                         local_store,
-                    } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
-            ExperimentCommand::Run { name, tests, short_circuit } => {
-                        commands::experiment::run::invoke(name, tests, short_circuit)
-                    }
+            } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
+            ExperimentCommand::Run { name, test, tests, short_circuit } => commands::experiment::run::invoke(name, test, tests, short_circuit),
             ExperimentCommand::Show {
                         hash,
                         name,
@@ -138,8 +136,11 @@ enum ExperimentCommand {
         /// [default: current directory]
         #[clap(short, long)]
         name: Option<String>,
-        /// Tests to run
-        #[clap(short, long)]
+        /// A test to run
+        #[clap(long)]
+        test: Option<String>,
+        /// A list of tests to run given as file name stems from the `tests` directory
+        #[clap(long)]
         tests: Vec<String>,
         /// Short circuit the trials if any test fails
         #[clap(short = 's', long, default_value = "false")]

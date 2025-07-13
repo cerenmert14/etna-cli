@@ -251,10 +251,7 @@ pub fn invoke(
     })?;
 
     let scripts_path = experiment_config.path.join("scripts");
-    log::trace!(
-        "creating scripts directory at '{}'",
-        scripts_path.display()
-    );
+    log::trace!("creating scripts directory at '{}'", scripts_path.display());
     std::fs::create_dir(&scripts_path).with_context(|| {
         format!(
             "Failed to create scripts directory at '{}'",
@@ -263,10 +260,7 @@ pub fn invoke(
     })?;
 
     let figures_path = experiment_config.path.join("figures");
-    log::trace!(
-        "creating figures directory at '{}'",
-        figures_path.display()
-    );
+    log::trace!("creating figures directory at '{}'", figures_path.display());
     std::fs::create_dir(&figures_path).with_context(|| {
         format!(
             "Failed to create figures directory at '{}'",

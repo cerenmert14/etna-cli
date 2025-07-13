@@ -10,6 +10,7 @@ use serde_json::Map;
 use crate::{
     commands::store,
     config::ExperimentConfig,
+    store::{Metric, Store},
     workload::{Language, Step, Workload},
 };
 
@@ -55,7 +56,7 @@ fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Langu
     let language_path = experiment_path.join("workloads").join(language);
     let config_path = language_path.join("config").with_extension("json");
 
-    let language: Language = serde_json::from_str(
+    let mut config: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(&config_path)
             .with_context(|| format!("could not read config at '{}'", config_path.display()))?,
     )
@@ -65,6 +66,17 @@ fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Langu
             config_path.display()
         )
     })?;
+
+    config
+        .as_object_mut()
+        .context("config file is not a valid JSON object")?
+        .insert(
+            "name".to_string(),
+            serde_json::Value::String(language.to_string()),
+        );
+
+    let language: Language =
+        serde_json::from_value(config).context("config file is not a valid Language")?;
 
     Ok(language)
 }
@@ -136,6 +148,42 @@ pub(crate) fn load_workload(
         })[0]
             .clone(),
     })
+}
+
+fn task_completed(
+    language: &str,
+    workload: &str,
+    mutations: &Vec<String>,
+    strategy: &str,
+    property: &str,
+    timeout: &str,
+    trials: usize,
+    metrics: &Vec<Metric>,
+) -> bool {
+    let filtered_metrics = metrics.iter().filter(|m| {
+        m.data
+            .get("language")
+            .map_or(false, |v| v.as_str() == Some(language))
+            && m.data
+                .get("workload")
+                .map_or(false, |v| v.as_str() == Some(workload))
+            && m.data.get("mutations").map_or(true, |v| {
+                mutations.is_empty()
+                    || v.as_array().map_or(false, |arr| {
+                        arr.iter()
+                            .all(|mv| mutations.contains(&mv.as_str().unwrap().to_string()))
+                    })
+            })
+            && m.data
+                .get("strategy")
+                .map_or(false, |v| v.as_str() == Some(strategy))
+            && m.data
+                .get("property")
+                .map_or(false, |v| v.as_str() == Some(property))
+    });
+
+    // filtered_metrics.max_by()
+    false
 }
 
 pub(crate) trait Driver {
@@ -459,6 +507,30 @@ pub(crate) trait Driver {
             )
             .unwrap();
 
+            let store = Store::load(&experiment_config.store)?;
+
+            let all_tasks_completed = test.tasks.iter().all(|(strategy, property)| {
+                task_completed(
+                    &test.language,
+                    &test.workload,
+                    &test.mutations,
+                    strategy,
+                    property,
+                    &test.timeout.to_string(),
+                    test.trials,
+                    &store.metrics,
+                )
+            });
+
+            if all_tasks_completed {
+                log::info!(
+                    "All tasks for the current test with language '{}' and workload '{}' are already completed, skipping the build and run steps.",
+                    test.language,
+                    test.workload,
+                );
+                return Ok(());
+            }
+
             driver.build(
                 &workload_dir,
                 &workload.check_steps,
@@ -493,7 +565,7 @@ pub(crate) trait Driver {
                 };
 
                 let result = driver.run(
-                    &experiment_config,
+                    experiment_config,
                     &run_config,
                     &workload.run_step,
                     &HashMap::from(params),

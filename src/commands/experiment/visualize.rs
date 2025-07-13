@@ -1,11 +1,10 @@
-use core::time;
-use std::{collections::HashMap, time::Duration};
+use std::{fmt::Display, io::Write};
 
-use ab_glyph::{Font, FontArc, FontRef, ScaleFont as _};
+use ab_glyph::{Font, FontRef, ScaleFont as _};
 use anyhow::Context as _;
-use image::{ImageBuffer, Rgb, RgbImage, Rgba};
+use image::{Rgb, RgbImage};
 use imageproc::{
-    drawing::{draw_filled_rect, draw_filled_rect_mut},
+    drawing::draw_filled_rect_mut,
     rect::Rect,
 };
 use itertools::Itertools;
@@ -14,10 +13,7 @@ use serde_json::{Map, Value};
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
     experiment::Test,
-    property,
-    store::{Metric, Store},
-    strategy,
-    workload::Language,
+    store::Store,
 };
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -28,15 +24,48 @@ pub enum MetricType {
     Time,
 }
 
-impl ToString for MetricType {
-    fn to_string(&self) -> String {
+impl Display for MetricType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            MetricType::Discards => "discards",
-            MetricType::Tests => "tests",
-            MetricType::Shrinks => "shrinks",
-            MetricType::Time => "time",
-        }.to_string()
+            MetricType::Discards => write!(f, "discards"),
+            MetricType::Tests => write!(f, "tests"),
+            MetricType::Shrinks => write!(f, "shrinks"),
+            MetricType::Time => write!(f, "time"),
+        }
     }
+}
+
+pub(crate) fn write_row<W: std::io::Write>(
+    writer: &mut W,
+    metric: &serde_json::Value,
+    aggby: &[String],
+) -> anyhow::Result<()> {
+    let mut row = vec![];
+    for a in aggby {
+        row.push(metric.get(a).map_or("".to_string(), |v| v.to_string()));
+    }
+    row.push(metric.get("tests").map_or("NaN".to_string(), |v| {
+        v.as_f64()
+            .map_or("NaN".to_string(), |t| format!("{:.2}", t))
+    }));
+    row.push(metric.get("discards").map_or("NaN".to_string(), |v| {
+        v.as_f64()
+            .map_or("NaN".to_string(), |t| format!("{:.2}", t))
+    }));
+    row.push(metric.get("shrinks").map_or("NaN".to_string(), |v| {
+        v.as_f64()
+            .map_or("NaN".to_string(), |t| format!("{:.2}", t))
+    }));
+    row.push(metric.get("time").map_or("NaN".to_string(), |v| {
+        v.as_f64()
+            .map_or("NaN".to_string(), |t| format!("{:.4}", t))
+    }));
+
+    writer
+        .write_all(row.join(",").as_bytes())
+        .context("Failed to write row")?;
+
+    writer.write_all(b"\n").context("Failed to write newline")
 }
 
 /// Visualize the results of an experiment for a given set of tests.
@@ -67,6 +96,22 @@ pub fn invoke(
     let store = Store::load(&experiment_config.store)?;
 
     let experiment = store.get_experiment_by_name(&experiment_config.name)?;
+    let figures_path = experiment.path.join("figures");
+
+    let raw_data_path = figures_path.join(format!("{}_raw.csv", figure_name));
+    let mut raw_data_file = std::fs::File::create(&raw_data_path).context(format!(
+        "Failed to create raw data file at {}",
+        raw_data_path.display()
+    ))?;
+
+    let mut top_row = aggby
+        .iter()
+        .map(|a| a.as_str())
+        .chain(["discards", "tests", "shrinks", "time"].iter().copied())
+        .collect::<Vec<_>>()
+        .join(",");
+    top_row.push('\n');
+    raw_data_file.write_all(top_row.as_bytes())?;
 
     let tests = tests
         .iter()
@@ -126,7 +171,7 @@ pub fn invoke(
                 .map(|m| {
                     m.data
                         .get(g)
-                        .expect(format!("Aggby field '{g}' not found").as_str())
+                        .unwrap_or_else(|| panic!("Aggby field '{g}' not found"))
                 })
                 .unique()
                 .collect::<Vec<_>>()
@@ -150,7 +195,7 @@ pub fn invoke(
                             agg[i],
                             m.data.get(g)
                         );
-                        m.data.get(g).map_or(false, |v| agg[i] == v)
+                        m.data.get(g).is_some_and(|v| agg[i] == v)
                     })
                 })
                 .collect::<Vec<_>>();
@@ -214,8 +259,7 @@ pub fn invoke(
                         .and_then(serde_json::Value::as_str)
                         .into_iter()
                         .flat_map(parse_duration::parse)
-                        .next()
-                        .and_then(|d| Some(d.as_secs_f64()))
+                        .next().map(|d| d.as_secs_f64())
                         .expect("Failed to parse time");
                     acc
                 });
@@ -247,6 +291,7 @@ pub fn invoke(
                 "shrinks": avgs.2,
                 "time": avgs.3,
             });
+            let _ = write_row(&mut raw_data_file, &data, &aggby);
 
             data.as_object().cloned()
         })
@@ -265,7 +310,7 @@ pub fn invoke(
                 .iter()
                 .map(|m| {
                     m.get(g)
-                        .expect(format!("Groupby field '{g}' not found").as_str())
+                        .unwrap_or_else(|| panic!("Groupby field '{g}' not found"))
                 })
                 .unique()
                 .collect::<Vec<_>>()
@@ -278,7 +323,7 @@ pub fn invoke(
     let width = 4000.0;
     let height = 1600.0;
     let margin = 160.0;
-    let bucket_height = ((height - margin) / (groups.len() as f64) - margin) as f64;
+    let bucket_height = (height - margin) / (groups.len() as f64) - margin;
 
     let mut image = RgbImage::new(width as u32, height as u32);
 
@@ -309,7 +354,7 @@ pub fn invoke(
                 groupby
                     .iter()
                     .enumerate()
-                    .all(|(i, g)| m.get(g).map_or(false, |v| group[i] == v))
+                    .all(|(i, g)| m.get(g).is_some_and(|v| group[i] == v))
             })
             .collect::<Vec<_>>();
 
@@ -359,6 +404,12 @@ pub fn invoke(
                 .collect::<Vec<_>>()
         );
 
+        for ((start, end), values) in &buckets {
+            for m in values {
+                log::debug!("Bucket ({:.2}, {:.2}) contains metric: {:?}", start, end, m);
+            }
+        }
+
         let buckets = buckets
             .into_iter()
             .map(|((start, end), values)| {
@@ -382,7 +433,7 @@ pub fn invoke(
             margin,
             bucket_height,
             bucket_index: i,
-            fill_color: colors[i].clone(),
+            fill_color: colors[i],
             legend: false,
         };
         draw_buckets_line(&mut image, buckets, cfg);
@@ -426,7 +477,7 @@ pub fn invoke(
             bucket_height,
             bucket_index: i,
             legend: true,
-            fill_color: colors[i].clone(),
+            fill_color: colors[i],
         };
         draw_buckets_line(&mut image, buckets, cfg);
     }

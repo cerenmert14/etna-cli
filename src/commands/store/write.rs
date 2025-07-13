@@ -18,7 +18,7 @@ pub fn invoke(
         &etna_config.store_path()
     };
     // Load the Store
-    let mut store = Store::load(&store_path).context("Failed to load the store")?;
+    let mut store = Store::load(store_path).context("Failed to load the store")?;
 
     // Deserialize the metric
     let data: serde_json::Value = serde_json::from_str(&metric).context(format!(

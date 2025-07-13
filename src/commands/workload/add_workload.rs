@@ -35,8 +35,7 @@ pub fn invoke(
     }
 
     // get etna directory
-    let repo_dir = std::env::var("ETNA_DIR")
-        .and_then(|repo_dir| Ok(PathBuf::from(repo_dir)))
+    let repo_dir = std::env::var("ETNA_DIR").map(PathBuf::from)
         .context("ETNA_DIR environment variable not set")?;
 
     // Get the workload path
