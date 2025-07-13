@@ -150,40 +150,131 @@ pub(crate) fn load_workload(
     })
 }
 
+fn metric_matches<'a>(
+    m: &'a Metric,
+    language: Option<&str>,
+    workload: Option<&str>,
+    mutations: Option<&Vec<String>>,
+    strategy: Option<&str>,
+    property: Option<&str>,
+    timeout: Option<f64>,
+    trial: Option<usize>,
+) -> Option<&'a Metric> {
+    let language_match = language.map_or(true, |l| {
+        m.data
+            .get("language")
+            .map_or(false, |v| v.as_str() == Some(l))
+    });
+    let workload_match = workload.map_or(true, |w| {
+        m.data
+            .get("workload")
+            .map_or(false, |v| v.as_str() == Some(w))
+    });
+    let mutations_match = mutations.map_or(true, |muts| {
+        m.data.get("mutations").map_or(false, |v| {
+            v.as_array().map_or(false, |arr| {
+                arr.iter()
+                    .all(|mv| muts.contains(&mv.as_str().unwrap().to_string()))
+            })
+        })
+    });
+    let strategy_match = strategy.map_or(true, |s| {
+        m.data
+            .get("strategy")
+            .map_or(false, |v| v.as_str() == Some(s))
+    });
+    let property_match = property.map_or(true, |p| {
+        m.data
+            .get("property")
+            .map_or(false, |v| v.as_str() == Some(p))
+    });
+    let timeout_match = timeout.map_or(true, |t| {
+        m.data
+            .get("timeout")
+            .and_then(|v| v.as_f64())
+            .map_or(false, |v| v >= t)
+    });
+    let trial_match = trial.map_or(true, |t| {
+        m.data
+            .get("trial")
+            .and_then(|v| v.as_u64())
+            .map_or(false, |v| v as usize == t)
+    });
+
+    if language_match
+        && workload_match
+        && mutations_match
+        && strategy_match
+        && property_match
+        && timeout_match
+        && trial_match
+    {
+        Some(m)
+    } else {
+        None
+    }
+}
+
 fn task_completed(
     language: &str,
     workload: &str,
     mutations: &Vec<String>,
     strategy: &str,
     property: &str,
-    timeout: &str,
+    timeout: f64,
     trials: usize,
+    short_circuit: bool,
     metrics: &Vec<Metric>,
 ) -> bool {
-    let filtered_metrics = metrics.iter().filter(|m| {
-        m.data
-            .get("language")
-            .map_or(false, |v| v.as_str() == Some(language))
-            && m.data
-                .get("workload")
-                .map_or(false, |v| v.as_str() == Some(workload))
-            && m.data.get("mutations").map_or(true, |v| {
-                mutations.is_empty()
-                    || v.as_array().map_or(false, |arr| {
-                        arr.iter()
-                            .all(|mv| mutations.contains(&mv.as_str().unwrap().to_string()))
-                    })
-            })
-            && m.data
-                .get("strategy")
-                .map_or(false, |v| v.as_str() == Some(strategy))
-            && m.data
-                .get("property")
-                .map_or(false, |v| v.as_str() == Some(property))
-    });
+    log::trace!(
+        "Checking if task is completed for language '{}', workload '{}', strategy '{}', property '{}', mutations '{:?}'",
+        language, workload, strategy, property, mutations
+    );
+    let filtered_metrics = metrics
+        .iter()
+        .filter(|m| {
+            metric_matches(
+                m,
+                Some(language),
+                Some(workload),
+                Some(mutations),
+                Some(strategy),
+                Some(property),
+                None,
+                None,
+            )
+            .is_some()
+        })
+        .collect::<Vec<_>>();
 
-    // filtered_metrics.max_by()
-    false
+    let mut timed_out = false;
+    (0..trials as u64).into_iter().all(|i| {
+        filtered_metrics
+            .iter()
+            .find(|m| m.data.get("trial").and_then(|v| v.as_u64()).map(|u| u == i) == Some(true))
+            .and_then(|m| {
+                log::trace!(
+                    "Checking metric: {:?} for trial {}",
+                    m.data, i
+                );
+                if short_circuit {
+                    if timed_out {
+                        return Some(true);
+                    }
+                    if m.data
+                        .get("result")
+                        .map_or(false, |v| v.as_str() == Some("timed_out"))
+                    {
+                        timed_out = true;
+                    }
+                }
+                m.data
+                    .get("timeout")
+                    .and_then(|v| v.as_f64())
+                    .map(|t| t >= timeout)
+            }) == Some(true)
+            || timed_out
+    })
 }
 
 pub(crate) trait Driver {
@@ -196,6 +287,7 @@ pub(crate) trait Driver {
         run_step: &Step,
         params: &HashMap<String, String>,
         tags: &HashMap<String, Vec<String>>,
+        metrics: &Vec<Metric>,
     ) -> anyhow::Result<()> {
         let run_steps = run_step.realize(params, tags)?;
         anyhow::ensure!(
@@ -210,6 +302,44 @@ pub(crate) trait Driver {
 
         for i in 0..run_config.trials {
             log::trace!("running trial {}", i);
+
+            let previous_metric = metrics.iter().find(|m| {
+                metric_matches(
+                    m,
+                    Some(&run_config.language),
+                    Some(&run_config.workload),
+                    Some(&run_config.mutations),
+                    Some(&run_config.strategy),
+                    Some(&run_config.property),
+                    Some(run_config.timeout),
+                    Some(i),
+                )
+                .is_some()
+            });
+
+            if let Some(metric) = previous_metric {
+                // If the metric is a timeout and short-circuit is enabled, break the loop
+                if run_config.short_circuit
+                    && metric
+                        .data
+                        .get("result")
+                        .map_or(false, |v| v.as_str() == Some("timed_out"))
+                {
+                    log::info!("Short-circuiting the experiment due to previous timeout");
+                    break;
+                }
+
+                // Skip the trial because it has already been run
+                log::info!(
+                    "Skipping trial {} for language '{}', workload '{}', strategy '{}', property '{}' because it has already been run",
+                    i,
+                    run_config.language,
+                    run_config.workload,
+                    run_config.strategy,
+                    run_config.property
+                );
+                continue;
+            }
 
             let mut params = HashMap::new();
             let step_params = step.params();
@@ -509,6 +639,11 @@ pub(crate) trait Driver {
 
             let store = Store::load(&experiment_config.store)?;
 
+            log::trace!(
+                "Checking if all tasks for language '{}' and workload '{}' are already completed",
+                test.language,
+                test.workload
+            );
             let all_tasks_completed = test.tasks.iter().all(|(strategy, property)| {
                 task_completed(
                     &test.language,
@@ -516,17 +651,19 @@ pub(crate) trait Driver {
                     &test.mutations,
                     strategy,
                     property,
-                    &test.timeout.to_string(),
+                    test.timeout,
                     test.trials,
+                    short_circuit,
                     &store.metrics,
                 )
             });
 
             if all_tasks_completed {
                 log::info!(
-                    "All tasks for the current test with language '{}' and workload '{}' are already completed, skipping the build and run steps.",
+                    "All tasks for the current test with language '{}', workload '{}' and mutations '{:?}' are already completed, skipping the build and run steps.",
                     test.language,
                     test.workload,
+                    test.mutations
                 );
                 return Ok(());
             }
@@ -570,6 +707,8 @@ pub(crate) trait Driver {
                     &workload.run_step,
                     &HashMap::from(params),
                     &tags,
+                    // todo: we already filter the metrics in the task_completed function, so we should not pass the whole metrics here but the filtered ones.
+                    &store.metrics,
                 );
 
                 if let Err(e) = &result {

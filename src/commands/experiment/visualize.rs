@@ -232,7 +232,7 @@ pub fn invoke(
                     "time": format!("{timeout}s"),
                 });
                 log::trace!("Returning timeout data: {:#?}", data);
-
+                let _ = write_row(&mut raw_data_file, &data, &aggby);
                 return data.as_object().cloned();
             }
 
