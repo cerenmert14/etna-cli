@@ -99,3 +99,53 @@ let rec find (k : int) (t : t) : int option =
 
 let rec size (t : t) =
   match t with E -> 0 | T (l, _, _, r) -> 1 + size l + size r
+
+(** Helper functions *)
+
+let rec keys (t : t) : int list =
+  match t with
+  | E -> []
+  | T (l, k, _v, r) ->
+      let lk = keys l in
+      let rk = keys r in
+      [ k ] @ lk @ rk
+
+let rec is_bst (t : t) : bool =
+  let open List in
+  match t with
+  | E -> true
+  | T (l, k, _, r) ->
+      is_bst l && is_bst r
+      && for_all (fun k' -> k' < k) (keys l)
+      && for_all (fun k' -> k' > k) (keys r)
+
+(** Removes from a key-value list *)
+let delete_key k kvs = List.filter (fun (k', _) -> k <> k') kvs
+
+(** Insert into sorted key-value list. Replaces value if the key exists *)
+let rec l_insert k v kvs =
+  match kvs with
+  | [] -> [ (k, v) ]
+  | (k', v') :: kvs' ->
+      if k < k' then (k, v) :: kvs
+      else if k = k' then (k, v) :: kvs'
+      else (k', v') :: l_insert k v kvs'
+
+let rec is_sorted l =
+  match l with
+  | [] -> true
+  | (k, _) :: l' -> (
+      match l' with [] -> true | (k', _) :: _l'' -> k < k' && is_sorted l')
+
+let rec to_list t =
+  match t with E -> [] | T (l, k, v, r) -> to_list l @ [ (k, v) ] @ to_list r
+
+let rec l_union l1 l2 =
+  match l1 with
+  | [] -> l2
+  | (k, v) :: l1' ->
+      let l2' = List.filter (fun (k', _) -> k <> k') l2 in
+      (k, v) :: l_union l1' l2'
+
+let eq t1 t2 = to_list t1 = to_list t2
+let ( === ) t1 t2 = eq t1 t2

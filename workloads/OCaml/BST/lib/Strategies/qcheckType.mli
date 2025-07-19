@@ -1,1 +1,0 @@
-val qcheck_type : Impl.tree QCheck.arbitrary

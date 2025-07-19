@@ -1,56 +1,17 @@
-open QCheck
-open Crowbar
-open Util.Runner
-open Util.Io
-open BST.Impl
-open BST.Test
-open BST.QcheckType
-open BST.QcheckBespoke
-open BST.CrowbarType
-open BST.CrowbarBespoke
-open BST.BaseType
-open BST.BaseBespoke
+open Cmdliner
 
-(*
-  dune exec BST -- qcheck prop_InsertInsert bespoke out
-  dune exec BST -- qcheck prop_InsertInsert type out
-  dune exec BST -- crowbar prop_InsertInsert bespoke out
-  dune exec BST -- crowbar prop_InsertInsert type out
-  dune exec BST -- afl prop_InsertInsert bespoke out
-  dune exec BST -- afl prop_InsertInsert type out
-  dune exec BST -- base prop_InsertInsert bespoke out
-  dune exec BST -- base prop_InsertInsert type out
-  *)
+let test_arg =
+  let doc = "Name of the property test to run." in
+  Arg.(required & opt (some string) None & info ["test"] ~docv:"TEST" ~doc)
 
-let properties : (string * tree property) list =
-  [
-    ("prop_InsertValid", test_prop_InsertValid);
-    ("prop_DeleteValid", test_prop_DeleteValid);
-    ("prop_UnionValid", test_prop_UnionValid);
-    ("prop_InsertPost", test_prop_InsertPost);
-    ("prop_DeletePost", test_prop_DeletePost);
-    ("prop_UnionPost", test_prop_UnionPost);
-    ("prop_InsertModel", test_prop_InsertModel);
-    ("prop_DeleteModel", test_prop_DeleteModel);
-    ("prop_UnionModel", test_prop_UnionModel);
-    ("prop_InsertInsert", test_prop_InsertInsert);
-    ("prop_InsertDelete", test_prop_InsertDelete);
-    ("prop_InsertUnion", test_prop_InsertUnion);
-    ("prop_DeleteInsert", test_prop_DeleteInsert);
-    ("prop_DeleteDelete", test_prop_DeleteDelete);
-    ("prop_DeleteUnion", test_prop_DeleteUnion);
-    ("prop_UnionDeleteInsert", test_prop_UnionDeleteInsert);
-    ("prop_UnionUnionIdem", test_prop_UnionUnionIdem);
-    ("prop_UnionUnionAssoc", test_prop_UnionUnionAssoc);
-  ]
+let generator_arg =
+  let doc = "Name of the generator to use." in
+  Arg.(required & opt (some string) None & info ["generator"] ~docv:"GENERATOR" ~doc)
 
-let qstrategies : (string * tree arbitrary) list =
-  [ ("type", qcheck_type); ("bespoke", qcheck_bespoke) ]
+let main test_name generator_name =
+  (* Your logic here: select property and generator by name *)
+  Printf.printf "Test: %s\nGenerator: %s\n" test_name generator_name
 
-let cstrategies : (string * tree gen) list =
-  [ ("type", crowbar_type); ("bespoke", crowbar_bespoke) ]
+let term = Term.(const main $ test_arg $ generator_arg)
 
-let bstrategies : (string * tree basegen) list =
-  [ ("type", (module BaseType)); ("bespoke", (module BaseBespoke)) ]
-
-let () = main properties qstrategies cstrategies bstrategies
+let () = Cmd.(exit @@ eval (v (info "BST") term))
