@@ -1,4 +1,4 @@
 (executable
  (public_name BST)
  (name main)
- (libraries BST cmdliner))
+ (libraries BST cmdliner unix qcheck threads))

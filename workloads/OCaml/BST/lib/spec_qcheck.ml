@@ -27,6 +27,8 @@ let prop_Q_InsertPost gen =
   make ~name:"Q_InsertPost" ~count:100000 (tup4 gen int int int)
     (fun (t, k, k', v) ->
       assume (is_bst t);
+      Printf.printf "Testing InsertPost with valid tree of size %d\n"
+        (size t);
       find k' (insert k v t) = if k = k' then Some v else find k' t)
 
 let prop_Q_DeletePost gen =
