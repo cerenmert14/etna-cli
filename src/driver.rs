@@ -34,8 +34,13 @@ pub(crate) struct RunConfig {
     pub(crate) seeds: Option<Vec<u64>>,
 }
 
-pub(crate) fn change_dir(path: &Path, cmd: &dyn Fn() -> anyhow::Result<()>) -> anyhow::Result<()> {
+pub(crate) fn change_dir<T, F>(path: &Path, cmd: F) -> anyhow::Result<T>
+where
+    F: FnOnce() -> anyhow::Result<T>,
+{
     // Change the current working directory to the specified path
+    let current_dir = std::env::current_dir().context("Failed to get current directory")?;
+
     std::env::set_current_dir(path)
         .context(format!("Failed to change directory to {}", path.display()))?;
 
@@ -47,9 +52,12 @@ pub(crate) fn change_dir(path: &Path, cmd: &dyn Fn() -> anyhow::Result<()>) -> a
             "Command failed with '{}', changing back to parent directory",
             e
         );
+        return Err(e);
     }
 
-    std::env::set_current_dir("..").context("Failed to change directory back to parent")
+    std::env::set_current_dir(current_dir).context("Failed to change directory back to parent")?;
+
+    result
 }
 
 fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Language> {
@@ -253,10 +261,7 @@ fn task_completed(
             .iter()
             .find(|m| m.data.get("trial").and_then(|v| v.as_u64()).map(|u| u == i) == Some(true))
             .and_then(|m| {
-                log::trace!(
-                    "Checking metric: {:?} for trial {}",
-                    m.data, i
-                );
+                log::trace!("Checking metric: {:?} for trial {}", m.data, i);
                 if short_circuit {
                     if timed_out {
                         return Some(true);
@@ -272,7 +277,8 @@ fn task_completed(
                     .get("timeout")
                     .and_then(|v| v.as_f64())
                     .map(|t| t >= timeout)
-            }) == Some(true)
+            })
+            == Some(true)
             || timed_out
     })
 }
@@ -360,22 +366,28 @@ pub(crate) trait Driver {
             let step = old_step.decide(&params, tags);
             log::trace!("step '{old_step}' is evaluated to '{step}' with params: {params:?}");
 
+            let cdir = PathBuf::from(step.run_at.unwrap_or(".".to_string()));
             let mut cmd = std::process::Command::new(&step.command);
-            let cmd = step.args.iter().fold(&mut cmd, |cmd, arg| cmd.arg(arg));
 
-            let output = cmd
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .with_context(|| format!("Failed to spawn '{}'", step.command))?
-                .controlled_with_output()
-                .time_limit(
-                    Duration::seconds(run_config.timeout as i64)
-                        .to_std()
-                        .context("Failed to convert duration")?,
-                )
-                .terminate_for_timeout()
-                .wait();
+            for arg in step.args {
+                cmd.arg(arg);
+            }
+
+            let output = change_dir(&cdir, || {
+                cmd.stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .with_context(|| format!("Failed to spawn '{}'", step.command))?
+                    .controlled_with_output()
+                    .time_limit(
+                        Duration::seconds(run_config.timeout as i64)
+                            .to_std()
+                            .context("Failed to convert duration")?,
+                    )
+                    .terminate_for_timeout()
+                    .wait()
+                    .context(format!("Failed to run command '{}'", step.command))
+            });
 
             match output {
                 Ok(None) => {
@@ -700,7 +712,6 @@ pub(crate) trait Driver {
                     short_circuit,
                     seeds: None,
                 };
-
                 let result = driver.run(
                     experiment_config,
                     &run_config,

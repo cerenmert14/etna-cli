@@ -9,6 +9,7 @@ use marauders::Variation;
 pub(crate) struct Command {
     pub(crate) command: String,
     pub(crate) args: Vec<String>,
+    pub(crate) run_at: Option<String>,
 }
 
 impl Display for Command {
@@ -26,6 +27,8 @@ pub enum Step {
         args: Vec<String>,
         #[serde(skip_serializing_if = "Vec::is_empty", default)]
         params: Vec<String>,
+        #[serde(skip_serializing_if = "Option::is_none", default)]
+        run_at: Option<String>,
     },
     Match {
         value: String,
@@ -50,9 +53,10 @@ impl Step {
         tags: &HashMap<String, Vec<String>>,
     ) -> Command {
         match self {
-            Step::Command { command, args, .. } => Command {
+            Step::Command { command, args, run_at, .. } => Command {
                 command: command.clone(),
                 args: args.clone(),
+                run_at: run_at.clone(),
             },
             Step::Match { value, options } => {
                 let guard = params.get(value).unwrap();
