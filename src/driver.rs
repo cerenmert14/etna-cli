@@ -522,6 +522,7 @@ fn run_cross(
     let timeout = Duration::from_secs_f64(run_config.timeout);
 
     let mut total_time = Duration::default();
+    let mut total_samples = 0;
 
     while t.elapsed().unwrap() < timeout {
         // sample the command
@@ -591,6 +592,8 @@ fn run_cross(
                         .with_context(|| format!("Failed to parse duration: {}", d))?;
                     total_time += d;
                 }
+                total_samples += time_cutoff;
+                
                 log::debug!(
                     "Total time for this batch: {:?}, total samples: {}",
                     total_time,
@@ -609,12 +612,20 @@ fn run_cross(
                     result
                         .as_object_mut()
                         .unwrap()
-                        .insert("test".to_owned(), serde_json::Value::Number(index.into()));
+                        .insert("test".to_owned(), serde_json::Value::Number(total_samples.into()));
                     result.as_object_mut().unwrap().insert(
                         "generation_time".to_owned(),
                         serde_json::Value::String(format!("{:?}", total_time)),
                     );
-                    res
+                    result.as_object_mut().unwrap().insert(
+                        "counterexample".to_owned(),
+                        serde_json::Value::String(
+                            samples
+                                .get(index)
+                                .cloned()
+                                .unwrap_or_else(|| "No counterexample found".to_string()),
+                        ),
+                    );
                     return Ok(result);
                 } else {
                     log::info!("Canonical serializer did not find any failing test");
@@ -634,7 +645,23 @@ fn run_cross(
     log::info!(
         "Cross-language run completed in {:?} with {} samples",
         total_time,
-        result["samples"].as_array().map_or(0, |a| a.len())
+        total_samples
+    );
+    result.as_object_mut().unwrap().insert(
+        "result".to_owned(),
+        serde_json::Value::String("timed out".to_owned()),
+    );
+    result.as_object_mut().unwrap().insert(
+        "generation_time".to_owned(),
+        serde_json::Value::String(format!("{:?}", total_time)),
+    );
+    result.as_object_mut().unwrap().insert(
+        "samples".to_owned(),
+        serde_json::Value::Number(total_samples.into()),
+    );
+    result.as_object_mut().unwrap().insert(
+        "counterexample".to_owned(),
+        serde_json::Value::Null,
     );
 
     Ok(result)
