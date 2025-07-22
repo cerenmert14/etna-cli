@@ -61,6 +61,11 @@ impl Step {
             Step::Match { value, options } => {
                 let guard = params.get(value).unwrap();
                 log::debug!("obtaining guard '{guard}' for tags_ {tags:?}");
+                
+                if options.get(guard).is_some() {
+                    return options.get(guard).unwrap().decide(params, tags);
+                }
+
                 let tags_ = tags.get(guard).unwrap();
                 for (k, step) in options {
                     if tags_.contains(k) {

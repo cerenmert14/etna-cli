@@ -56,7 +56,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         description,
                         local_store,
             } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
-            ExperimentCommand::Run { name, test, tests, short_circuit } => commands::experiment::run::invoke(name, test, tests, short_circuit),
+            ExperimentCommand::Run { name, test, tests, short_circuit, cross } => commands::experiment::run::invoke(name, test, tests, short_circuit, cross),
             ExperimentCommand::Show {
                         hash,
                         name,
@@ -145,6 +145,9 @@ enum ExperimentCommand {
         /// Short circuit the trials if any test fails
         #[clap(short = 's', long, default_value = "false")]
         short_circuit: bool,
+        /// Run the tests in cross language mode
+        #[clap(short = 'c', long, default_value = "false")]
+        cross: bool,
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {

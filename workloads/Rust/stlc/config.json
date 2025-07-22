@@ -17,7 +17,7 @@
             "options": {
                 "true": {
                     "Command": {
-                        "command": "$workload_path/target/release/rbt-sampler",
+                        "command": "$workload_path/target/release/stlc-sampler",
                         "args": [
                             "$strategy",
                             "$property"
@@ -31,7 +31,7 @@
                 },
                 "false": {
                     "Command": {
-                        "command": "$workload_path/target/release/rbt",
+                        "command": "$workload_path/target/release/stlc",
                         "args": [
                             "$strategy",
                             "$property"

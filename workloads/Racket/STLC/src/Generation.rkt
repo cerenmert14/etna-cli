@@ -53,6 +53,7 @@
   )
 
 
+
 (define (gen:var ctx t p r)
   (match ctx
     ['() r]
@@ -61,7 +62,6 @@
                         (gen:var ctx2 t (+ p 1) r))]
     )
   )
-
 
 (define (gen:vars ctx t)
   (let [(var-nats (gen:var ctx t 0 '()))]

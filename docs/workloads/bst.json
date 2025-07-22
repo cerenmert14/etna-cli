@@ -1,0 +1,251 @@
+
+[
+    {
+        "mutations": ["insert_1"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "InsertPost"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertModel"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            }
+        ]
+    },
+    {
+        "mutations": ["insert_2"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "InsertPost"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertModel"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertDelete"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            }
+        ]
+    },
+    {
+        "mutations": ["insert_3"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "InsertPost"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertModel"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertDelete"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            }
+        ]
+    },
+    {
+        "mutations": ["delete_4"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "DeleteModel"
+            },
+            {
+                "counterexample": "",
+                "property": "DeletePost"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteDelete"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertDelete"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            }
+        ]
+    },
+    {
+        "mutations": ["delete_5"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "DeleteModel"
+            },
+            {
+                "counterexample": "",
+                "property": "DeletePost"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteDelete"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            }
+        ]
+    },
+    {
+        "mutations": ["union_6"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "UnionValid"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionPost"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionModel"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionUnionAssoc"
+            }
+        ]
+    },
+    {
+        "mutations": ["union_7"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "UnionValid"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionPost"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionModel"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionUnionAssoc"
+            }
+        ]
+    },
+    {
+        "mutations": ["union_8"],
+        "tasks": [
+            {
+                "counterexample": "",
+                "property": "UnionPost"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionModel"
+            },
+            {
+                "counterexample": "",
+                "property": "DeleteUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "InsertUnion"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionDeleteInsert"
+            },
+            {
+                "counterexample": "",
+                "property": "UnionUnionAssoc"
+            }
+        ]
+    }
+]

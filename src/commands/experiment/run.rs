@@ -3,7 +3,7 @@ use log::{info, warn};
 
 use crate::{
     config::{EtnaConfig, ExperimentConfig},
-    driver::{DefaultDriver, Driver},
+    driver::run_experiment,
     experiment::Test,
     git_driver,
     store::Store,
@@ -56,6 +56,7 @@ pub fn invoke(
     test: Option<String>,
     tests: Vec<String>,
     short_circuit: bool,
+    cross: bool,
 ) -> anyhow::Result<()> {
     log::trace!("running experiment with name '{:?}'", experiment_name);
     let etna_config = EtnaConfig::get_etna_config()?;
@@ -96,11 +97,9 @@ pub fn invoke(
     }
 
     // python_driver::run_experiment(&etna_config, &experiment_config, snapshot)?;
-    let driver = DefaultDriver {};
-    driver.init();
     for test in &tests {
         info!("Running test: {}", test);
-        driver.run_experiment(test, &experiment_config, snapshot.clone(), short_circuit)?;
+        run_experiment(test, &experiment_config, snapshot.clone(), short_circuit, cross)?;
     }
 
     Ok(())

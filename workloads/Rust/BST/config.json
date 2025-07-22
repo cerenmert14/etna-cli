@@ -1,5 +1,4 @@
 {
-    
     "check_steps": [],
     "build_steps": [
         {
@@ -13,17 +12,38 @@
         }
     ],
     "run_step": {
-        "Command": {
-            "command": "$workload_path/target/release/rbt",
-            "args": [
-                "$property",
-                "$strategy"
-            ],
-            "params": [
-                "workload_path",
-                "property",
-                "strategy"
-            ]
+        "Match": {
+            "value": "cross",
+            "options": {
+                "true": {
+                    "Command": {
+                        "command": "$workload_path/target/release/bst-sampler",
+                        "args": [
+                            "$strategy",
+                            "$property"
+                        ],
+                        "params": [
+                            "workload_path",
+                            "property",
+                            "strategy"
+                        ]
+                    }
+                },
+                "false": {
+                    "Command": {
+                        "command": "$workload_path/target/release/bst",
+                        "args": [
+                            "$strategy",
+                            "$property"
+                        ],
+                        "params": [
+                            "workload_path",
+                            "property",
+                            "strategy"
+                        ]
+                    }
+                }
+            }
         }
     }
 }

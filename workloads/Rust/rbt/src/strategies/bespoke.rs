@@ -1,7 +1,9 @@
 use quickcheck::{Arbitrary, Gen};
 
 use crate::implementation::{
-    blacken, elems, Color::{self, *}, Tree::{self, *}
+    Color::{self, *},
+    Tree::{self, *},
+    blacken, elems,
 };
 
 fn choose(min: usize, max: usize, g: &mut Gen) -> usize {
@@ -92,9 +94,7 @@ impl Arbitrary for Tree {
             return Box::new(std::iter::empty());
         }
 
-        let t1 = elems[1..]
-            .iter()
-            .fold(E, |t, (k, v)| insert(*k, *v, t));
+        let t1 = elems[1..].iter().fold(E, |t, (k, v)| insert(*k, *v, t));
         let t2 = elems[..elems.len() - 1]
             .iter()
             .fold(E, |t, (k, v)| insert(*k, *v, t));

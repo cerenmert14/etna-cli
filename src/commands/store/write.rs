@@ -26,6 +26,12 @@ pub fn invoke(
         metric
     ))?;
 
+    log::debug!(
+        "Adding metric for experiment {}: {}",
+        experiment_id,
+        serde_json::to_string(&data).unwrap_or_else(|_| "Invalid JSON".to_string())
+    );
+
     // Add the metric to the store
     store.metrics.push(Metric {
         experiment_id,

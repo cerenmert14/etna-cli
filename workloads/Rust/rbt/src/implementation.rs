@@ -50,13 +50,13 @@ pub(crate) fn redden(t: Tree) -> Option<Tree> {
 pub(crate) fn balance(col: Color, tl: Tree, key: i32, val: i32, tr: Tree) -> Tree {
     match (col, tl, key, val, tr) {
         /*| */
-                (B, T(R, box T(R, a, x, vx, b), y, vy, c), z, vz, d) => T(
-                    R,
-                    Box::new(T(B, a, x, vx, b)),
-                    y,
-                    vy,
-                    Box::new(T(B, c, z, vz, Box::new(d))),
-                ),
+        (B, T(R, box T(R, a, x, vx, b), y, vy, c), z, vz, d) => T(
+            R,
+            Box::new(T(B, a, x, vx, b)),
+            y,
+            vy,
+            Box::new(T(B, c, z, vz, Box::new(d))),
+        ),
         /*|| swap_cd */
         /*|
         (B, T(R, box T(R, a, x, vx, b), y, vy, c), z, vz, d) => T(
@@ -76,13 +76,13 @@ pub(crate) fn balance(col: Color, tl: Tree, key: i32, val: i32, tr: Tree) -> Tre
             Box::new(T(B, c, z, vz, Box::new(d))),
         ),
         /*| */
-                (B, a, x, vx, T(R, box T(R, b, y, vy, c), z, vz, d)) => T(
-                    R,
-                    Box::new(T(B, Box::new(a), x, vx, b)),
-                    y,
-                    vy,
-                    Box::new(T(B, c, z, vz, d)),
-                ),
+        (B, a, x, vx, T(R, box T(R, b, y, vy, c), z, vz, d)) => T(
+            R,
+            Box::new(T(B, Box::new(a), x, vx, b)),
+            y,
+            vy,
+            Box::new(T(B, c, z, vz, d)),
+        ),
         /*|| swap_bc */
         /*|
         (B, a, x, vx, T(R, box T(R, b, y, vy, c), z, vz, d)) => T(
@@ -110,7 +110,7 @@ pub(crate) fn insert(key: i32, val: i32, t: Tree) -> Tree {
         match (x, vx, s) {
             (x, vx, E) => {
                 /*| */
-                                T(R, Box::new(E), x, vx, Box::new(E))
+                T(R, Box::new(E), x, vx, Box::new(E))
                 /*|| miscolor_insert */
                 /*|
                 T(B, Box::new(E), x, vx, Box::new(E))
@@ -119,17 +119,17 @@ pub(crate) fn insert(key: i32, val: i32, t: Tree) -> Tree {
             }
             (x, vx, T(rb, box a, y, vy, box b)) => {
                 /*| */
-                                if x < y {
-                                    balance(rb, ins(x, vx, a), y, vy, b)
-                                } else if y < x {
-                                    balance(rb, a, y, vy, ins(x, vx, b))
-                                } else {
-                                    T(rb, Box::new(a), y, vx, Box::new(b))
-                                }
+/*|
+                                                if x < y {
+                                                    balance(rb, ins(x, vx, a), y, vy, b)
+                                                } else if y < x {
+                                                    balance(rb, a, y, vy, ins(x, vx, b))
+                                                } else {
+                                                    T(rb, Box::new(a), y, vx, Box::new(b))
+                                                }
+*/
                 /*|| insert_1 */
-                /*|
-                T (R,Box::new(E),x,vx,Box::new(E))
-                */
+                T(R, Box::new(E), x, vx, Box::new(E))
                 /*|| insert_2 */
                 /*|
                 if x < y {
@@ -183,14 +183,14 @@ pub(crate) fn bal_left(tl: Tree, k: i32, v: i32, tr: Tree) -> Option<Tree> {
         (bl, x, vx, T(B, a, y, vy, b)) => Some(balance(B, bl, x, vx, T(R, a, y, vy, b))),
         (bl, x, vx, T(R, box T(B, a, y, vy, box b), z, vz, box c)) => {
             /*| */
-                        let cp = redden(c)?;
-                        Some(T(
-                            R,
-                            Box::new(T(B, Box::new(bl), x, vx, a)),
-                            y,
-                            vy,
-                            Box::new(balance(B, b, z, vz, cp)),
-                        ))
+            let cp = redden(c)?;
+            Some(T(
+                R,
+                Box::new(T(B, Box::new(bl), x, vx, a)),
+                y,
+                vy,
+                Box::new(balance(B, b, z, vz, cp)),
+            ))
             /*|| miscolor_balLeft */
             /*|
             Some(T(
@@ -215,14 +215,14 @@ pub(crate) fn bal_right(tl: Tree, k: i32, v: i32, tr: Tree) -> Option<Tree> {
         (T(B, a, x, vx, b), y, vy, bl) => Some(balance(B, T(R, a, x, vx, b), y, vy, bl)),
         (T(R, box a, x, vx, box T(B, box b, y, vy, c)), z, vz, bl) => {
             /*| */
-                        let ap = redden(a)?;
-                        Some(T(
-                            R,
-                            Box::new(balance(B, ap, x, vx, b)),
-                            y,
-                            vy,
-                            Box::new(T(B, c, z, vz, Box::new(bl))),
-                        ))
+            let ap = redden(a)?;
+            Some(T(
+                R,
+                Box::new(balance(B, ap, x, vx, b)),
+                y,
+                vy,
+                Box::new(T(B, c, z, vz, Box::new(bl))),
+            ))
             /*|| miscolor_balRight */
             /*|
             Some(T(
@@ -251,13 +251,13 @@ pub(crate) fn _join(t1: Tree, t2: Tree, f: usize) -> Option<Tree> {
             None => None,
             Some(T(R, bp, z, vz, cp)) => {
                 /*| */
-                                Some(T(
-                                    R,
-                                    Box::new(T(R, a, x, vx, bp)),
-                                    z,
-                                    vz,
-                                    Box::new(T(R, cp, y, vy, d)),
-                                ))
+                Some(T(
+                    R,
+                    Box::new(T(R, a, x, vx, bp)),
+                    z,
+                    vz,
+                    Box::new(T(R, cp, y, vy, d)),
+                ))
                 /*|| miscolor_join_1 */
                 /*|
                 Some(T(
@@ -276,13 +276,13 @@ pub(crate) fn _join(t1: Tree, t2: Tree, f: usize) -> Option<Tree> {
             None => None,
             Some(T(R, bp, z, vz, cp)) => {
                 /*| */
-                                Some(T(
-                                    R,
-                                    Box::new(T(B, a, x, vx, bp)),
-                                    z,
-                                    vz,
-                                    Box::new(T(B, cp, y, vy, d)),
-                                ))
+                Some(T(
+                    R,
+                    Box::new(T(B, a, x, vx, bp)),
+                    z,
+                    vz,
+                    Box::new(T(B, cp, y, vy, d)),
+                ))
                 /*|| miscolor_join_2 */
                 /*|
                 Some(T(
@@ -322,16 +322,16 @@ pub(crate) fn del(x: i32, s: Tree, f: usize) -> Option<Tree> {
         E => Some(E),
         T(_, box a, y, vy, box b) => {
             /*| */
-                        if x < y {
-                            let tp = del_left(x, a, y, vy, b, fp)?;
-                            Some(tp)
-                        } else if y < x {
-                            let tp = del_right(x, a, y, vy, b, fp)?;
-                            Some(tp)
-                        } else {
-                            let tp = join(a, b)?;
-                            Some(tp)
-                        }
+            if x < y {
+                let tp = del_left(x, a, y, vy, b, fp)?;
+                Some(tp)
+            } else if y < x {
+                let tp = del_right(x, a, y, vy, b, fp)?;
+                Some(tp)
+            } else {
+                let tp = join(a, b)?;
+                Some(tp)
+            }
             /*|| delete_4 */
             /*|
             if x < y {

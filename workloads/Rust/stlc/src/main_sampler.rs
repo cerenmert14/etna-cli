@@ -1,8 +1,4 @@
-use crate::implementation::Tree;
-
-pub mod implementation;
-pub mod spec;
-pub mod strategies;
+use stlc::{spec, strategies::bespoke::ExprOpt};
 
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
@@ -10,7 +6,7 @@ fn main() {
         eprintln!("Usage: {} <tool> <property> <tests>", args[0]);
         eprintln!("Available tools: quickcheck");
         eprintln!(
-            "For available properties, check https://github.com/alpaylan/etna-cli/blob/main/docs/workloads/bst.md"
+            "For available properties, check https://github.com/alpaylan/etna-cli/blob/main/docs/workloads/stlc.md"
         );
         return;
     }
@@ -27,32 +23,11 @@ fn main() {
         .max_time(std::time::Duration::from_secs(1));
 
     let result = match (tool, property) {
-        ("quickcheck", "InsertValid") => {
-            qc.quicksample(spec::prop_insert_valid as fn(Tree, i32, i32) -> Option<bool>)
+        ("quickcheck", "SinglePreserve") => {
+            qc.quicksample(spec::prop_single_preserve as fn(ExprOpt) -> Option<bool>)
         }
-        ("quickcheck", "DeleteValid") => {
-            qc.quicksample(spec::prop_delete_valid as fn(Tree, i32) -> Option<bool>)
-        }
-        ("quickcheck", "UnionValid") => {
-            qc.quicksample(spec::prop_union_valid as fn(Tree, Tree) -> Option<bool>)
-        }
-        ("quickcheck", "InsertPost") => {
-            qc.quicksample(spec::prop_insert_post as fn(Tree, i32, i32, i32) -> Option<bool>)
-        }
-        ("quickcheck", "DeletePost") => {
-            qc.quicksample(spec::prop_delete_post as fn(Tree, i32, i32) -> Option<bool>)
-        }
-        ("quickcheck", "UnionPost") => {
-            qc.quicksample(spec::prop_union_post as fn(Tree, Tree, i32) -> Option<bool>)
-        }
-        ("quickcheck", "InsertModel") => {
-            qc.quicksample(spec::prop_insert_model as fn(Tree, i32, i32) -> Option<bool>)
-        }
-        ("quickcheck", "DeleteModel") => {
-            qc.quicksample(spec::prop_delete_model as fn(Tree, i32) -> Option<bool>)
-        }
-        ("quickcheck", "UnionModel") => {
-            qc.quicksample(spec::prop_union_model as fn(Tree, Tree) -> Option<bool>)
+        ("quickcheck", "MultiPreserve") => {
+            qc.quicksample(spec::prop_multi_preserve as fn(ExprOpt) -> Option<bool>)
         }
         _ => {
             panic!("Unknown tool or property: {} {}", tool, property)

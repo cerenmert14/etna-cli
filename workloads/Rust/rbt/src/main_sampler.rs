@@ -58,9 +58,24 @@ fn main() {
         }
     };
 
-    print!("(");
+    let mut results = Vec::<serde_json::Value>::new();
+
     for (duration, element) in result {
-        print!("{}", element);
+        let mut object = serde_json::Map::new();
+        object.insert(
+            "time".to_string(),
+            serde_json::Value::String(format!("{}ns", duration.as_nanos())),
+        );
+        object.insert(
+            "value".to_string(),
+            serde_json::Value::String(element.to_string()),
+        );
+        results.push(serde_json::Value::Object(object));
     }
-    println!(")");
+
+    let results = serde_json::Value::Array(results);
+
+    let output = serde_json::to_string(&results).expect("Failed to serialize results to JSON");
+
+    println!("{}", output);
 }

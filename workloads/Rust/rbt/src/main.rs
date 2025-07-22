@@ -1,4 +1,3 @@
-
 use rbt::implementation::Tree;
 use rbt::spec;
 
@@ -58,7 +57,6 @@ fn main() {
             panic!("Unknown tool or property: {} {}", tool, property)
         }
     };
-
 
     result.print_status();
 }

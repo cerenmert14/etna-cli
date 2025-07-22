@@ -45,19 +45,27 @@
             #|! |#
             if (< n c) (Var n) (Var (+ n d))
             #|!! shift_var_none |#
-            #|!Var n |#
+            #|!
+Var n
+            |#
             #|!! shift_var_all |#
-            #|! Var (+ n d) |#
+            #|!
+Var (+ n d)
+            |#
             #|!! shift_var_leq |#
-            #|! if (<= n c) (Var n) (Var (+ n d)) |#
+            #|!
+if (<= n c) (Var n) (Var (+ n d))
+            |#
             #| !|#
             )]
         [(Bool b) (Bool b)]
         [(Abs t e) (
             #|! |#
+#|!
             Abs t (shift_ (+ c 1) e d)
+|#
             #|!! shift_abs_no_incr |#
-            #|! Abs t (shift_ c e d)|#
+            Abs t (shift_ c e d)
             #| !|#
         )]
         [(App e1 e2) (App (shift_ c e1 d) (shift_ c e2 d))]
@@ -75,9 +83,13 @@
         #|! |#
         (if (= m n) s (Var m))
         #|!! subst_var_all |#
-        #|! s |#
+        #|!
+s
+        |#
         #|!! subst_var_none |#
-        #|! (Var m) |#
+        #|!
+(Var m)
+        |#
         #| !|#
         ]
         [(list _ _ (Bool b)) (Bool b)]
@@ -85,9 +97,13 @@
         #|! |#
         Abs t (subst (+ n 1) (shift 1 s) e)
         #|!! subst_abs_no_shift |#
-        #|! Abs t (subst (+ n 1) s e) |#
+        #|!
+Abs t (subst (+ n 1) s e)
+        |#
         #|!! subst_abs_no_incr |#
-        #|! Abs t (subst n (shift 1 s) e) |#
+        #|!
+Abs t (subst n (shift 1 s) e)
+        |#
         #| !|#
         )]
         [(list n s (App e1 e2)) (App (subst n s e1) (subst n s e2))]
@@ -99,9 +115,13 @@
     #|! |#
     (shift -1 (subst 0 (shift 1 s) e))
     #|!! substTop_no_shift |#
-    #|! (subst 0 s e) |#
+    #|!
+(subst 0 s e)
+    |#
     #|!! substTop_no_shift_back |#
-    #|! (subst 0 (shift 1 s) e)|#
+    #|!
+(subst 0 (shift 1 s) e)
+    |#
     #| !|#
 )
 
@@ -126,9 +146,9 @@
                             [(list me1 me2) (let* ([e11 (from-maybe e1 me1)]
                                                     [e21 (from-maybe e2 me2)])
                                                 (just (App e11 e21)))]))]
-        [_ nothing]
+        [_ nothing])
     )
-)
+
 
 (define/contract (multistep step e)
 (-> (-> expr? (maybe/c expr?)) expr? (maybe/c expr?)) ; not sure abt the contract
