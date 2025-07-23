@@ -32,23 +32,23 @@ Axiom qctest_map : OCamlString -> unit.
 Extract Constant qctest_map => "
 fun test_name ->
   let test_map = [
-    (""test_prop_InsertValid"", qctest_test_prop_InsertValid);
-    (""test_prop_DeleteValid"", qctest_test_prop_DeleteValid);
-    (""test_prop_UnionValid"", qctest_test_prop_UnionValid);
-    (""test_prop_InsertPost"", qctest_test_prop_InsertPost);
-    (""test_prop_DeletePost"", qctest_test_prop_DeletePost);
-    (""test_prop_UnionPost"", qctest_test_prop_UnionPost);
-    (""test_prop_InsertModel"", qctest_test_prop_InsertModel);
-    (""test_prop_DeleteModel"", qctest_test_prop_DeleteModel);
-    (""test_prop_UnionModel"", qctest_test_prop_UnionModel);
-    (""test_prop_InsertInsert"", qctest_test_prop_InsertInsert);
-    (""test_prop_InsertDelete"", qctest_test_prop_InsertDelete);
-    (""test_prop_InsertUnion"", qctest_test_prop_InsertUnion);
-    (""test_prop_DeleteInsert"", qctest_test_prop_DeleteInsert);
-    (""test_prop_DeleteDelete"", qctest_test_prop_DeleteDelete);
-    (""test_prop_DeleteUnion"", qctest_test_prop_DeleteUnion);
-    (""test_prop_UnionDeleteInsert"", qctest_test_prop_UnionDeleteInsert);
-    (""test_prop_UnionUnionIdem"", qctest_test_prop_UnionUnionIdem)
+    (""InsertValid"", qctest_test_prop_InsertValid);
+    (""DeleteValid"", qctest_test_prop_DeleteValid);
+    (""UnionValid"", qctest_test_prop_UnionValid);
+    (""InsertPost"", qctest_test_prop_InsertPost);
+    (""DeletePost"", qctest_test_prop_DeletePost);
+    (""UnionPost"", qctest_test_prop_UnionPost);
+    (""InsertModel"", qctest_test_prop_InsertModel);
+    (""DeleteModel"", qctest_test_prop_DeleteModel);
+    (""UnionModel"", qctest_test_prop_UnionModel);
+    (""InsertInsert"", qctest_test_prop_InsertInsert);
+    (""InsertDelete"", qctest_test_prop_InsertDelete);
+    (""InsertUnion"", qctest_test_prop_InsertUnion);
+    (""DeleteInsert"", qctest_test_prop_DeleteInsert);
+    (""DeleteDelete"", qctest_test_prop_DeleteDelete);
+    (""DeleteUnion"", qctest_test_prop_DeleteUnion);
+    (""UnionDeleteInsert"", qctest_test_prop_UnionDeleteInsert);
+    (""UnionUnionIdem"", qctest_test_prop_UnionUnionIdem)
   ] in
   let test = List.assoc test_name test_map in
   test ()

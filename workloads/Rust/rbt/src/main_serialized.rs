@@ -25,21 +25,24 @@ fn main() -> ExitCode {
 
     match property {
         "InsertValid" => {
-            let tests: Vec<(Tree, i32, i32)> = serde_lexpr::from_str(&tests).unwrap_or_else(|_| {
-                eprintln!(r#"{{"property": "InsertPost", "status": "failed parsing"}}"#);
-                return vec![];
-            });
+            let tests: Vec<(Tree, i32, i32)> = serde_lexpr::from_str(&tests)
+                .expect(r#"{{"property": "InsertValid", "status": "failed parsing"}}"#);
 
             for (i, (t, k, v)) in tests.into_iter().enumerate() {
-                if !spec::prop_insert_valid(t.clone(), k, v).unwrap_or(true) {
-                    eprintln!(
-                        r#"{{ "property": "InsertValid", "test": {}, "args": ({} {} {})}}"#,
-                        i,
-                        serde_lexpr::to_string(&t)
-                            .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                        k,
-                        v
-                    );
+                match spec::prop_insert_valid(t.clone(), k, v) {
+                    None => discards += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        eprintln!(
+                            r#"{{ "property": "InsertValid", "test": {}, "args": ({} {} {})}}"#,
+                            i,
+                            serde_lexpr::to_string(&t)
+                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                            k,
+                            v
+                        );
+                        return ExitCode::SUCCESS;
+                    }
                 }
             }
         }
@@ -53,7 +56,7 @@ fn main() -> ExitCode {
                     Some(true) => passed += 1,
                     Some(false) => {
                         eprintln!(
-                            r#"{{ "property": "DeleteValid", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({}, {})"}}"#,
+                            r#"{{ "property": "DeleteValid", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {})"}}"#,
                             passed,
                             discards,
                             i,

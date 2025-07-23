@@ -442,7 +442,7 @@ pub fn invoke(
     let name = format!("{}_{}.png", figure_name, metric.to_string());
 
     let path = experiment.path.join("figures").join(name);
-    log::trace!("Saving image to: {}", path.display());
+    log::info!("Saving image to: {}", path.display());
     image.save(path).expect("Failed to save image");
 
     // Draw the legend
@@ -484,6 +484,7 @@ pub fn invoke(
 
     let name = format!("{}_{}_legend.png", figure_name, metric.to_string());
     let path = experiment.path.join("figures").join(name);
+    log::info!("Saving legend image to: {}", path.display());
     image.save(path).expect("Failed to save image");
 
     Ok(())

@@ -25,16 +25,16 @@ Axiom qctest_map : OCamlString -> unit.
 Extract Constant qctest_map => "
 fun test_name ->
   let test_map = [
-    (""test_prop_InsertValid"", qctest_test_prop_InsertValid);
-    (""test_prop_DeleteValid"", qctest_test_prop_DeleteValid);
-    (""test_prop_InsertPost"", qctest_test_prop_InsertPost);
-    (""test_prop_DeletePost"", qctest_test_prop_DeletePost);
-    (""test_prop_InsertModel"", qctest_test_prop_InsertModel);
-    (""test_prop_DeleteModel"", qctest_test_prop_DeleteModel);
-    (""test_prop_InsertInsert"", qctest_test_prop_InsertInsert);
-    (""test_prop_InsertDelete"", qctest_test_prop_InsertDelete);
-    (""test_prop_DeleteInsert"", qctest_test_prop_DeleteInsert);
-    (""test_prop_DeleteDelete"", qctest_test_prop_DeleteDelete)
+    (""InsertValid"", qctest_test_prop_InsertValid);
+    (""DeleteValid"", qctest_test_prop_DeleteValid);
+    (""InsertPost"", qctest_test_prop_InsertPost);
+    (""DeletePost"", qctest_test_prop_DeletePost);
+    (""InsertModel"", qctest_test_prop_InsertModel);
+    (""DeleteModel"", qctest_test_prop_DeleteModel);
+    (""InsertInsert"", qctest_test_prop_InsertInsert);
+    (""InsertDelete"", qctest_test_prop_InsertDelete);
+    (""DeleteInsert"", qctest_test_prop_DeleteInsert);
+    (""DeleteDelete"", qctest_test_prop_DeleteDelete)
   ] in
   let test = List.assoc test_name test_map in
   test ()

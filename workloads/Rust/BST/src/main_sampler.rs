@@ -1,8 +1,4 @@
-use crate::implementation::Tree;
-
-pub mod implementation;
-pub mod spec;
-pub mod strategies;
+use bst::{implementation::Tree, spec};
 
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
@@ -53,6 +49,27 @@ fn main() {
         }
         ("quickcheck", "UnionModel") => {
             qc.quicksample(spec::prop_union_model as fn(Tree, Tree) -> Option<bool>)
+        }
+        ("quickcheck", "InsertInsert") => {
+            qc.quicksample(spec::prop_insert_insert as fn(Tree, i32, i32, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "InsertDelete") => {
+            qc.quicksample(spec::prop_insert_delete as fn(Tree, i32, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "DeleteInsert") => {
+            qc.quicksample(spec::prop_delete_insert as fn(Tree, i32, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "DeleteDelete") => {
+            qc.quicksample(spec::prop_delete_delete as fn(Tree, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "DeleteUnion") => {
+            qc.quicksample(spec::prop_delete_union as fn(Tree, Tree, i32) -> Option<bool>)
+        }
+        ("quickcheck", "UnionDeleteInsert") => {
+            qc.quicksample(spec::prop_union_delete_insert as fn(Tree, Tree, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "UnionUnionIdempotent") => {
+            qc.quicksample(spec::prop_union_union_idempotent as fn(Tree) -> Option<bool>)
         }
         _ => {
             panic!("Unknown tool or property: {} {}", tool, property)

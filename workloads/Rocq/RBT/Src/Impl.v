@@ -22,7 +22,23 @@ Inductive Tree :=
     | E : Tree
     | T : Color -> Tree -> Z -> Z -> Tree -> Tree.
 
-Derive (Show) for Tree.
+
+Local Open Scope string_scope.
+
+#[global] Instance ShowTree : Show Tree :=
+{|
+  show t := 
+    let fix aux (t : Tree) : string :=
+      match t with
+      | E => "(E)"
+      | T c l k v r => "(T (" ++ show c ++ ") " ++ aux l ++ " " ++ show k ++ " " ++ show v ++ " " ++ aux r ++ ")"
+      end in
+    aux t
+|}.
+
+Local Close Scope string_scope.
+
+
 
 Axiom fuel : nat. Extract Constant fuel => "100000".
 
@@ -164,7 +180,9 @@ Fixpoint _join (t1: Tree) (t2: Tree) (f: nat) : option Tree :=
             (*! *)
                 Some (T R (T R a x vx b') z vz (T R c' y vy d))
             (*!! miscolor_join_1 *)
-            (*! Some(T R (T B a x vx b') z vz (T B c' y vy d)) *)
+            (*!
+Some(T R (T B a x vx b') z vz (T B c' y vy d))
+            *)
             (* !*)
             | Some(bc) => Some(T R a x vx (T R bc y vy d))
             end

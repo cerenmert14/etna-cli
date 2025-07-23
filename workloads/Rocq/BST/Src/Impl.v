@@ -7,7 +7,21 @@ Inductive Tree :=
 | E 
 | T : Tree -> nat -> nat -> Tree -> Tree.
 
-Derive (Show) for Tree.
+Local Open Scope string_scope.
+
+#[global] Instance ShowTree : Show Tree :=
+{|
+  show t := 
+    let fix aux (t : Tree) : string :=
+      match t with
+      | E => "(E)"
+      | T l k v r => "(T " ++ aux l ++ " " ++ show k ++ " " ++ show v ++ " " ++ aux r ++ ")"
+      end in
+    aux t
+|}.
+
+Local Close Scope string_scope.
+
 
 
 Axiom fuel : nat. Extract Constant fuel => "100000".

@@ -152,3 +152,62 @@ pub fn prop_union_model(t1: Tree, t2: Tree) -> Option<bool> {
         })
     })
 }
+
+pub fn prop_insert_insert(t: Tree, k: i32, k2: i32, v: i32, v2: i32) -> Option<bool> {
+    is_bst(&t).implies(|| {
+        (insert(k, v, insert(k2, v2, t.clone())))
+            == if k == k2 {
+                insert(k, v, t.clone())
+            } else {
+                insert(k, v, insert(k2, v2, t.clone()))
+            }
+    })
+}
+
+pub fn prop_insert_delete(t: Tree, k: i32, k2: i32, v: i32) -> Option<bool> {
+    is_bst(&t).implies(|| {
+        (insert(k, v, delete(k2, t.clone())))
+            == if k == k2 {
+                insert(k, v, t.clone())
+            } else {
+                delete(k2, insert(k, v, t.clone()))
+            }
+    })
+}
+
+pub fn prop_delete_insert(t: Tree, k: i32, k2: i32, v: i32) -> Option<bool> {
+    is_bst(&t).implies(|| {
+        (delete(k, insert(k2, v, t.clone())))
+            == if k == k2 {
+                delete(k, t.clone())
+            } else {
+                insert(k2, v, delete(k, t.clone()))
+            }
+    })
+}
+
+pub fn prop_delete_delete(t: Tree, k: i32, k2: i32) -> Option<bool> {
+    is_bst(&t).implies(|| delete(k, delete(k2, t.clone())) == delete(k2, delete(k, t.clone())))
+}
+
+pub fn prop_delete_union(t1: Tree, t2: Tree, k: i32) -> Option<bool> {
+    is_bst(&t1).implies(|| {
+        is_bst(&t2).implies(|| {
+            delete(k, union(t1.clone(), t2.clone()))
+                == union(delete(k, t1.clone()), delete(k, t2.clone()))
+        })
+    })
+}
+
+pub fn prop_union_delete_insert(t1: Tree, t2: Tree, k: i32, v: i32) -> Option<bool> {
+    is_bst(&t1).implies(|| {
+        is_bst(&t2).implies(|| {
+            union(delete(k, t1.clone()), insert(k, v, t2.clone()))
+                == insert(k, v, union(t1.clone(), t2.clone()))
+        })
+    })
+}
+
+pub fn prop_union_union_idempotent(t: Tree) -> Option<bool> {
+    is_bst(&t).implies(|| union(t.clone(), t.clone()) == t.clone())
+}

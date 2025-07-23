@@ -52,6 +52,7 @@ impl Step {
         params: &HashMap<String, String>,
         tags: &HashMap<String, Vec<String>>,
     ) -> Command {
+        log::debug!("deciding step: {self} with params: {params:?} and tags: {tags:?}");
         match self {
             Step::Command { command, args, run_at, .. } => Command {
                 command: command.clone(),

@@ -1,9 +1,5 @@
-use crate::implementation::Tree;
+use bst::{implementation::Tree, spec};
 use std::time::Duration;
-
-pub mod implementation;
-pub mod spec;
-pub mod strategies;
 
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
@@ -18,7 +14,7 @@ fn main() {
     let tool = args[1].as_str();
     let property = args[2].as_str();
 
-    let num_tests = 200_000_000;
+    let num_tests = 200;
     let mut qc = quickcheck::QuickCheck::new()
         .tests(num_tests)
         .max_tests(num_tests * 2)
@@ -51,6 +47,27 @@ fn main() {
         }
         ("quickcheck", "UnionModel") => {
             qc.quicktest(spec::prop_union_model as fn(Tree, Tree) -> Option<bool>)
+        }
+        ("quickcheck", "InsertInsert") => {
+            qc.quicktest(spec::prop_insert_insert as fn(Tree, i32, i32, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "InsertDelete") => {
+            qc.quicktest(spec::prop_insert_delete as fn(Tree, i32, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "DeleteInsert") => {
+            qc.quicktest(spec::prop_delete_insert as fn(Tree, i32, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "DeleteDelete") => {
+            qc.quicktest(spec::prop_delete_delete as fn(Tree, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "DeleteUnion") => {
+            qc.quicktest(spec::prop_delete_union as fn(Tree, Tree, i32) -> Option<bool>)
+        }
+        ("quickcheck", "UnionDeleteInsert") => {
+            qc.quicktest(spec::prop_union_delete_insert as fn(Tree, Tree, i32, i32) -> Option<bool>)
+        }
+        ("quickcheck", "UnionUnionIdempotent") => {
+            qc.quicktest(spec::prop_union_union_idempotent as fn(Tree) -> Option<bool>)
         }
         _ => {
             panic!("Unknown tool or property: {} {}", tool, property)

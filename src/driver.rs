@@ -40,7 +40,7 @@ pub(crate) struct RunConfig {
 fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Language> {
     let language_path = experiment_path.join("workloads").join(language);
     let config_path = language_path.join("config").with_extension("json");
-
+    log::debug!("Loading language config from '{}'", config_path.display());
     let mut config: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(&config_path)
             .with_context(|| format!("could not read config at '{}'", config_path.display()))?,
@@ -60,13 +60,15 @@ fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Langu
             serde_json::Value::String(language.to_string()),
         );
 
+    log::debug!("Loaded language config: {:?}", language);
+    log::debug!("config: {}", config);
     let language: Language =
         serde_json::from_value(config).context("config file is not a valid Language")?;
 
     Ok(language)
 }
 
-pub(crate) fn get_step(
+pub(crate) fn get_steps(
     config: &serde_json::Value,
     step_index: &str,
     language_steps: &dyn Fn() -> Vec<Step>,
@@ -74,11 +76,35 @@ pub(crate) fn get_step(
     let step = config.get(step_index);
 
     if let Some(step) = step {
-        let step = serde_json::from_value::<Vec<Step>>(step.clone());
-        if let Ok(step) = step {
-            return step;
+        let steps = serde_json::from_value::<Vec<Step>>(step.clone());
+        if let Ok(steps) = steps {
+            return steps;
         } else {
             log::error!("Failed to parse step: '{}'", step_index);
+            log::debug!("Step: {}", step);
+            log::debug!("Error: {}", steps.unwrap_err());
+        }
+    }
+
+    log::debug!("Step '{}' not found, using default step", step_index);
+    language_steps()
+}
+
+pub(crate) fn get_step(
+    config: &serde_json::Value,
+    step_index: &str,
+    language_steps: &dyn Fn() -> Step,
+) -> Step {
+    let step = config.get(step_index);
+
+    if let Some(step) = step {
+        let steps = serde_json::from_value::<Step>(step.clone());
+        if let Ok(steps) = steps {
+            return steps;
+        } else {
+            log::error!("Failed to parse step: '{}'", step_index);
+            log::debug!("Step: {}", step);
+            log::debug!("Error: {}", steps.unwrap_err());
         }
     }
 
@@ -122,16 +148,13 @@ pub(crate) fn load_workload(
         properties: vec![],
         variations: vec![],
         strategies: vec![],
-        build_steps: get_step(&workload_config, "build_steps", &|| {
+        build_steps: get_steps(&workload_config, "build_steps", &|| {
             language.build_steps.clone()
         }),
-        check_steps: get_step(&workload_config, "check_steps", &|| {
+        check_steps: get_steps(&workload_config, "check_steps", &|| {
             language.check_steps.clone()
         }),
-        run_step: get_step(&workload_config, "run_steps", &|| {
-            vec![language.run_step.clone()]
-        })[0]
-            .clone(),
+        run_step: get_step(&workload_config, "run_step", &|| language.run_step.clone()),
     })
 }
 
@@ -351,7 +374,7 @@ pub(crate) fn run(
         let step = old_step.decide(&params, tags);
         log::trace!("step '{old_step}' is evaluated to '{step}' with params: {params:?}");
 
-        let cdir = PathBuf::from(step.run_at.unwrap_or(".".to_string()));
+        let cdir = PathBuf::from(step.run_at.clone().unwrap_or(".".to_string()));
 
         let mut cmd = std::process::Command::new(&step.command);
         cmd.args(&step.args);
@@ -370,7 +393,7 @@ pub(crate) fn run(
         });
 
         let result = if run_config.cross {
-            run_cross(cdir, result, cmd, &step.command, run_config)?
+            run_cross(cdir, result, cmd, &step, run_config)?
         } else {
             run_default(cdir, result, cmd, &step.command, run_config)?
         };
@@ -515,16 +538,15 @@ fn run_cross(
     cdir: PathBuf,
     mut result: serde_json::Value,
     mut cmd: std::process::Command,
-    step: &str,
+    step: &Command,
     run_config: &RunConfig,
 ) -> anyhow::Result<serde_json::Value> {
-    let t = SystemTime::now();
     let timeout = Duration::from_secs_f64(run_config.timeout);
 
     let mut total_time = Duration::default();
     let mut total_samples = 0;
 
-    while t.elapsed().unwrap() < timeout {
+    while total_time < timeout {
         // sample the command
         log::debug!("sampling command: {}", step);
         let child = cmd
@@ -541,8 +563,8 @@ fn run_cross(
                 let status = output.status;
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                log::debug!("stdout: {}", &stdout[..100.min(stdout.len())]);
-                log::debug!("stderr: {}", &stderr[..100.min(stderr.len())]);
+                log::debug!("stdout: {}", &stdout[..300.min(stdout.len())]);
+                log::debug!("stderr: {}", &stderr[..300.min(stderr.len())]);
                 if !status.success() {
                     log::error!("Command '{}' failed with status: {}", step, status);
                     panic!("Command should not have a non-zero exit status when running in cross-language mode");
@@ -585,15 +607,24 @@ fn run_cross(
                 )
                 .context("Failed to run canonical serialized runner")?;
 
-                let time_cutoff = results.unwrap_or(durations.len());
+                let time_cutoff = results.map(|r| r + 1).unwrap_or(durations.len());
 
                 for d in durations.iter().take(time_cutoff) {
                     let d = parse_duration::parse(d)
                         .with_context(|| format!("Failed to parse duration: {}", d))?;
+
                     total_time += d;
+                    total_samples += 1;
+                    
+                    if total_time > timeout {
+                        log::info!(
+                            "Timeout reached after {:?}, stopping the run",
+                            total_time
+                        );
+                        break;
+                    }
                 }
-                total_samples += time_cutoff;
-                
+
                 log::debug!(
                     "Total time for this batch: {:?}, total samples: {}",
                     total_time,
@@ -609,13 +640,13 @@ fn run_cross(
                         "result".to_owned(),
                         serde_json::Value::String("foundbug".to_owned()),
                     );
-                    result
-                        .as_object_mut()
-                        .unwrap()
-                        .insert("test".to_owned(), serde_json::Value::Number(total_samples.into()));
                     result.as_object_mut().unwrap().insert(
-                        "generation_time".to_owned(),
-                        serde_json::Value::String(format!("{:?}", total_time)),
+                        "test".to_owned(),
+                        serde_json::Value::Number(total_samples.into()),
+                    );
+                    result.as_object_mut().unwrap().insert(
+                        "time".to_owned(),
+                        serde_json::Value::String(format!("{}ns", total_time.as_nanos())),
                     );
                     result.as_object_mut().unwrap().insert(
                         "counterexample".to_owned(),
@@ -652,17 +683,17 @@ fn run_cross(
         serde_json::Value::String("timed out".to_owned()),
     );
     result.as_object_mut().unwrap().insert(
-        "generation_time".to_owned(),
-        serde_json::Value::String(format!("{:?}", total_time)),
+        "time".to_owned(),
+        serde_json::Value::String(format!("{}ns", total_time.as_nanos())),
     );
     result.as_object_mut().unwrap().insert(
         "samples".to_owned(),
         serde_json::Value::Number(total_samples.into()),
     );
-    result.as_object_mut().unwrap().insert(
-        "counterexample".to_owned(),
-        serde_json::Value::Null,
-    );
+    result
+        .as_object_mut()
+        .unwrap()
+        .insert("counterexample".to_owned(), serde_json::Value::Null);
 
     Ok(result)
 }
@@ -866,10 +897,10 @@ pub(crate) fn run_experiment(
         )];
 
         let config_path = workload_dir.join("config").with_extension("json");
-
+        println!("config path: {}", config_path.display());
         let cfg: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&config_path).unwrap()).unwrap();
-
+        println!("config: {}", cfg);
         let tags: HashMap<String, Vec<String>> = serde_json::from_value(
             cfg.get("tags")
                 .unwrap_or(&serde_json::Value::Object(Map::new()))
