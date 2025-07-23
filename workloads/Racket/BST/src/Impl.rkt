@@ -1,9 +1,22 @@
 #lang racket
 
 (provide (all-defined-out))
+(require racket/struct)
 
-(struct E () #:transparent)
-(struct T (left k v right) #:transparent)
+(struct E ()
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'E)
+      (lambda (obj) '())))])
+
+(struct T (left k v right)
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'T)
+      (lambda (obj)
+        (list (T-left obj) (T-k obj) (T-v obj) (T-right obj)))))])
 
 
 (struct nothing () #:transparent)

@@ -2,12 +2,40 @@
 
 (require data/maybe)
 (require data/monad)
+(require racket/struct)
 
 ; Typ := Top | TVar Nat | Arr Typ Typ | All Typ Typ
-(struct Top () #:transparent)
-(struct TVar (n) #:transparent)
-(struct Arr (t1 t2) #:transparent)
-(struct All (t1 t2) #:transparent)
+(struct Top () 
+  #:methods gen:custom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (lambda (obj) 'Top)
+      (lambda (obj) '())))])
+      
+(struct TVar (n)  
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'TVar)
+      (lambda (obj)
+        (list (TVar-n obj)))))])
+        
+(struct Arr (t1 t2) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'Arr)
+      (lambda (obj)
+        (list (Arr-t1 obj) (Arr-t2 obj)))))])
+        
+(struct All (t1 t2) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'All)
+      (lambda (obj)
+        (list (All-t1 obj) (All-t2 obj)))))])
+
 (define (typ? x)
   (match x
     [(Top) #t]
@@ -17,11 +45,46 @@
     [_ #f]))
 
 ; Term := Var Nat | Abs Typ Term | App Term Term | TAbs Typ Term | TApp Term Typ
-(struct Var (n) #:transparent)
-(struct Abs (typ term) #:transparent)
-(struct App (term1 term2) #:transparent)
-(struct TAbs (typ term) #:transparent)
-(struct TApp (term typ) #:transparent)
+(struct Var (n) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'Var)
+      (lambda (obj)
+        (list (Var-n obj)))))])
+        
+(struct Abs (typ term) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'Abs)
+      (lambda (obj)
+        (list (Abs-typ obj) (Abs-term obj)))))])
+        
+(struct App (term1 term2) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'App)
+      (lambda (obj)
+        (list (App-term1 obj) (App-term2 obj)))))])
+        
+(struct TAbs (typ term) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'TAbs)
+      (lambda (obj)
+        (list (TAbs-typ obj) (TAbs-term obj)))))])
+        
+(struct TApp (term typ) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'TApp)
+      (lambda (obj)
+        (list (TApp-term obj) (TApp-typ obj)))))])
+
 (define (term? x)
   (match x
     [(Var n) (exact-integer? n)]

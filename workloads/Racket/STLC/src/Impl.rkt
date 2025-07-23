@@ -3,14 +3,54 @@
 (provide (all-defined-out))
 (require data/maybe)
 (require data/monad)
+(require racket/struct)
 
-(struct TBool () #:transparent)
-(struct TFun (t1 t2) #:transparent)
+(struct TBool () 
+  #:methods gen:custom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (lambda (obj) 'TBool)
+      (lambda (obj) '())))])
+      
+(struct TFun (t1 t2) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'TFun)
+      (lambda (obj)
+        (list (TFun-t1 obj) (TFun-t2 obj)))))])
 
-(struct Var (nat) #:transparent)
-(struct Bool (bool) #:transparent)
-(struct Abs (t1 e2) #:transparent)
-(struct App (e1 e2) #:transparent)
+(struct Var (nat) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'Var)
+      (lambda (obj)
+        (list (Var-nat obj)))))])
+        
+(struct Bool (bool) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'Bool)
+      (lambda (obj)
+        (list (Bool-bool obj)))))])
+        
+(struct Abs (t1 e2)
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'Abs)
+      (lambda (obj)
+        (list (Abs-t1 obj) (Abs-e2 obj)))))])
+        
+(struct App (e1 e2) 
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'App)
+      (lambda (obj)
+        (list (App-e1 obj) (App-e2 obj)))))])
 
 (define expr? (lambda (x) (or (Var? x) (Bool? x) (Abs? x) (App? x))))
 (define typ? (lambda (x) (or (TBool? x) (TFun? x))))

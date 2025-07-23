@@ -1,18 +1,40 @@
 #lang racket
 
 (provide (all-defined-out))
+(require racket/struct)
 
 ; (require algebraic/control/applicative)
 
-(struct B() #:transparent)
+(struct B() 
+  #:methods gen:c ustom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (lambda (obj) 'B)
+      (lambda (obj) '())))])
 
-(struct R() #:transparent)
+(struct R() 
+  #:methods gen:custom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (lambda (obj) 'R)
+      (lambda (obj) '())))])
 
 (define color? (lambda (x) (or (B? x) (R? x))))
 
-(struct E() #:transparent)
+(struct E ()
+  #:methods gen:custom-write
+  [(define write-proc
+     (make-constructor-style-printer
+      (lambda (obj) 'E)
+      (lambda (obj) '())))])
 
-(struct T(color l k v r) #:transparent)
+(struct T(color l k v r)
+  #:methods gen:custom-write
+  [(define write-proc
+    (make-constructor-style-printer
+      (lambda (obj) 'T)
+      (lambda (obj)
+        (list (T-color obj) (T-l obj) (T-k obj) (T-v obj) (T-r obj)))))])
 
 (define tree? (lambda (x) (or (E? x) (T? x))))
 
