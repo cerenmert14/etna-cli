@@ -10,8 +10,33 @@ let rec insert k v = function
       else t (* No duplicates *)
 
 (* Generate a BST from a list of unique integers *)
+
 let gen_Q_Bespoke =
-  Gen.(list_size (int_bound 10) (pair (int_bound 100) (int_bound 100)))
-  |> Gen.map (fun xs ->
-         let xs = List.sort_uniq (fun (k1, _) (k2, _) -> compare k1 k2) xs in
-         List.fold_left (fun acc (k, v) -> insert k v acc) E xs)
+  let open Gen in
+  let* xs =
+    list_size (int_bound 20) (pair (int_bound 100) (int_bound 100))
+  in
+  let xs = List.sort_uniq (fun (k1, _) (k2, _) -> compare k1 k2) xs in
+  let tree = List.fold_left (fun acc (k, v) -> insert k v acc) E xs in
+  return tree
+
+
+(* let gen_Q_Bespoke =
+  let open Gen in
+  let* t =
+    sized (fun n ->
+        if n = 0 then return E
+        else
+          let* xs =
+            list_size (int_bound n) (pair (int_bound 100) (int_bound 100))
+          in
+          let xs = List.sort_uniq (fun (k1, _) (k2, _) -> compare k1 k2) xs in
+          let rec build_bst = function
+            | [] -> E
+            | (k, v) :: rest ->
+                let left, right = List.partition (fun (k', _) -> k' < k) rest in
+                T (build_bst left, k, v, build_bst right)
+          in
+          return (build_bst xs))
+  in
+  return t *)

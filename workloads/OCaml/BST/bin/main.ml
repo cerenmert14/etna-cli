@@ -47,12 +47,7 @@ let generator_arg =
 let main test_name generator_name =
   (* Your logic here: select property and generator by name *)
   Printf.printf "Test: %s\nGenerator: %s\n" test_name generator_name;
-  let time =
-    Runner_qcheck.run_test_timed
-      (lookup_property test_name)
-      (lookup_generator generator_name)
-  in
-  Printf.printf "Time taken: %f seconds\n" time
+  Runner_qcheck.run_test_timed (lookup_property test_name) (lookup_generator generator_name)
 
 let term = Term.(const main $ test_arg $ generator_arg)
 let () = Cmd.(exit @@ eval (v (info "BST") term))

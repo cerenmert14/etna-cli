@@ -40,6 +40,7 @@
     ],
     "run_step": {
         "Command": {
+            "run_at": "/Users/nikhil/Code/etna-cli/exp1/workloads/OCaml/BST",
             "command": "opam",
             "args": [
                 "exec",

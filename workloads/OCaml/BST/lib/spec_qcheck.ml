@@ -3,41 +3,66 @@ open QCheck2
 open QCheck2.Test
 open QCheck2.Gen
 
+type test_result = {
+  generated : int; (* Number of tests generated *)
+  discards : int; (* Number of precondition discards *)
+  passed : bool; (* Whether the test passed *)
+  elapsed_s : float; (* Time taken for the test in microseconds *)
+}
+
 (** All these properties are generalized on the specific QCheck generator *)
+let make ~name gen f =
+  let start_time = ref 0. in
+  let end_time = ref 0. in
+  fun () ->
+    ( make_cell ~name ~count:10000000 gen f |> fun c ->
+      start_time := Unix.gettimeofday ();
+      check_cell c )
+    |> fun result ->
+    end_time := Unix.gettimeofday ();
+    let elapsed_s = !end_time -. !start_time in
+    let open QCheck2.TestResult in
+    {
+      generated = get_count_gen result;
+      discards = get_count_gen result - get_count result;
+      passed = is_success result;
+      elapsed_s;
+    }
+
+let int = small_int
+
+(** -- Invariants *)
 
 (** -- Validity properties *)
 let prop_Q_InsertValid gen =
-  make ~name:"Q_InsertValid" ~count:100000 (tup3 gen int int) (fun (t, k, v) ->
+  make ~name:"Q_InsertValid" (tup3 gen int int) (fun (t, k, v) ->
       assume (is_bst t);
       is_bst (insert k v t))
 
 let prop_Q_DeleteValid gen =
-  make ~name:"Q_DeleteValid" ~count:100000 (tup2 gen int) (fun (t, k) ->
+  make ~name:"Q_DeleteValid" (tup2 gen int) (fun (t, k) ->
       assume (is_bst t);
       is_bst (delete k t))
 
 let prop_Q_UnionValid gen =
-  make ~name:"Q_UnionValid" ~count:100000 (tup2 gen gen) (fun (t, t') ->
+  make ~name:"Q_UnionValid" (tup2 gen gen) (fun (t, t') ->
       assume (is_bst t);
       assume (is_bst t');
       is_bst (union t t'))
 
 (** -- Postcondition properties *)
 let prop_Q_InsertPost gen =
-  make ~name:"Q_InsertPost" ~count:100000 (tup4 gen int int int)
-    (fun (t, k, k', v) ->
+  make ~name:"Q_InsertPost" (tup4 gen int int int) (fun (t, k, k', v) ->
       assume (is_bst t);
-      Printf.printf "Testing InsertPost with valid tree of size %d\n"
-        (size t);
       find k' (insert k v t) = if k = k' then Some v else find k' t)
 
 let prop_Q_DeletePost gen =
-  make ~name:"Q_DeletePost" ~count:100000 (tup3 gen int int) (fun (t, k, k') ->
+  make ~name:"Q_DeletePost" (tup3 gen int int) (fun (t, k, k') ->
       assume (is_bst t);
       find k' (delete k t) = if k = k' then None else find k' t)
 
 let prop_Q_UnionPost gen =
-  make ~name:"Q_UnionPost" ~count:100000 (tup3 gen gen int) (fun (t, t', k) ->
+  make ~name:"Q_UnionPost" (tup3 gen gen int) (fun (t, t', k) ->
       assume (is_bst t);
       assume (is_bst t');
       find k (union t t')
@@ -50,17 +75,17 @@ let prop_Q_UnionPost gen =
 
 (** -- Model-based properties *)
 let prop_Q_InsertModel gen =
-  make ~name:"Q_InsertModel" ~count:100000 (tup3 gen int int) (fun (t, k, v) ->
+  make ~name:"Q_InsertModel" (tup3 gen int int) (fun (t, k, v) ->
       assume (is_bst t);
       to_list (insert k v t) = l_insert k v (delete_key k (to_list t)))
 
 let prop_Q_DeleteModel gen =
-  make ~name:"Q_DeleteModel" ~count:100000 (tup2 gen int) (fun (t, k) ->
+  make ~name:"Q_DeleteModel" (tup2 gen int) (fun (t, k) ->
       assume (is_bst t);
       to_list (delete k t) = delete_key k (to_list t))
 
 let prop_Q_UnionModel gen =
-  make ~name:"Q_UnionModel" ~count:100000 (tup2 gen gen) (fun (t, t') ->
+  make ~name:"Q_UnionModel" (tup2 gen gen) (fun (t, t') ->
       assume (is_bst t);
       assume (is_bst t');
       to_list (union t t')
@@ -68,61 +93,55 @@ let prop_Q_UnionModel gen =
 
 (** Metamorphic properties *)
 let prop_Q_InsertInsert gen =
-  make ~name:"Q_InsertInsert" ~count:100000 (tup5 gen int int int int)
+  make ~name:"Q_InsertInsert" (tup5 gen int int int int)
     (fun (t, k, k', v, v') ->
       assume (is_bst t);
       insert k v (insert k' v' t)
       === if k = k' then insert k v t else insert k' v' (insert k v t))
 
 let prop_Q_InsertDelete gen =
-  make ~name:"Q_InsertDelete" ~count:100000 (tup4 gen int int int)
-    (fun (t, k, k', v) ->
+  make ~name:"Q_InsertDelete" (tup4 gen int int int) (fun (t, k, k', v) ->
       assume (is_bst t);
       insert k v (delete k' t)
       === if k = k' then insert k v t else delete k' (insert k v t))
 
 let prop_Q_InsertUnion gen =
-  make ~name:"Q_InsertUnion" ~count:100000 (tup4 gen gen int int)
-    (fun (t, t', k, v) ->
+  make ~name:"Q_InsertUnion" (tup4 gen gen int int) (fun (t, t', k, v) ->
       assume (is_bst t);
       assume (is_bst t');
       insert k v (union t t') === union (insert k v t) t')
 
 let prop_Q_DeleteUnion gen =
-  make ~name:"Q_DeleteUnion" ~count:100000 (tup3 gen gen int) (fun (t, t', k) ->
+  make ~name:"Q_DeleteUnion" (tup3 gen gen int) (fun (t, t', k) ->
       assume (is_bst t);
       assume (is_bst t');
       delete k (union t t') === union (delete k t) (delete k t'))
 
 let prop_Q_DeleteInsert gen =
-  make ~name:"Q_DeleteInsert" ~count:100000 (tup4 gen int int int)
-    (fun (t, k, k', v) ->
+  make ~name:"Q_DeleteInsert" (tup4 gen int int int) (fun (t, k, k', v) ->
       assume (is_bst t);
       delete k (insert k' v t)
       === if k = k' then delete k t else insert k' v (delete k t))
 
 let prop_Q_DeleteDelete gen =
-  make ~name:"Q_DeleteDelete" ~count:100000 (tup3 gen int int)
-    (fun (t, k, k') ->
+  make ~name:"Q_DeleteDelete" (tup3 gen int int) (fun (t, k, k') ->
       assume (is_bst t);
       delete k (delete k' t) === delete k' (delete k t))
 
 let prop_Q_UnionDeleteInsert gen =
-  make ~name:"Q_UnionDeleteInsert" ~count:100000 (tup4 gen gen int int)
-    (fun (t, t', k, v) ->
+  make ~name:"Q_UnionDeleteInsert" (tup4 gen gen int int) (fun (t, t', k, v) ->
       assume (is_bst t);
       assume (is_bst t');
       union (delete k t) (insert k v t') === insert k v (union t t'))
 
 let prop_Q_UnionUnionIdem gen =
-  make ~name:"Q_UnionUnionIdem" ~count:100000 gen (fun t ->
+  make ~name:"Q_UnionUnionIdem" gen (fun t ->
       assume (is_bst t);
       union t t === t)
 
 let prop_Q_UnionUnionAssoc gen =
-  make ~name:"Q_UnionUnionAssoc" ~count:100000 (tup3 gen gen gen)
-    (fun (t1, t2, t3) ->
+  make ~name:"Q_UnionUnionAssoc" (tup3 gen gen gen) (fun (t1, t2, t3) ->
       assume (is_bst t1);
       assume (is_bst t2);
       assume (is_bst t3);
-      union (union t1 t2) t3 === union t1 (union t2 t3))
+      union (union t1 t2) t3 = union t1 (union t2 t3))

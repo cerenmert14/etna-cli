@@ -151,13 +151,11 @@ let rec l_union l1 l2 =
 let eq t1 t2 = to_list t1 = to_list t2
 let ( === ) t1 t2 = eq t1 t2
 
-
 (** Others *)
 let to_string t =
   let rec aux t =
     match t with
     | E -> "E"
-    | T (l, k, v, r) ->
-        Printf.sprintf "T(%s, %d, %d, %s)" (aux l) k v (aux r)
+    | T (l, k, v, r) -> Printf.sprintf "T(%s, %d, %d, %s)" (aux l) k v (aux r)
   in
   aux t
