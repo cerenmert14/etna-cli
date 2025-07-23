@@ -53,6 +53,54 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertPost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertPost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
             }
         ]
     },
@@ -118,6 +166,62 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertPost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertPost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertDelete"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertDelete"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
             }
         ]
     },
@@ -175,6 +279,54 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertPost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertPost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertDelete"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertDelete"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
             }
         ]
     },
@@ -240,6 +392,62 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeletePost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeletePost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteDelete"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteDelete"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertDelete"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertDelete"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
             }
         ]
     },
@@ -297,6 +505,54 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeletePost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeletePost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteDelete"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteDelete"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
             }
         ]
     },
@@ -362,6 +618,62 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionValid"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionValid"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionPost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionPost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionUnionAssoc"
             }
         ]
     },
@@ -427,6 +739,62 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionValid"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionValid"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionPost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionPost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionUnionAssoc"
             }
         ]
     },
@@ -484,6 +852,54 @@
             {
                 "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionPost"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionPost"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionModel"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionModel"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_DeleteUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_InsertUnion"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_C_Bespoke",
+                "property": "prop_C_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_C_TypeBased",
+                "property": "prop_C_UnionUnionAssoc"
             }
         ]
     }
