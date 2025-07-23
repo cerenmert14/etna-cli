@@ -1,3 +1,7 @@
 /target
 /test
 /etna_dir
+
+
+# Experiment folders 
+/exp*
