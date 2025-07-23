@@ -6,35 +6,31 @@
 ; (require algebraic/control/applicative)
 
 (struct B() 
-  #:methods gen:c ustom-write
-  [(define write-proc
-     (make-constructor-style-printer
-      (lambda (obj) 'B)
-      (lambda (obj) '())))])
+  #:property prop:custom-write
+  (lambda (p port mode)
+      (fprintf port "(B)"))
+  #:transparent)
 
 (struct R() 
-  #:methods gen:custom-write
-  [(define write-proc
-     (make-constructor-style-printer
-      (lambda (obj) 'R)
-      (lambda (obj) '())))])
+#:property prop:custom-write
+  (lambda (p port mode)
+      (fprintf port "(R)"))
+  #:transparent)
 
 (define color? (lambda (x) (or (B? x) (R? x))))
 
 (struct E ()
-  #:methods gen:custom-write
-  [(define write-proc
-     (make-constructor-style-printer
-      (lambda (obj) 'E)
-      (lambda (obj) '())))])
+#:property prop:custom-write
+  (lambda (p port mode)
+      (fprintf port "(E)"))
+  #:transparent)
 
 (struct T(color l k v r)
-  #:methods gen:custom-write
-  [(define write-proc
-    (make-constructor-style-printer
-      (lambda (obj) 'T)
-      (lambda (obj)
-        (list (T-color obj) (T-l obj) (T-k obj) (T-v obj) (T-r obj)))))])
+  #:property prop:custom-write
+  (lambda (p port mode)
+      (fprintf port "(T ~a ~a ~a ~a ~a)"
+               (T-color p) (T-l p) (T-k p) (T-v p) (T-r p)))
+  #:transparent)
 
 (define tree? (lambda (x) (or (E? x) (T? x))))
 

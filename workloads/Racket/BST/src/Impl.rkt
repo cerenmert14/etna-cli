@@ -4,19 +4,17 @@
 (require racket/struct)
 
 (struct E ()
-  #:methods gen:custom-write
-  [(define write-proc
-    (make-constructor-style-printer
-      (lambda (obj) 'E)
-      (lambda (obj) '())))])
+  #:property prop:custom-write
+  (lambda (p port mode)
+      (fprintf port "(E)"))
+  #:transparent)
 
 (struct T (left k v right)
-  #:methods gen:custom-write
-  [(define write-proc
-    (make-constructor-style-printer
-      (lambda (obj) 'T)
-      (lambda (obj)
-        (list (T-left obj) (T-k obj) (T-v obj) (T-right obj)))))])
+  #:property prop:custom-write
+  (lambda (p port mode)
+      (fprintf port "(T ~a ~a ~a ~a)"
+               (T-left p) (T-k p) (T-v p) (T-right p)))
+  #:transparent)
 
 
 (struct nothing () #:transparent)
