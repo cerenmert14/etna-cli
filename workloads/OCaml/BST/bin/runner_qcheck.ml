@@ -10,7 +10,7 @@ let print_result (r : BST.Spec_qcheck.test_result) =
     r.discards r.generated status r.elapsed_s;
   print_endline ""
 
-let run_test_timed
+let run
     (make_test :
       BST.Impl.t QCheck2.Gen.t -> unit -> BST.Spec_qcheck.test_result)
     (gen : BST.Impl.t QCheck2.Gen.t) : unit =

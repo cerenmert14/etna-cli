@@ -2,4 +2,4 @@
 
 (library
  (name BST)
- (libraries qcheck))
+ (libraries qcheck crowbar))

@@ -37,7 +37,7 @@ let int = small_int
 let prop_Q_InsertValid gen =
   make ~name:"Q_InsertValid" (tup3 gen int int) (fun (t, k, v) ->
       assume (is_bst t);
-      is_bst (insert k v t))
+      is_bst (insert k v t)) 
 
 let prop_Q_DeleteValid gen =
   make ~name:"Q_DeleteValid" (tup2 gen int) (fun (t, k) ->

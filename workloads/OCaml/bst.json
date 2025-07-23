@@ -11,7 +11,15 @@
                 "property": "prop_Q_InsertPost"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertPost"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_InsertModel"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_InsertModel"
             },
             {
@@ -19,7 +27,15 @@
                 "property": "prop_Q_DeleteInsert"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteInsert"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_InsertInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_InsertInsert"
             },
             {
@@ -27,7 +43,15 @@
                 "property": "prop_Q_InsertUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
             }
         ]
@@ -44,7 +68,15 @@
                 "property": "prop_Q_InsertPost"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertPost"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_InsertModel"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_InsertModel"
             },
             {
@@ -52,7 +84,15 @@
                 "property": "prop_Q_InsertDelete"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertDelete"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_DeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_DeleteInsert"
             },
             {
@@ -60,11 +100,23 @@
                 "property": "prop_Q_InsertInsert"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertInsert"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
                 "property": "prop_Q_InsertUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
             }
         ]
@@ -81,7 +133,15 @@
                 "property": "prop_Q_InsertPost"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertPost"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_InsertModel"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_InsertModel"
             },
             {
@@ -89,7 +149,15 @@
                 "property": "prop_Q_InsertDelete"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertDelete"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_InsertInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_InsertInsert"
             },
             {
@@ -97,7 +165,15 @@
                 "property": "prop_Q_InsertUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
             }
         ]
@@ -114,7 +190,15 @@
                 "property": "prop_Q_DeleteModel"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteModel"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_DeletePost"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_DeletePost"
             },
             {
@@ -122,7 +206,15 @@
                 "property": "prop_Q_DeleteDelete"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteDelete"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_DeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_DeleteInsert"
             },
             {
@@ -130,11 +222,23 @@
                 "property": "prop_Q_DeleteUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
                 "property": "prop_Q_InsertDelete"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertDelete"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
             }
         ]
@@ -151,7 +255,15 @@
                 "property": "prop_Q_DeleteModel"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteModel"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_DeletePost"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_DeletePost"
             },
             {
@@ -159,7 +271,15 @@
                 "property": "prop_Q_DeleteDelete"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteDelete"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_DeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_DeleteInsert"
             },
             {
@@ -167,7 +287,15 @@
                 "property": "prop_Q_DeleteUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionDeleteInsert"
             }
         ]
@@ -184,7 +312,15 @@
                 "property": "prop_Q_UnionValid"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionValid"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionPost"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionPost"
             },
             {
@@ -192,7 +328,15 @@
                 "property": "prop_Q_UnionModel"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionModel"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_DeleteUnion"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_DeleteUnion"
             },
             {
@@ -200,11 +344,23 @@
                 "property": "prop_Q_InsertUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
                 "property": "prop_Q_UnionDeleteInsert"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionUnionAssoc"
             }
         ]
@@ -221,7 +377,15 @@
                 "property": "prop_Q_UnionValid"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionValid"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionPost"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionPost"
             },
             {
@@ -229,7 +393,15 @@
                 "property": "prop_Q_UnionModel"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionModel"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_DeleteUnion"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_DeleteUnion"
             },
             {
@@ -237,11 +409,23 @@
                 "property": "prop_Q_InsertUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_InsertUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
                 "property": "prop_Q_UnionDeleteInsert"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionUnionAssoc"
             }
         ]
@@ -258,7 +442,15 @@
                 "property": "prop_Q_UnionPost"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionPost"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionModel"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionModel"
             },
             {
@@ -266,7 +458,15 @@
                 "property": "prop_Q_DeleteUnion"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_DeleteUnion"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_InsertUnion"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_InsertUnion"
             },
             {
@@ -274,7 +474,15 @@
                 "property": "prop_Q_UnionDeleteInsert"
             },
             {
+                "strategy": "gen_Q_TypeBased",
+                "property": "prop_Q_UnionDeleteInsert"
+            },
+            {
                 "strategy": "gen_Q_Bespoke",
+                "property": "prop_Q_UnionUnionAssoc"
+            },
+            {
+                "strategy": "gen_Q_TypeBased",
                 "property": "prop_Q_UnionUnionAssoc"
             }
         ]
