@@ -13,6 +13,8 @@ dependencies:
     - bytestring
     - clock
     - regex-tdfa
+    - deepseq
+    - time
 
 library:
     source-dirs: src

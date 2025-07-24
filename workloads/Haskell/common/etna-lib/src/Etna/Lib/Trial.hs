@@ -2,7 +2,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Etna.Lib.Trial (run) where
+module Etna.Lib.Trial (run, sample) where
 
 import Etna.Lib.Types (Result (Result))
 import qualified Etna.Lib.Types as B
@@ -20,6 +20,18 @@ import System.TimeIt (timeItT)
 import System.Timeout (timeout)
 import Text.Printf (printf)
 import qualified Data.ByteString.Lazy.Char8 as BL
+
+import Test.QuickCheck hiding (Result, sample)
+import Test.QuickCheck.Property hiding (Result)
+
+import Data.IORef
+import Data.Time.Clock
+import Text.Printf
+
+import Control.Monad
+import Data.List
+
+
 
 data FullResult = FullResult
   { workload :: String,
@@ -84,3 +96,28 @@ run info timeout test = do
   putStrLn ("[|" ++ BL.unpack (encode result) ++ "|]")
   -- B8.appendFile file (encode result)
   -- Prelude.appendFile file "\n"
+
+
+
+sample :: Int -> Property -> IO ()
+sample tests property = quickSample tests property
+  -- B8.appendFile file (encode result)
+  -- Prelude.appendFile file "\n"
+
+
+
+quickSample :: Int -> Property -> IO ()
+quickSample n p = do
+  let args = stdArgs{maxSuccess = n, chatty = False}
+  ins <- newIORef []
+  t <- getCurrentTime
+  quickCheckWith args (callback (PostTest NotCounterexample (\_ res -> do
+                                                                   t' <- getCurrentTime
+                                                                   modifyIORef ins ((t', testCase res):))) p)
+  cs <- readIORef ins
+  let cs' = reverse cs
+  let jsonify (t', c) =
+        "{ \"time\" : \"" ++ show (diffUTCTime t' t) ++ "\","
+          ++ " \"value\": \"" ++ unwords c ++ "\"}"
+  let json = "[" ++ intercalate "," (map jsonify cs') ++ "]"
+  putStrLn json

@@ -51,5 +51,38 @@ mkMain ims ips = do
         Nothing -> error ("could not find:" ++ name)
         Just v -> return v
 
+
+mkMainSampler :: IO [String] -> IO [String] -> Q [Dec]
+mkMainSampler ims ips = do
+  ms <- runIO ims
+  ps <- runIO ips
+  let mps = concatMap (\m -> map (m,) ps) ms
+  [d|
+    main :: IO ()
+    main = do
+      args <- getArgs
+      let ExpArgs workload strategy prop timeout =
+            parseExpArgs (head args)
+          test = fromJust $ lookup (strategy, prop) mmap
+      sample (workload, strategy, prop) timeout test
+
+    mmap :: [((String, String), IO Result)]
+    mmap = $(listE (map mkPair mps))
+    |]
+  where
+    mkPair :: (String, String) -> Q Exp
+    mkPair (m, p) = do
+      t <- lookupName m (propToTest p)
+      [|((m, p), $(varE t))|]
+
+    lookupName pre suf = do
+      let name = pre ++ "." ++ suf
+      mv <- lookupValueName name
+      case mv of
+        -- TODO: might want more flexible behavior here
+        Nothing -> error ("could not find:" ++ name)
+        Just v -> return v
+
+
 propToTest :: String -> String
 propToTest = ("test_" ++) . tail . dropWhile (/= '_')

@@ -69,6 +69,8 @@ pub(crate) struct Test {
     pub(crate) trials: usize,
     pub(crate) timeout: f64,
     pub(crate) mutations: Vec<String>,
+    #[serde(default)]
+    pub(crate) params: Option<serde_json::Map<String, serde_json::Value>>,
     #[serde(
         serialize_with = "serialize_test",
         deserialize_with = "deserialize_test"

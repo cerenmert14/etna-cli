@@ -38,3 +38,12 @@ data ExpArgs = ExpArgs
   deriving (Generic, Show)
 
 instance FromJSON ExpArgs
+
+data SampleArgs = SampleArgs
+  { sstrategy :: String,
+    sproperty :: String,
+    stests    :: Int
+  }
+  deriving (Generic, Show)
+
+instance FromJSON SampleArgs

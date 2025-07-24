@@ -5,7 +5,11 @@
             "Command": {
                 "command": "stack",
                 "args": [
-                    "build"
+                    "build",
+                    "--ghc-options=\"-optc-std=c99\"",
+                    "--no-system-ghc",
+                    "--local-bin-path",
+                    "./bin"
                 ]
             }
         }
@@ -16,34 +20,20 @@
             "options": {
                 "true": {
                     "Command": {
-                        "command": "$workload_path/target/release/bst-sampler",
+                        "command": "./bin/bst-sampler",
                         "args": [
-                            "$strategy",
-                            "$property"
+                            "{\"sstrategy\": \"$strategy\", \"sproperty\": \"prop_$property\", \"stests\": $tests}"
                         ],
-                        "params": [
-                            "workload_path",
-                            "property",
-                            "strategy"
-                        ]
+                        "run_at": "$workload_path"
                     }
                 },
                 "false": {
                     "Command": {
-                        "command": "stack",
+                        "command": "./bin/bst",
                         "args": [
-                            "exec",
-                            "etna-workload",
-                            "--",
                             "{\"workload\": \"$workload\", \"strategy\": \"$strategy\", \"property\": \"prop_$property\", \"timeout\": $timeout}"
                         ],
-                        "params": [
-                            "workload",
-                            "timeout",
-                            "workload_path",
-                            "property",
-                            "strategy"
-                        ]
+                        "run_at": "$workload_path"
                     }
                 }
             }

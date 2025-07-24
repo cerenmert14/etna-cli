@@ -39,7 +39,7 @@ newtype Key = Key Int
 instance Show Key where
   show (Key k) = show k
 
-newtype Val = Val Bool
+newtype Val = Val Int
   deriving (Eq, Ord, Read)
 
 instance Show Val where

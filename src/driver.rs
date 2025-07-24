@@ -298,13 +298,12 @@ pub(crate) fn run(
     experiment_config: &ExperimentConfig,
     run_config: &RunConfig,
     run_step: &Step,
-    params: &HashMap<String, String>,
+    params: &mut HashMap<String, String>,
     tags: &HashMap<String, Vec<String>>,
     metrics: &Vec<Metric>,
 ) -> anyhow::Result<()> {
     log::trace!("Running with config: {:?}", run_config);
     log::trace!("Run step: {:?}", run_step);
-    let mut params = HashMap::new();
 
     params.insert("language".to_string(), run_config.language.clone());
     params.insert("strategy".to_string(), run_config.strategy.clone());
@@ -562,13 +561,30 @@ fn run_cross(
     while total_time < timeout {
         // sample the command
         log::debug!("sampling command: {}", step);
+        log::debug!(
+            "running command: {} {} at {}",
+            cmd.get_program().to_string_lossy(),
+            cmd.get_args()
+                .map(|os| os.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join(" "),
+            cdir.canonicalize()?.display()
+        );
         let child = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(&cdir)
             .spawn()
+            .map_err(|e| {
+                log::error!("Failed to spawn command '{}': {}", step, e);
+                e
+            })
             .with_context(|| format!("Failed to spawn '{}'", step))?
             .wait_with_output()
+            .map_err(|e| {
+                log::error!("Failed to run command '{}': {}", step, e);
+                e
+            })
             .with_context(|| format!("Failed to run command '{}'", step));
 
         match child {
@@ -576,8 +592,8 @@ fn run_cross(
                 let status = output.status;
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                log::debug!("stdout: {}", &stdout[..300.min(stdout.len())]);
-                log::debug!("stderr: {}", &stderr[..300.min(stderr.len())]);
+                log::debug!("stdout: {}", &stdout[..10000.min(stdout.len())]);
+                log::debug!("stderr: {}", &stderr[..10000.min(stderr.len())]);
                 if !status.success() {
                     log::error!("Command '{}' failed with status: {}", step, status);
                     panic!("Command should not have a non-zero exit status when running in cross-language mode");
@@ -918,10 +934,17 @@ pub(crate) fn run_experiment(
         )?;
 
         // todo: there's a bug when two params share a prefix, fix it.
-        let params = [(
+        let mut params = HashMap::from([(
             "workload_path".to_string(),
             workload_dir.display().to_string(),
-        )];
+        )]);
+
+        if let Some(params_) = &test.params {
+            for (key, value) in params_.iter() {
+                log::trace!("Adding parameter: {} = {}", key, value);
+                params.insert(key.clone(), value.to_string());
+            }
+        };
 
         let config_path = workload_dir.join("config").with_extension("json");
         println!("config path: {}", config_path.display());
@@ -971,19 +994,13 @@ pub(crate) fn run_experiment(
             &workload_dir,
             &workload.check_steps,
             &workload.build_steps,
-            &HashMap::from(params),
+            &params,
             &tags,
         )?;
 
         for (strategy, property) in test.tasks.iter() {
-            let params = [
-                (
-                    "workload_path".to_string(),
-                    workload_dir.display().to_string(),
-                ),
-                ("property".to_string(), property.clone()),
-                ("strategy".to_string(), strategy.clone()),
-            ];
+            params.insert("strategy".to_string(), strategy.clone());
+            params.insert("property".to_string(), property.clone());
 
             // Run the experiment
             let run_config = RunConfig {
@@ -1004,7 +1021,7 @@ pub(crate) fn run_experiment(
                 experiment_config,
                 &run_config,
                 &workload.run_step,
-                &HashMap::from(params),
+                &mut params,
                 &tags,
                 // todo: we already filter the metrics in the task_completed function, so we should not pass the whole metrics here but the filtered ones.
                 &store.metrics,

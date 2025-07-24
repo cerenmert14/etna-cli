@@ -5,13 +5,14 @@ module Etna.Lib.Util
   ( maxCap,
     readEnv,
     parseExpArgs,
+    parseSampleArgs,
     allProps,
     mapExample,
     mapExample',
   )
 where
 
-import Etna.Lib.Types (ExpArgs, Result (..))
+import Etna.Lib.Types (ExpArgs, SampleArgs, Result (..))
 import Data.Aeson (decode)
 import Data.Char (isAlphaNum, isSpace)
 import Data.List (elemIndex, isPrefixOf, nub)
@@ -29,6 +30,11 @@ readEnv s = read $ unsafePerformIO $ getEnv s
 
 parseExpArgs :: String -> ExpArgs
 parseExpArgs s = case decode . fromString $ s of
+  Nothing -> error $ "Could not parse " ++ s
+  Just a -> a
+
+parseSampleArgs :: String -> SampleArgs
+parseSampleArgs s = case decode . fromString $ s of
   Nothing -> error $ "Could not parse " ++ s
   Just a -> a
 
