@@ -7,10 +7,10 @@ import Data.Functor
 import GHC.Generics
 
 data Result = Result
-  { foundbug :: Bool,
-    passed :: Int,
+  { status :: String,
+    tests :: Int,
     discards :: Maybe Int,
-    output :: String
+    counterexample :: String
   }
   deriving (Show)
 
@@ -30,13 +30,9 @@ type Strategy a = Task a -> IO Result
 data Approach = Correct | Naive
 
 data ExpArgs = ExpArgs
-  { file :: String,
-    trials :: Int,
-    workload :: String,
+  { workload :: String,
     strategy :: String,
-    mutant :: String,
     property :: String,
-    label :: String,
     timeout :: Maybe Double
   }
   deriving (Generic, Show)

@@ -3,19 +3,9 @@
     "build_steps": [
         {
             "Command": {
-                "command": "raco",
+                "command": "stack",
                 "args": [
-                    "exe",
-                    "main.rkt"
-                ]
-            }
-        },
-        {
-            "Command": {
-                "command": "raco",
-                "args": [
-                    "exe",
-                    "main-sampler.rkt"
+                    "build"
                 ]
             }
         }
@@ -26,10 +16,10 @@
             "options": {
                 "true": {
                     "Command": {
-                        "command": "$workload_path/main-sampler",
+                        "command": "$workload_path/target/release/bst-sampler",
                         "args": [
-                            "$property",
-                            "10000"
+                            "$strategy",
+                            "$property"
                         ],
                         "params": [
                             "workload_path",
@@ -40,12 +30,16 @@
                 },
                 "false": {
                     "Command": {
-                        "command": "$workload_path/main",
+                        "command": "stack",
                         "args": [
-                            "$property",
-                            "$strategy"
+                            "exec",
+                            "etna-workload",
+                            "--",
+                            "{\"workload\": \"$workload\", \"strategy\": \"$strategy\", \"property\": \"prop_$property\", \"timeout\": $timeout}"
                         ],
                         "params": [
+                            "workload",
+                            "timeout",
                             "workload_path",
                             "property",
                             "strategy"

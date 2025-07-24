@@ -9,6 +9,15 @@
                     "main.rkt"
                 ]
             }
+        },
+        {
+            "Command": {
+                "command": "raco",
+                "args": [
+                    "exe",
+                    "main-sampler.rkt"
+                ]
+            }
         }
     ],
     "run_step": {
@@ -17,7 +26,7 @@
             "options": {
                 "true": {
                     "Command": {
-                        "command": "workload_path/main-sampler",
+                        "command": "$workload_path/main-sampler",
                         "args": [
                             "$property",
                             "10000"
@@ -31,10 +40,10 @@
                 },
                 "false": {
                     "Command": {
-                        "command": "workload_path/main",
+                        "command": "$workload_path/main",
                         "args": [
-                            "$strategy",
-                            "$property"
+                            "$property",
+                            "$strategy"
                         ],
                         "params": [
                             "workload_path",

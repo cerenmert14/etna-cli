@@ -19,37 +19,35 @@ import System.IO.Silently (silence)
 import System.TimeIt (timeItT)
 import System.Timeout (timeout)
 import Text.Printf (printf)
+import qualified Data.ByteString.Lazy.Char8 as BL
 
 data FullResult = FullResult
   { workload :: String,
     strategy :: String,
-    mutant :: String,
     property :: String,
-    foundbug :: Bool,
-    passed :: Maybe Int,
+    status :: String,
+    tests :: Maybe Int,
     discards :: Maybe Int,
-    time :: Double,
-    output :: String
+    time :: String,
+    counterexample :: String
   }
   deriving (Generic)
 
 instance ToJSON FullResult
 
-type Trials = Int
-
 type Timeout = Maybe Double
 
-type Info = (String, String, String, String)
+type Info = (String, String, String)
 
 runOne :: Info -> Timeout -> IO Result -> IO FullResult
-runOne (workload, strategy, mutant, property) mtimeout test = do
+runOne (workload, strategy, property) mtimeout test = do
   case mtimeout of
     Nothing -> run
-    Just t -> fromMaybe (defaultResult t) <$> timeout (fromSec t) run
+    Just t -> fromMaybe (defaultResult (printf "%.6fs" t)) <$> timeout (fromSec t) run
   where
     run = do
       (time, Result {..}) <- myTimeIt $ eval $ silence test
-      return FullResult {passed = Just passed, ..}
+      return FullResult {tests = Just tests, time = printf "%.6fs" time, ..}
 
     fromSec :: Double -> Int
     fromSec = round . (1000000 *)
@@ -57,10 +55,10 @@ runOne (workload, strategy, mutant, property) mtimeout test = do
     -- Returned if the trial timed out
     defaultResult time =
       FullResult
-        { foundbug = False,
-          passed = Nothing,
+        { status = "Timed Out",
+          tests = Nothing,
           discards = Nothing,
-          output = "",
+          counterexample = "",
           ..
         }
 
@@ -80,8 +78,9 @@ eval ia = do
   return Result {..}
 {-# NOINLINE eval #-}
 
-run :: FilePath -> Trials -> Info -> Timeout -> IO Result -> IO ()
-run file _ info timeout test = do
+run :: Info -> Timeout -> IO Result -> IO ()
+run info timeout test = do
   result <- runOne info timeout test
-  B8.appendFile file (encode result)
-  Prelude.appendFile file "\n"
+  putStrLn ("[|" ++ BL.unpack (encode result) ++ "|]")
+  -- B8.appendFile file (encode result)
+  -- Prelude.appendFile file "\n"

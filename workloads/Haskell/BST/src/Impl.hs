@@ -8,7 +8,11 @@ module Impl where
 data Tree k v
   = E
   | T (Tree k v) k v (Tree k v)
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
+
+instance (Show k, Show v) => Show (Tree k v) where
+  show E = "(E)"
+  show (T l k v r) = "(T " ++ show l ++ " " ++ show k ++ " " ++ show v ++ " " ++ show r ++ ")"
 
 ----------
 
@@ -16,13 +20,13 @@ insert :: Ord k => k -> v -> Tree k v -> Tree k v
 insert k v E = T E k v E
 insert k v (T l k' v' r)
   {-! -}
+{-!
   | k < k' = T (insert k v l) k' v' r
   | k > k' = T l k' v' (insert k v r)
   | otherwise = T l k' v r
+-}
   {-!! insert_1 -}
-  {-!
   = T E k v E
-  -}
   {-!! insert_2 -}
   {-!
   | k < k' = T (insert k v l) k' v' r
@@ -34,6 +38,7 @@ insert k v (T l k' v' r)
   | k > k' = T l k' v' (insert k v r)
   | otherwise = T l k' v' r
   -}
+  {- !-}
 
 ----------
 
@@ -56,6 +61,7 @@ delete k (T l k' v' r)
   | k < k' = T l k' v' (delete k r)
   | otherwise = join l r
   -}
+  {- !-}
 
 join :: Tree k v -> Tree k v -> Tree k v
 join E r = r
@@ -91,6 +97,7 @@ union (T l k v r) (T l' k' v' r')
                        (union r (T (above k l') k' v' r'))
   | otherwise = union (T l' k' v' r') (T l k v r)
 -}
+{- !-}
 
 below :: Ord k => k -> Tree k v -> Tree k v
 below _ E = E

@@ -29,10 +29,10 @@ mkMain ims ips = do
     main :: IO ()
     main = do
       args <- getArgs
-      let ExpArgs file trials workload strategy mutant prop label timeout =
+      let ExpArgs workload strategy prop timeout =
             parseExpArgs (head args)
           test = fromJust $ lookup (strategy, prop) mmap
-      run file trials (workload, label, mutant, prop) timeout test
+      run (workload, strategy, prop) timeout test
 
     mmap :: [((String, String), IO Result)]
     mmap = $(listE (map mkPair mps))

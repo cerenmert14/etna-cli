@@ -53,14 +53,14 @@ parseTuple s = read s
 
 mapExample :: Read b => (b -> String) -> IO Result -> IO Result
 mapExample f ir = do
-  r@Result {output, ..} <- ir
-  if null output
+  r@Result {counterexample, ..} <- ir
+  if null counterexample
     then return r
-    else return Result {output = f (parseTuple output), ..}
+    else return Result {counterexample = f (parseTuple counterexample), ..}
 
 mapExample' :: (String -> String) -> IO Result -> IO Result
 mapExample' f ir = do
-  r@Result {output, ..} <- ir
-  if null output
+  r@Result {counterexample, ..} <- ir
+  if null counterexample
     then return r
-    else return Result {output = f output, ..}
+    else return Result {counterexample = f counterexample, ..}

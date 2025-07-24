@@ -33,11 +33,11 @@ scRun app (depth, cap) task = do
   bad <- newIORef 0
   final <- smallCheckWithHook depth (update good bad) prop
 
-  let (foundbug, output) = case final of
-        Nothing -> (False, "")
-        Just (CounterExample (ex : _) _) -> (True, ex)
-        Just _ -> (True, "")
-  passed <- (\i -> i - if foundbug then 1 else 0) <$> readIORef good
+  let (status, foundbug, counterexample) = case final of
+        Nothing -> ("Finished", False, "")
+        Just (CounterExample (ex : _) _) -> ("Failed", True, ex)
+        Just _ -> ("Failed", True, "")
+  tests <- (\i -> i - if foundbug then 1 else 0) <$> readIORef good
   discards <- Just <$> readIORef bad
   return Result {..}
   where

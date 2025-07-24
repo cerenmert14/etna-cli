@@ -22,9 +22,9 @@ lcRun :: (Show a, Listable a) => Approach -> Int -> Strategy a
 lcRun app cap task = do
   out <- capture_ $ checkFor cap prop
   let foundbug = "Failed" `isInfixOf` out
-      passed = getNumTests out - if foundbug then 1 else 0
+      tests = getNumTests out - if foundbug then 1 else 0
       discards = Nothing -- does not count discards
-      output = case lines out of
+      counterexample = case lines out of
         (_ : o : _) -> o
         _ -> ""
   return Result {..}

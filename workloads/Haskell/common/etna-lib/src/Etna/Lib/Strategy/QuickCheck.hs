@@ -41,13 +41,13 @@ qcMakeProp Correct task =
 qcMakeResult :: IO QC.Result -> IO Result
 qcMakeResult ioresult = do
   (_, result) <- capture ioresult
-  let (foundbug, output) =
+  let (status, foundbug, counterexample) =
         case result of
-          Failure {failingTestCase = [ex]} -> (True, ex)
-          NoExpectedFailure {} -> (True, "")
-          r -> (False, "")
+          Failure {failingTestCase = [ex]} -> ("Failed", True, ex)
+          NoExpectedFailure {} -> ("No Expected Failure", True, "")
+          r -> ("Finished", False, "")
       discards = Just $ numDiscarded result
-      passed = numTests result - (if foundbug then 1 else 0)
+      tests = numTests result - (if foundbug then 1 else 0)
   return Result {..}
 
 qcRunArb :: (Show a, Arbitrary a) => Args -> Approach -> Strategy a

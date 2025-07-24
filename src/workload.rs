@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Display, hash::Hash, path::PathBuf};
 use itertools::Itertools as _;
 use serde::{Deserialize, Serialize};
 
-use crate::{property::Property, strategy::Strategy};
+use crate::{commands::experiment::run, property::Property, strategy::Strategy};
 use marauders::Variation;
 
 pub(crate) struct Command {
@@ -14,6 +14,9 @@ pub(crate) struct Command {
 
 impl Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(run_at) = &self.run_at {
+            write!(f, "cd {} && ", run_at)?;
+        }
         write!(f, "{} {}", self.command, self.args.join(" "))
     }
 }
@@ -97,9 +100,10 @@ impl Step {
     pub(crate) fn replace(&mut self, s1: &str, s2: &str) {
         let original_step = self.clone();
         match self {
-            Step::Command { command, args, .. } => {
+            Step::Command { command, args, run_at, .. } => {
                 *command = command.replace(s1, s2);
                 *args = args.iter().map(|arg| arg.replace(s1, s2)).collect();
+                *run_at = run_at.as_ref().map(|r| r.replace(s1, s2));
             }
             Step::Match { options, .. } => {
                 for step in options.values_mut() {

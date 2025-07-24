@@ -22,6 +22,7 @@ use process_control::{ChildExt, Control};
 
 use crate::experiment::{ExperimentSnapshot, Test};
 
+#[derive(Debug)]
 pub(crate) struct RunConfig {
     pub(crate) language: String,
     pub(crate) workload_dir: PathBuf,
@@ -301,7 +302,29 @@ pub(crate) fn run(
     tags: &HashMap<String, Vec<String>>,
     metrics: &Vec<Metric>,
 ) -> anyhow::Result<()> {
-    let run_steps = run_step.realize(params, tags)?;
+    log::trace!("Running with config: {:?}", run_config);
+    log::trace!("Run step: {:?}", run_step);
+    let mut params = HashMap::new();
+
+    params.insert("language".to_string(), run_config.language.clone());
+    params.insert("strategy".to_string(), run_config.strategy.clone());
+    params.insert("property".to_string(), run_config.property.clone());
+    params.insert(
+        "workload_path".to_string(),
+        run_config.workload_dir.display().to_string(),
+    );
+    params.insert("cross".to_string(), run_config.cross.to_string());
+    params.insert("timeout".to_string(), run_config.timeout.to_string());
+    params.insert("mutations".to_string(), run_config.mutations.join(","));
+    params.insert("language".to_string(), run_config.language.clone());
+    params.insert(
+        "experiment_id".to_string(),
+        run_config.experiment_id.clone(),
+    );
+
+    log::trace!("Final params for step: {:?}", params);
+
+    let run_steps = run_step.realize(&params, tags)?;
     anyhow::ensure!(
         run_steps.len() == 1,
         "Expected exactly one run step, got {}",
@@ -354,22 +377,6 @@ pub(crate) fn run(
             continue;
         }
 
-        let mut params = HashMap::new();
-        let step_params = step.params();
-
-        if step_params.contains(&"strategy") {
-            params.insert("strategy".to_string(), run_config.strategy.clone());
-        }
-        if step_params.contains(&"property") {
-            params.insert("property".to_string(), run_config.property.clone());
-        }
-        if step_params.contains(&"workload_path") {
-            params.insert(
-                "workload_path".to_string(),
-                run_config.workload_dir.display().to_string(),
-            );
-        }
-        params.insert("cross".to_string(), run_config.cross.to_string());
         let old_step = step;
         let step = old_step.decide(&params, tags);
         log::trace!("step '{old_step}' is evaluated to '{step}' with params: {params:?}");
@@ -378,6 +385,10 @@ pub(crate) fn run(
 
         let mut cmd = std::process::Command::new(&step.command);
         cmd.args(&step.args);
+        if let Some(run_at) = &step.run_at {
+            log::trace!("Setting current directory to '{}'", run_at);
+            cmd.current_dir(run_at);
+        }
 
         let result = serde_json::json!({
             "language": run_config.language,
@@ -393,8 +404,10 @@ pub(crate) fn run(
         });
 
         let result = if run_config.cross {
+            log::debug!("Running cross-language command: {}", step);
             run_cross(cdir, result, cmd, &step, run_config)?
         } else {
+            log::debug!("Running default command: {}", step);
             run_default(cdir, result, cmd, &step.command, run_config)?
         };
 
@@ -615,12 +628,9 @@ fn run_cross(
 
                     total_time += d;
                     total_samples += 1;
-                    
+
                     if total_time > timeout {
-                        log::info!(
-                            "Timeout reached after {:?}, stopping the run",
-                            total_time
-                        );
+                        log::info!("Timeout reached after {:?}, stopping the run", total_time);
                         break;
                     }
                 }
@@ -705,6 +715,16 @@ fn run_default(
     command: &str,
     run_config: &RunConfig,
 ) -> anyhow::Result<serde_json::Value> {
+    log::debug!(
+        "Running command: {} {} at {}",
+        command,
+        cmd.get_args()
+            .map(|os| os.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(" "),
+        cdir.canonicalize()?.display()
+    );
+
     let output = cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -729,14 +749,15 @@ fn run_default(
                 .insert("result".to_owned(), Value::String("timed_out".to_owned()));
         }
         Ok(Some(output)) => {
-            if !output.status.success() {
-                anyhow::bail!("Run command failed with status: {}", output.status);
-            }
-
             let stdout = String::from_utf8_lossy(&output.stdout);
             log::debug!("stdout: {}", stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
             log::debug!("stderr: {}", stderr);
+
+            if !output.status.success() {
+                anyhow::bail!("Run command failed with status: {}", output.status);
+            }
+
             // look for the result between [| and |]
             let metric = match (stdout.find("[|"), stdout.find("|]")) {
                 (Some(start), Some(end)) => &stdout[start + 2..end],
@@ -846,6 +867,12 @@ pub(crate) fn build(
 
         if !output.status.success() {
             log::info!("[✗] '{}' failed", step);
+            log::debug!(
+                "command: {}",
+                step.command.clone() + " " + &step.args.join(" ")
+            );
+            log::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+            log::debug!("stderr: {}", String::from_utf8_lossy(&output.stderr));
             anyhow::bail!("build command failed with status: {}", output.status);
         } else {
             log::info!("[✓] '{}' passed", step);

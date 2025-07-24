@@ -34,10 +34,16 @@ find k (T l k' v' r)
 ----------
 
 newtype Key = Key Int
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
+
+instance Show Key where
+  show (Key k) = show k
 
 newtype Val = Val Bool
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
+
+instance Show Val where
+  show (Val v) = show v
 
 type BST = Tree Key Val
 
