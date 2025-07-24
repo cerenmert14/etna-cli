@@ -159,7 +159,7 @@ pub fn prop_insert_insert(t: Tree, k: i32, k2: i32, v: i32, v2: i32) -> Option<b
             == if k == k2 {
                 insert(k, v, t.clone())
             } else {
-                insert(k, v, insert(k2, v2, t.clone()))
+                insert(k2, v2, insert(k, v, t.clone()))
             }
     })
 }
