@@ -1,0 +1,16 @@
+{
+    "check_steps": [],
+    "build_steps": [],
+    "run_step": {
+        "Command": {
+            "command": "uv",
+            "args": [
+                "run",
+                "main-sampler.py",
+                "$property",
+                "100"
+            ],
+            "run_at": "$workload_path"
+        }
+    }
+}
