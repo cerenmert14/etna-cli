@@ -1,0 +1,61 @@
+{
+    "check_steps": [
+        {
+            "Command": {
+                "command": "dune",
+                "args": [
+                    "--version"
+                ]
+            }
+        },
+        {
+            "Command": {
+                "command": "opam",
+                "args": [
+                    "--version"
+                ]
+            }
+        }
+    ],
+    "build_steps": [
+        {
+            "Command": {
+                "command": "opam",
+                "args": [
+                    "switch"
+                ]
+            }
+        },
+        {
+            "Command": {
+                "command": "opam",
+                "args": [
+                    "exec",
+                    "--",
+                    "dune",
+                    "build"
+                ]
+            }
+        }
+    ],
+    "run_step": {
+        "Command": {
+            "run_at": "/Users/nikhil/Code/etna-cli/exp1/workloads/OCaml/BST",
+            "command": "opam",
+            "args": [
+                "exec",
+                "--",
+                "dune",
+                "exec",
+                "BST",
+                "--",
+                "--test=$property",
+                "--generator=$strategy"
+            ],
+            "parameters": [
+                "property",
+                "strategy"
+            ]
+        }
+    }
+}

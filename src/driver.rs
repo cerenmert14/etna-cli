@@ -6,6 +6,7 @@ use std::{
     time::SystemTime,
 };
 
+use git2::build;
 use serde_json::{Map, Value};
 use std::time::Duration;
 

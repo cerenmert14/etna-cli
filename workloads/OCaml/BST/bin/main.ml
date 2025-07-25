@@ -1,56 +1,108 @@
-open QCheck
-open Crowbar
-open Util.Runner
-open Util.Io
-open BST.Impl
-open BST.Test
-open BST.QcheckType
-open BST.QcheckBespoke
-open BST.CrowbarType
-open BST.CrowbarBespoke
-open BST.BaseType
-open BST.BaseBespoke
+open Cmdliner
+open BST.Spec_qcheck
+open BST.Spec_crowbar
+open BST.Gen_typebased_qcheck
+open BST.Gen_typebased_crowbar
+open BST.Gen_bespoke_qcheck
+open BST.Gen_bespoke_crowbar
 
-(*
-  dune exec BST -- qcheck prop_InsertInsert bespoke out
-  dune exec BST -- qcheck prop_InsertInsert type out
-  dune exec BST -- crowbar prop_InsertInsert bespoke out
-  dune exec BST -- crowbar prop_InsertInsert type out
-  dune exec BST -- afl prop_InsertInsert bespoke out
-  dune exec BST -- afl prop_InsertInsert type out
-  dune exec BST -- base prop_InsertInsert bespoke out
-  dune exec BST -- base prop_InsertInsert type out
-  *)
+let lookup_Q_property name =
+  match name with
+  | "prop_Q_InsertValid" -> prop_Q_InsertValid
+  | "prop_Q_DeleteValid" -> prop_Q_DeleteValid
+  | "prop_Q_UnionValid" -> prop_Q_UnionValid
+  | "prop_Q_InsertPost" -> prop_Q_InsertPost
+  | "prop_Q_DeletePost" -> prop_Q_DeletePost
+  | "prop_Q_UnionPost" -> prop_Q_UnionPost
+  | "prop_Q_InsertModel" -> prop_Q_InsertModel
+  | "prop_Q_DeleteModel" -> prop_Q_DeleteModel
+  | "prop_Q_UnionModel" -> prop_Q_UnionModel
+  | "prop_Q_InsertInsert" -> prop_Q_InsertInsert
+  | "prop_Q_InsertDelete" -> prop_Q_InsertDelete
+  | "prop_Q_InsertUnion" -> prop_Q_InsertUnion
+  | "prop_Q_DeleteUnion" -> prop_Q_DeleteUnion
+  | "prop_Q_DeleteInsert" -> prop_Q_DeleteInsert
+  | "prop_Q_DeleteDelete" -> prop_Q_DeleteDelete
+  | "prop_Q_UnionDeleteInsert" -> prop_Q_UnionDeleteInsert
+  | "prop_Q_UnionUnionIdem" -> prop_Q_UnionUnionIdem
+  | "prop_Q_UnionUnionAssoc" -> prop_Q_UnionUnionAssoc
+  | _ -> raise (Invalid_argument ("Unknown property: " ^ name))
 
-let properties : (string * tree property) list =
-  [
-    ("prop_InsertValid", test_prop_InsertValid);
-    ("prop_DeleteValid", test_prop_DeleteValid);
-    ("prop_UnionValid", test_prop_UnionValid);
-    ("prop_InsertPost", test_prop_InsertPost);
-    ("prop_DeletePost", test_prop_DeletePost);
-    ("prop_UnionPost", test_prop_UnionPost);
-    ("prop_InsertModel", test_prop_InsertModel);
-    ("prop_DeleteModel", test_prop_DeleteModel);
-    ("prop_UnionModel", test_prop_UnionModel);
-    ("prop_InsertInsert", test_prop_InsertInsert);
-    ("prop_InsertDelete", test_prop_InsertDelete);
-    ("prop_InsertUnion", test_prop_InsertUnion);
-    ("prop_DeleteInsert", test_prop_DeleteInsert);
-    ("prop_DeleteDelete", test_prop_DeleteDelete);
-    ("prop_DeleteUnion", test_prop_DeleteUnion);
-    ("prop_UnionDeleteInsert", test_prop_UnionDeleteInsert);
-    ("prop_UnionUnionIdem", test_prop_UnionUnionIdem);
-    ("prop_UnionUnionAssoc", test_prop_UnionUnionAssoc);
-  ]
+let lookup_C_property name =
+  match name with
+  | "prop_C_InsertValid" -> prop_C_InsertValid
+  | "prop_C_DeleteValid" -> prop_C_DeleteValid
+  | "prop_C_UnionValid" -> prop_C_UnionValid
+  | "prop_C_InsertPost" -> prop_C_InsertPost
+  | "prop_C_DeletePost" -> prop_C_DeletePost
+  | "prop_C_UnionPost" -> prop_C_UnionPost
+  | "prop_C_InsertModel" -> prop_C_InsertModel
+  | "prop_C_DeleteModel" -> prop_C_DeleteModel
+  | "prop_C_UnionModel" -> prop_C_UnionModel
+  | "prop_C_InsertInsert" -> prop_C_InsertInsert
+  | "prop_C_InsertDelete" -> prop_C_InsertDelete
+  | "prop_C_InsertUnion" -> prop_C_InsertUnion
+  | "prop_C_DeleteUnion" -> prop_C_DeleteUnion
+  | "prop_C_DeleteInsert" -> prop_C_DeleteInsert
+  | "prop_C_DeleteDelete" -> prop_C_DeleteDelete
+  | "prop_C_UnionDeleteInsert" -> prop_C_UnionDeleteInsert
+  | "prop_C_UnionUnionIdem" -> prop_C_UnionUnionIdem
+  | "prop_C_UnionUnionAssoc" -> prop_C_UnionUnionAssoc
+  | _ -> raise (Invalid_argument ("Unknown property: " ^ name))
 
-let qstrategies : (string * tree arbitrary) list =
-  [ ("type", qcheck_type); ("bespoke", qcheck_bespoke) ]
+let lookup_Q_generator name =
+  match name with
+  | "gen_Q_TypeBased" -> gen_Q_TypeBased
+  | "gen_Q_Bespoke" -> gen_Q_Bespoke
+  | _ -> raise (Invalid_argument ("Unknown generator: " ^ name))
 
-let cstrategies : (string * tree gen) list =
-  [ ("type", crowbar_type); ("bespoke", crowbar_bespoke) ]
+let lookup_C_generator name =
+  match name with
+  | "gen_C_TypeBased" -> gen_C_TypeBased
+  | "gen_C_Bespoke" -> gen_C_Bespoke
+  | _ -> raise (Invalid_argument ("Unknown generator: " ^ name))
 
-let bstrategies : (string * tree basegen) list =
-  [ ("type", (module BaseType)); ("bespoke", (module BaseBespoke)) ]
+(** Command line setup *)
 
-let () = main properties qstrategies cstrategies bstrategies
+let main test_name generator_name =
+  (* Your logic here: select property and generator by name *)
+  Printf.printf "Test: %s\nGenerator: %s\n" test_name generator_name;
+  match
+    ( Str.string_match (Str.regexp ".*_Q_.*") test_name 0,
+      Str.string_match (Str.regexp ".*_C_.*") test_name 0 )
+  with
+  | true, _ ->
+      Runner_qcheck.run
+        (lookup_Q_property test_name)
+        (lookup_Q_generator generator_name)
+  | _, true ->
+      (* have to do this because crowbar reads command lines args *)
+      Random.self_init ();
+      Sys.argv.(1) <- "--repeat=10000000";
+      Sys.argv.(2) <- Printf.sprintf "--seed=%d" (Random.int 1000000);
+      Runner_crowbar.run
+        (lookup_C_property test_name)
+        (lookup_C_generator generator_name)
+  | _ -> failwith "Test name must contain either _Q_ or _C_"
+
+(** *)
+
+(** Cmdliner stuff *)
+
+(** | *)
+
+(** v *)
+
+let test_arg =
+  let doc = "Name of the property test to run." in
+  Arg.(required & opt (some string) None & info [ "test" ] ~docv:"TEST" ~doc)
+
+let generator_arg =
+  let doc = "Name of the generator to use." in
+  Arg.(
+    required
+    & opt (some string) None
+    & info [ "generator" ] ~docv:"GENERATOR" ~doc)
+
+let term = Term.(const main $ test_arg $ generator_arg)
+let () = Cmd.(exit @@ eval (v (info "BST") term))
