@@ -43,7 +43,6 @@ let prop_C_UnionValid gen =
 let prop_C_InsertPost gen =
   add_test ~name:"C_InsertPost" [ gen; int; int; int ] (fun t k k' v ->
       guard (is_bst t);
-      Printf.printf "tree has size %d\n" (size t);
       check (find k' (insert k v t) = if k = k' then Some v else find k' t))
 
 let prop_C_DeletePost gen =
