@@ -63,10 +63,16 @@ find x (T _ l y vy r)
 ----------
 
 newtype Key = Key Int
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
 
-newtype Val = Val Bool
-  deriving (Eq, Ord, Read, Show)
+instance Show Key where
+  show (Key k) = show k
+
+newtype Val = Val Int
+  deriving (Eq, Ord, Read)
+
+instance Show Val where
+  show (Val v) = show v
 
 type RBT = Tree Key Val
 

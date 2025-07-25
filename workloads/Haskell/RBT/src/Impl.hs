@@ -4,12 +4,21 @@ module Impl where
 -- but in the style of How to Specify It.
 
 data Color = R | B
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
+
+instance Show Color where
+  show R = "(R)"
+  show B = "(B)"
 
 data Tree k v
   = E
   | T Color (Tree k v) k v (Tree k v)
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
+
+instance (Show k, Show v) => Show (Tree k v) where
+  show E = "(E)"
+  show (T c l k v r) = "(T " ++ show c ++ " " ++ show l ++ " " ++ show k ++ " " ++ show v ++ " " ++ show r ++ ")"
+
 
 insert :: Ord k => k -> v -> Tree k v -> Either Error (Tree k v)
 insert x vx s = return $ blacken (ins x vx s)
@@ -21,6 +30,7 @@ insert x vx s = return $ blacken (ins x vx s)
       {-!
       T B E x vx E
       -}
+      {- !-}
     ins x vx (T rb a y vy b)
       {-! -}
       | x < y = balance rb (ins x vx a) y vy b
@@ -53,6 +63,7 @@ insert x vx s = return $ blacken (ins x vx s)
       | x > y = T rb a y vy (insert x vx b)
       | otherwise = T rb a y vx b
       -}
+      {- !-}
 
 ----------
 
@@ -69,13 +80,16 @@ delete x t =
   {-!
   del t
   -}
+  {- !-}
   where
     del E = return E
     del (T _ a y vy b)
       {-! -}
+{-!
       | x < y = delLeft a y vy b
       | x > y = delRight a y vy b
       | otherwise = join a b
+-}
       {-!! delete_4 -}
       {-!
       | x < y = del a
@@ -83,11 +97,10 @@ delete x t =
       | otherwise = join a b
       -}
       {-!! delete_5 -}
-      {-!
       | x > y = delLeft a y vy b
       | x < y = delRight a y vy b
       | otherwise = join a b
-      -}
+      {- !-}
 
     delLeft a@(T B _ _ _ _) y vy b = do
       a' <- del a
@@ -111,6 +124,7 @@ balLeft bl x vx (T R (T B a y vy b) z vz c) =
   {-!
   return $ T R (T B bl x vx a) y vy (balance B b z vz c)
   -}
+  {- !-}
 balLeft _ _ _ _ = Left IE
 
 balRight :: Tree k v -> k -> v -> Tree k v -> Either Error (Tree k v)
@@ -125,6 +139,7 @@ balRight (T R a x vx (T B b y vy c)) z vz bl =
   {-!
   return $ T R (balance B a x vx b) y vy (T B c z vz bl)
   -}
+  {- !-}
 balRight _ _ _ _ = Left IE
 
 join :: Tree k v -> Tree k v -> Either Error (Tree k v)
@@ -140,6 +155,7 @@ join (T R a x vx b) (T R c y vy d) = do
       {-!
       return $ T R (T B a x vx b') z vz (T B c' y vy d)
       -}
+      {- !-}
     bc -> return $ T R a x vx (T R bc y vy d)
 join (T B a x vx b) (T B c y vy d) = do
   t' <- join b c
@@ -151,6 +167,7 @@ join (T B a x vx b) (T B c y vy d) = do
       {-!
       return $ T R (T R a x vx b') z vz (T R c' y vy d)
       -}
+      {- !-}
     bc -> balLeft a x vx (T B bc y vy d)
 join a (T R b x vx c) = do
   t' <- join a b
@@ -176,6 +193,7 @@ balance B (T R (T R a x vx b) y vy c) z vz d = T R (T B a x vx b) y vy (T B c z 
 {-!
 balance B (T R (T R a x vx b) y vy c) z vz d = T R (T B a x vx b) y vy (T B d z vz c)
 -}
+{- !-}
 balance B (T R a x vx (T R b y vy c)) z vz d = T R (T B a x vx b) y vy (T B c z vz d)
 {-! -}
 balance B a x vx (T R (T R b y vy c) z vz d) = T R (T B a x vx b) y vy (T B c z vz d)
@@ -183,5 +201,6 @@ balance B a x vx (T R (T R b y vy c) z vz d) = T R (T B a x vx b) y vy (T B c z 
 {-!
 balance B a x vx (T R (T R b y vy c) z vz d) = T R (T B a x vx c) y vy (T B b z vz d)
 -}
+{- !-}
 balance B a x vx (T R b y vy (T R c z vz d)) = T R (T B a x vx b) y vy (T B c z vz d)
 balance rb a x vx b = T rb a x vx b

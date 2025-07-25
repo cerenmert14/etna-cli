@@ -307,6 +307,7 @@ pub(crate) fn run(
     log::trace!("Run step: {:?}", run_step);
 
     params.insert("language".to_string(), run_config.language.clone());
+    params.insert("workload".to_string(), run_config.workload.clone());
     params.insert("strategy".to_string(), run_config.strategy.clone());
     params.insert("property".to_string(), run_config.property.clone());
     params.insert(

@@ -1,5 +1,11 @@
 from hypothesis import strategies as st
 from impl import T, E
+import warnings
+from hypothesis.errors import NonInteractiveExampleWarning
+
+
+warnings.filterwarnings("ignore", category=NonInteractiveExampleWarning)
+
 
 @st.composite
 def random_strategy(draw):

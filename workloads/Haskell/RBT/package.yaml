@@ -1,4 +1,4 @@
-name: etna-workload
+name: etna-rbt
 
 dependencies:
     - base >= 4.7 && < 5
@@ -7,17 +7,28 @@ dependencies:
     - smallcheck
     - leancheck
     - generic-random
+    - deepseq
 
 library:
     source-dirs: src
 
 executables:
-    etna-workload:
+    rbt:
         main: Main.hs
-        source-dirs: app
+        source-dirs: app/rbt
         ghc-options:
             - -threaded
             - -rtsopts
             - -with-rtsopts=-N
         dependencies:
-            - etna-workload
+            - etna-rbt
+    rbt-sampler:
+        main: Main.hs
+        source-dirs: app/rbt-sampler
+        ghc-options:
+            - -threaded
+            - -rtsopts
+            - -with-rtsopts=-N
+        dependencies:
+            - etna-rbt
+

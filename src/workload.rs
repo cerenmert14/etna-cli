@@ -57,7 +57,12 @@ impl Step {
     ) -> Command {
         log::debug!("deciding step: {self} with params: {params:?} and tags: {tags:?}");
         match self {
-            Step::Command { command, args, run_at, .. } => Command {
+            Step::Command {
+                command,
+                args,
+                run_at,
+                ..
+            } => Command {
                 command: command.clone(),
                 args: args.clone(),
                 run_at: run_at.clone(),
@@ -65,7 +70,7 @@ impl Step {
             Step::Match { value, options } => {
                 let guard = params.get(value).unwrap();
                 log::debug!("obtaining guard '{guard}' for tags_ {tags:?}");
-                
+
                 if options.get(guard).is_some() {
                     return options.get(guard).unwrap().decide(params, tags);
                 }
@@ -100,7 +105,12 @@ impl Step {
     pub(crate) fn replace(&mut self, s1: &str, s2: &str) {
         let original_step = self.clone();
         match self {
-            Step::Command { command, args, run_at, .. } => {
+            Step::Command {
+                command,
+                args,
+                run_at,
+                ..
+            } => {
                 *command = command.replace(s1, s2);
                 *args = args.iter().map(|arg| arg.replace(s1, s2)).collect();
                 *run_at = run_at.as_ref().map(|r| r.replace(s1, s2));
@@ -147,7 +157,11 @@ impl Step {
         }
 
         for step in steps.iter_mut() {
-            for (key, value) in params.iter() {
+            let params = params
+                .iter()
+                .sorted_by(|a, b| b.0.len().cmp(&a.0.len()));
+
+            for (key, value) in params {
                 step.replace(&format!("${}", key), value);
             }
         }

@@ -12,7 +12,6 @@
 - [ ] The consuming runner should be able to handle the counterexample and produce a result
 
 - [ ] When auto-generating tests, tailor them to the specific languages (change tests/bst.json..)
-- [ ] Check how ("command": "$workload_path/build") works
 - [ ] Get Rust workloads fully done
   - [ ] BST
     - [x] Properties

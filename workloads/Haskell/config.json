@@ -20,7 +20,7 @@
             "options": {
                 "true": {
                     "Command": {
-                        "command": "./bin/bst-sampler",
+                        "command": "./bin/$workload-sampler",
                         "args": [
                             "{\"sstrategy\": \"$strategy\", \"sproperty\": \"prop_$property\", \"stests\": $tests}"
                         ],
@@ -29,7 +29,7 @@
                 },
                 "false": {
                     "Command": {
-                        "command": "./bin/bst",
+                        "command": "./bin/$workload",
                         "args": [
                             "{\"workload\": \"$workload\", \"strategy\": \"$strategy\", \"property\": \"prop_$property\", \"timeout\": $timeout}"
                         ],

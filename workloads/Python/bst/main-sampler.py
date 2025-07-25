@@ -54,8 +54,8 @@ class CustomEncoder(json.JSONEncoder):
 
 def main():
     parser = argparse.ArgumentParser(prog="rackcheck-bespoke")
-    parser.add_argument("property", help="Name of the property to run")
-    parser.add_argument("tests", type=int, help="Number of tests to run")
+    parser.add_argument("property", type=str, help="Name of the property to run", choices=list(PROPS.keys()))
+    parser.add_argument("tests", type=int, help="Number of tests to run", default=100, nargs='?', metavar="N")
     args = parser.parse_args()
 
     if args.property not in PROPS:
@@ -63,8 +63,6 @@ def main():
         sys.exit(1)
 
     prop_fn = PROPS[args.property]
-
-    print(f"Running {args.property} with {args.tests} tests...")
 
     # Run quick-sample using hypothesis.find()
     results = []
