@@ -1,4 +1,4 @@
-(executable
- (public_name BST)
- (name main)
+(executables
+ (public_names bst bst-sampler)
+ (names main main_sampler)
  (libraries BST cmdliner unix qcheck threads))

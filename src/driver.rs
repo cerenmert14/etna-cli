@@ -635,8 +635,21 @@ fn run_cross(
                     &run_config.mutations,
                     &run_config.property,
                     temp_file.path().to_str().unwrap(),
-                )
-                .context("Failed to run canonical serialized runner")?;
+                );
+
+                let Ok(results) = results else {
+                    log::error!("Failed to run canonical serializer");
+                    log::error!("Results: {:?}", results);
+                    result.as_object_mut().unwrap().insert(
+                        "result".to_owned(),
+                        serde_json::Value::String("aborted".to_owned()),
+                    );
+                    result.as_object_mut().unwrap().insert(
+                        "error".to_owned(),
+                        serde_json::Value::String(results.unwrap_err().to_string()),
+                    );
+                    return Ok(result);
+                };
 
                 let time_cutoff = results.map(|r| r + 1).unwrap_or(durations.len());
 
@@ -773,7 +786,11 @@ fn run_default(
             log::debug!("stderr: {}", stderr);
 
             if !output.status.success() {
-                anyhow::bail!("Run command failed with status: {}", output.status);
+                log::warn!(
+                    "Command '{}' failed with status: {}",
+                    command,
+                    output.status
+                );
             }
 
             // look for the result between [| and |]

@@ -13,7 +13,7 @@ pub(crate) fn is_bst(t: &Tree) -> bool {
         Tree::E => true,
         Tree::T(_, a, x, _, b) => {
             // -- Difference from SC: donpt allow repeated keys.
-            every(&|y| y > *x, a) && every(&|y| y < *x, b) && is_bst(a) && is_bst(b)
+            every(&|y| y < *x, a) && every(&|y| y > *x, b) && is_bst(a) && is_bst(b)
         }
     }
 }
@@ -38,7 +38,7 @@ pub(crate) fn consistent_black_height(t: &Tree) -> bool {
     fn go(t: &Tree) -> (bool, i32) {
         match t {
             Tree::E => (true, 1),
-            Tree::T(rb, a, x, _, b) => {
+            Tree::T(rb, a, _, _, b) => {
                 let (a_bool, a_height) = go(a);
                 let (b_bool, b_height) = go(b);
                 let is_black = |rb| match rb {

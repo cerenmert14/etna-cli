@@ -11,7 +11,9 @@ let print_result (r : BST.Spec_qcheck.test_result) =
   print_endline ""
 
 let run
-    (make_test :
-      BST.Impl.t QCheck2.Gen.t -> unit -> BST.Spec_qcheck.test_result)
-    (gen : BST.Impl.t QCheck2.Gen.t) : unit =
-  make_test gen () |> print_result
+    ~prop:
+      (make_test :
+        BST.Impl.t QCheck2.Gen.t -> int -> unit -> BST.Spec_qcheck.test_result)
+    ~(gen : BST.Impl.t QCheck2.Gen.t)
+    ~(seed: int) : unit =
+  make_test gen seed () |> print_result

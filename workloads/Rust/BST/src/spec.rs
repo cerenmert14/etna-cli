@@ -175,6 +175,15 @@ pub fn prop_insert_delete(t: Tree, k: i32, k2: i32, v: i32) -> Option<bool> {
     })
 }
 
+pub fn prop_insert_union(t: Tree, t2: Tree, k: i32, v: i32) -> Option<bool> {
+    is_bst(&t).implies(|| {
+        is_bst(&t2).implies(|| {
+            insert(k, v, union(t.clone(), t2.clone()))
+                == union(insert(k, v, t.clone()), t2.clone())
+        })
+    })
+}
+
 pub fn prop_delete_insert(t: Tree, k: i32, k2: i32, v: i32) -> Option<bool> {
     is_bst(&t).implies(|| {
         (delete(k, insert(k2, v, t.clone())))
@@ -210,4 +219,15 @@ pub fn prop_union_delete_insert(t1: Tree, t2: Tree, k: i32, v: i32) -> Option<bo
 
 pub fn prop_union_union_idempotent(t: Tree) -> Option<bool> {
     is_bst(&t).implies(|| union(t.clone(), t.clone()) == t.clone())
+}
+
+pub fn prop_union_union_assoc(t1: Tree, t2: Tree, t3: Tree) -> Option<bool> {
+    is_bst(&t1).implies(|| {
+        is_bst(&t2).implies(|| {
+            is_bst(&t3).implies(|| {
+                union(t1.clone(), union(t2.clone(), t3.clone()))
+                    == union(union(t1.clone(), t2.clone()), t3.clone())
+            })
+        })
+    })
 }

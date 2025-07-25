@@ -54,6 +54,9 @@ fn main() {
         ("quickcheck", "InsertDelete") => {
             qc.quicktest(spec::prop_insert_delete as fn(Tree, i32, i32, i32) -> Option<bool>)
         }
+        ("quickcheck", "InsertUnion") => {
+            qc.quicktest(spec::prop_insert_union as fn(Tree, Tree, i32, i32) -> Option<bool>)
+        }
         ("quickcheck", "DeleteInsert") => {
             qc.quicktest(spec::prop_delete_insert as fn(Tree, i32, i32, i32) -> Option<bool>)
         }
@@ -68,6 +71,9 @@ fn main() {
         }
         ("quickcheck", "UnionUnionIdempotent") => {
             qc.quicktest(spec::prop_union_union_idempotent as fn(Tree) -> Option<bool>)
+        }
+        ("quickcheck", "UnionUnionAssoc") => {
+            qc.quicktest(spec::prop_union_union_assoc as fn(Tree, Tree, Tree) -> Option<bool>)
         }
         _ => {
             panic!("Unknown tool or property: {} {}", tool, property)

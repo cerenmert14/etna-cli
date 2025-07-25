@@ -91,6 +91,7 @@ fn main() -> ExitCode {
                             serde_lexpr::to_string(&t2)
                                 .unwrap_or_else(|_| "failed to serialize tree".to_string())
                         );
+                        return ExitCode::SUCCESS;
                     }
                 }
             }
@@ -164,6 +165,7 @@ fn main() -> ExitCode {
                                 .unwrap_or_else(|_| "failed to serialize tree".to_string()),
                             k
                         );
+                        return ExitCode::SUCCESS;
                     }
                 }
             }
@@ -234,6 +236,7 @@ fn main() -> ExitCode {
                             serde_lexpr::to_string(&t2)
                                 .unwrap_or_else(|_| "failed to serialize tree".to_string())
                         );
+                        return ExitCode::SUCCESS;
                     }
                 }
             }
@@ -282,6 +285,32 @@ fn main() -> ExitCode {
                                 .unwrap_or_else(|_| "failed to serialize tree".to_string()),
                             k,
                             kp,
+                            v
+                        );
+                        return ExitCode::SUCCESS;
+                    }
+                }
+            }
+        }
+        "InsertUnion" => {
+            let tests: Vec<(Tree, Tree, i32, i32)> = serde_lexpr::from_str(&tests)
+                .expect(r#"{{"property": "InsertUnion", "status": "failed parsing"}}"#);
+
+            for (i, (t1, t2, k, v)) in tests.into_iter().enumerate() {
+                match spec::prop_insert_union(t1.clone(), t2.clone(), k, v) {
+                    None => discards += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        eprintln!(
+                            r#"{{"property": "InsertUnion", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {} {})"}}"#,
+                            passed,
+                            discards,
+                            i,
+                            serde_lexpr::to_string(&t1)
+                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                            serde_lexpr::to_string(&t2)
+                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                            k,
                             v
                         );
                         return ExitCode::SUCCESS;
@@ -358,6 +387,7 @@ fn main() -> ExitCode {
                                 .unwrap_or_else(|_| "failed to serialize tree".to_string()),
                             k
                         );
+                        return ExitCode::SUCCESS;
                     }
                 }
             }
@@ -383,6 +413,7 @@ fn main() -> ExitCode {
                             k,
                             v
                         );
+                        return ExitCode::SUCCESS;
                     }
                 }
             }
@@ -404,11 +435,37 @@ fn main() -> ExitCode {
                             serde_lexpr::to_string(&t1)
                                 .unwrap_or_else(|_| "failed to serialize tree".to_string()),
                         );
+                        return ExitCode::SUCCESS;
                     }
                 }
             }
         }
+        "UnionUnionAssoc" => {
+            let tests: Vec<(Tree, Tree, Tree)> = serde_lexpr::from_str(&tests)
+                .expect(r#"{{"property": "UnionUnionAssoc", "status": "failed parsing"}}"#);
 
+            for (i, (t1, t2, t3)) in tests.into_iter().enumerate() {
+                match spec::prop_union_union_assoc(t1.clone(), t2.clone(), t3.clone()) {
+                    None => discards += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        eprintln!(
+                            r#"{{"property": "UnionUnionAssoc", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {})"}}"#,
+                            passed,
+                            discards,
+                            i,
+                            serde_lexpr::to_string(&t1)
+                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                            serde_lexpr::to_string(&t2)
+                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                            serde_lexpr::to_string(&t3)
+                                .unwrap_or_else(|_| "failed to serialize tree".to_string())
+                        );
+                        return ExitCode::SUCCESS;
+                    }
+                }
+            }
+        }
         _ => {
             eprintln!("Unknown property: {}", property);
         }

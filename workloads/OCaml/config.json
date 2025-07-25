@@ -39,23 +39,43 @@
         }
     ],
     "run_step": {
-        "Command": {
-            "run_at": "/Users/nikhil/Code/etna-cli/exp1/workloads/OCaml/BST",
-            "command": "opam",
-            "args": [
-                "exec",
-                "--",
-                "dune",
-                "exec",
-                "BST",
-                "--",
-                "--test=$property",
-                "--generator=$strategy"
-            ],
-            "parameters": [
-                "property",
-                "strategy"
-            ]
+        "Match": {
+            "value": "cross",
+            "options": {
+                "true": {
+                    "Command": {
+                        "run_at": "$workload_path",
+                        "command": "opam",
+                        "args": [
+                            "exec",
+                            "--",
+                            "dune",
+                            "exec",
+                            "bst-sampler",
+                            "--",
+                            "--property=$property",
+                            "--strategy=$strategy",
+                            "--count=$tests"
+                        ]
+                    }
+                },
+                "false": {
+                    "Command": {
+                        "run_at": "$workload_path",
+                        "command": "opam",
+                        "args": [
+                            "exec",
+                            "--",
+                            "dune",
+                            "exec",
+                            "bst",
+                            "--",
+                            "--property=$property",
+                            "--strategy=$strategy"
+                        ]
+                    }
+                }
+            }
         }
     }
 }

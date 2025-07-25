@@ -60,8 +60,7 @@ fn main() -> ExitCode {
                             passed,
                             discards,
                             i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
+                            t.to_string(),
                             k
                         );
                         return ExitCode::SUCCESS;

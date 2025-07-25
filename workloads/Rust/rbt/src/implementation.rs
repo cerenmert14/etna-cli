@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
@@ -6,10 +8,38 @@ pub enum Color {
     B,
 }
 
+impl Display for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Color::R => write!(f, "(R)"),
+            Color::B => write!(f, "(B)"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
     E,
     T(Color, Box<Tree>, i32, i32, Box<Tree>),
+}
+
+impl Display for Tree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Tree::E => write!(f, "(E)"),
+            Tree::T(color, left, key, value, right) => {
+                write!(
+                    f,
+                    "(T {} {} {} {} {})",
+                    color,
+                    left,
+                    key,
+                    value,
+                    right
+                )
+            }
+        }
+    }
 }
 
 use Color::*;
@@ -119,6 +149,7 @@ pub(crate) fn insert(key: i32, val: i32, t: Tree) -> Tree {
             }
             (x, vx, T(rb, box a, y, vy, box b)) => {
                 /*| */
+/*|
                                                 if x < y {
                                                     balance(rb, ins(x, vx, a), y, vy, b)
                                                 } else if y < x {
@@ -126,6 +157,7 @@ pub(crate) fn insert(key: i32, val: i32, t: Tree) -> Tree {
                                                 } else {
                                                     T(rb, Box::new(a), y, vx, Box::new(b))
                                                 }
+*/
                 /*|| insert_1 */
                 /*|
                 T(R, Box::new(E), x, vx, Box::new(E))
@@ -159,7 +191,6 @@ pub(crate) fn insert(key: i32, val: i32, t: Tree) -> Tree {
                 }
                 */
                 /*|| no_balance_insert_2 */
-                /*|
                 if x < y {
                     balance(rb, ins(x, vx, a), y, vy, b)
                 } else if y < x {
@@ -167,7 +198,6 @@ pub(crate) fn insert(key: i32, val: i32, t: Tree) -> Tree {
                 } else {
                     T(rb, Box::new(a), y, vx, Box::new(b))
                 }
-                */
                 /* |*/
             }
         }
@@ -383,7 +413,7 @@ fn del_right(x: i32, dl: Tree, dy: i32, dvy: i32, dr: Tree, f: usize) -> Option<
     let fp = f - 1;
 
     match (dl, dy, dvy, dr) {
-        (a, y, vy, (T(B, bl, bx, bvx, br))) => {
+        (a, y, vy, T(B, bl, bx, bvx, br)) => {
             let tp = del(x, T(B, bl, bx, bvx, br), fp)?;
             let tpp = bal_right(a, y, vy, tp)?;
             Some(tpp)

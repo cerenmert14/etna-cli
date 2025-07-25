@@ -6,10 +6,17 @@ use serde::{Deserialize, Serialize};
 use crate::{commands::experiment::run, property::Property, strategy::Strategy};
 use marauders::Variation;
 
+/// Represents a command that can be executed in the context of a workload.
 pub(crate) struct Command {
+    /// The command to be executed.
     pub(crate) command: String,
+    /// The arguments to the command.
     pub(crate) args: Vec<String>,
+    /// The directory where the command should be run.
     pub(crate) run_at: Option<String>,
+    /// Optional mitigation information for the command.
+    /// This can be used to specify how to handle potential issues or failures.
+    pub(crate) mitigation: Option<String>,
 }
 
 impl Display for Command {
@@ -22,16 +29,18 @@ impl Display for Command {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Represents a step in a workload, which can either be a command to run or a match condition
+/// that decides which command to run based on parameters and tags.
 pub enum Step {
     #[serde()]
     Command {
         command: String,
         #[serde(skip_serializing_if = "Vec::is_empty", default)]
         args: Vec<String>,
-        #[serde(skip_serializing_if = "Vec::is_empty", default)]
-        params: Vec<String>,
         #[serde(skip_serializing_if = "Option::is_none", default)]
         run_at: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none", default)]
+        mitigation: Option<String>,
     },
     Match {
         value: String,
@@ -40,16 +49,6 @@ pub enum Step {
 }
 
 impl Step {
-    pub(crate) fn params(&self) -> Vec<&str> {
-        match self {
-            Step::Command { params, .. } => params.iter().map(|p| p.as_str()).collect(),
-            Step::Match { value, options } => [
-                vec![value.as_str()],
-                options.values().flat_map(|o| o.params()).collect(),
-            ]
-            .concat(),
-        }
-    }
     pub(crate) fn decide(
         &self,
         params: &HashMap<String, String>,
@@ -61,11 +60,12 @@ impl Step {
                 command,
                 args,
                 run_at,
-                ..
+                mitigation,
             } => Command {
                 command: command.clone(),
                 args: args.clone(),
                 run_at: run_at.clone(),
+                mitigation: mitigation.clone(),
             },
             Step::Match { value, options } => {
                 let guard = params.get(value).unwrap();
@@ -133,7 +133,9 @@ impl Step {
         let mut steps = vec![];
         // elaboration step
         let mut elaborates = vec![];
-        for param in step.params() {
+
+        // Find all parameters that need elaboration
+        for (param, _) in params.iter().sorted_by(|a, b| b.0.len().cmp(&a.0.len())) {
             if step.contains(&format!("!{}", param)) {
                 elaborates.push(param);
             }

@@ -8,9 +8,11 @@
   (require (prefix-in pl: "Strategies/ProplangBespoke.rkt"))
   (require (prefix-in prl: "Strategies/ParallelBespoke.rkt"))
   (command-line
-   #:program "rackcheck-bespoke"
+   #:program "etna-rbt"
    #:args info
-
+    ; validate the input
+    (unless (= (length info) 2)
+      (error "Usage: etna-rbt <property> <strategy>"))
    (define property (list-ref info 0))
    (define strategy-longform (list-ref info 1))
    (define strategy (case strategy-longform

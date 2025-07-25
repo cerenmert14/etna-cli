@@ -79,7 +79,7 @@
                                     "command": "$workload_path/$strategy_sampler.native",
                                     "args": [
                                         "$property",
-                                        "10000"
+                                        "1000"
                                     ],
                                     "params": [
                                         "workload_path",

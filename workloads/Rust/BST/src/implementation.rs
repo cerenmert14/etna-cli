@@ -18,7 +18,6 @@ pub(crate) fn insert(k: i32, v: i32, t: Tree) -> Tree {
         E => T(Box::new(E), k, v, Box::new(E)),
         T(l, k2, v2, r) => {
             /*| insert */
-/*|
             if k < k2 {
                 T(Box::new(insert(k, v, *l)), k2, v2, r)
             } else if k2 < k {
@@ -26,9 +25,10 @@ pub(crate) fn insert(k: i32, v: i32, t: Tree) -> Tree {
             } else {
                 T(l, k2, v, r)
             }
-*/
             /*|| insert_1 */
+            /*|
             T(Box::new(E), k, v, Box::new(E))
+            */
             /*|| insert_2 */
             /*|
             if k < k2 {
@@ -141,6 +141,7 @@ pub(crate) fn union_(l: Tree, r: Tree, f: usize) -> Tree {
         (l, E) => l,
 
         /*| union */
+/*|
         (T(l1, k, v, r1), t) => {
             T(
                 Box::new(union_(*l1, below(k, t.clone()), f1)),
@@ -149,6 +150,7 @@ pub(crate) fn union_(l: Tree, r: Tree, f: usize) -> Tree {
                 Box::new(union_(*r1, above(k, t), f1)),
             )
         }
+*/
         /*|| union_6 */
         /*|
         (T(l1, k1, v1, r1), T(l2, k2, v2, r2)) => {
@@ -178,27 +180,25 @@ pub(crate) fn union_(l: Tree, r: Tree, f: usize) -> Tree {
         }
         */
         /*|| union_8 */
-        /*|
-        (T(l1, k1, v1, r1), T(l2, k2, v2, r2)) => {
+        (T(box l1, k1, v1, box r1), T(box l2, k2, v2, box r2)) => {
             if k1 == k2 {
                 T(
-                    Box::new(union_(*l1, *l2, f1)),
+                    Box::new(union_(l1, l2, f1)),
                     k1,
                     v1,
-                    Box::new(union_(*r1, *r2, f1)),
+                    Box::new(union_(r1, r2, f1)),
                 )
             } else if k1 < k2 {
                 T(
-                    Box::new(union_(*l1, below(k1, *l2), f1)),
+                    Box::new(union_(l1, below(k1, l2.clone()), f1)),
                     k1,
                     v1,
-                    Box::new(union_(*r1, T(Box::new(above(k1, *l2)), k2, v2, r2), f1)),
+                    Box::new(union_(r1, T(Box::new(above(k1, l2)), k2, v2, Box::new(r2)), f1)),
                 )
             } else {
-                union_(T(l2, k2, v2, r2), T(l1, k1, v1, r1), f1)
+                union_(T(Box::new(l2), k2, v2, Box::new(r2)), T(Box::new(l1), k1, v1, Box::new(r1)), f1)
             }
         }
-        */
         /* |*/
     }
 }

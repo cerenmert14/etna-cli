@@ -124,16 +124,18 @@
        #|!! miscolor_insert |#
        #|!
         (T (B) (E) x vx (E))
-      |#
-      #| !|#
+       |#
+       #| !|#
        ]
       [(list x vx (T rb a y vy b))
        #|! |#
+#|!
        (cond
          [(< x y) (balance rb (ins x vx a) y vy b)]
          [(< y x) (balance rb a y vy (ins x vx b))]
          [else (T rb a y vx b)]
          )
+|#
        #|!! insert_1 |#
        #|!
           (T (R) (E) x vx (E))
@@ -146,13 +148,11 @@
           )
        |#
        #|!! insert_3 |#
-       #|!
           (cond
             [(< x y) (balance rb (ins x vx a) y vy b)]
             [(< y x) (balance rb a y vy (ins x vx b))]
             [else (T rb a y vy b)]
           )
-       |#
        #|!! no_balance_insert_1 |#
        #|!
           (cond
@@ -168,8 +168,8 @@
             [(< y x) (T rb a y vy (ins x vx b))]
             [else (T rb a y vx b)]
           )
-        |#
-        #| !|#
+       |#
+       #| !|#
        ]
       )
     )
@@ -210,8 +210,8 @@
      #|!! miscolor_balRight |#
      #|!
       (return (T (R) (balance (B) a x vx b) y vy (T (B) c z vz bl)))
-      |#
-      #| !|#
+     |#
+     #| !|#
      ]
     [_ (nothing)]
     )
@@ -233,8 +233,8 @@
            #|!! miscolor_join_1 |#
            #|!
             (return (T (R) (T (B) a x vx b2) z vz (T (B) c2 y vy d)))
-            |#
-            #| !|#
+           |#
+           #| !|#
            ]
           [bc (return (T (R) a x vx (T (R) bc y vy d)))]
           )]
@@ -251,8 +251,8 @@
            #|!! miscolor_join_2 |#
            #|!
           (return (T (R) (T (R) a x vx b2) z vz (T (R) c2 y vy d)))
-          |#
-          #| !|#
+           |#
+           #| !|#
            ]
           [bc (balLeft a x vx (T (B) bc y vy d))]
           )]
