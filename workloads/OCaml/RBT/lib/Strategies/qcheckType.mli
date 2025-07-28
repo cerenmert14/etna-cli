@@ -1,1 +1,0 @@
-val qcheck_type : Impl.rbt QCheck.arbitrary

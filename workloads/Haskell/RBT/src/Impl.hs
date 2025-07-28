@@ -39,9 +39,7 @@ insert x vx s = blacken (ins x vx s)
       | otherwise = T rb a y vx b
 -}
       {-!! insert_1 -}
-      {-!
       = T R E x vx E
-      -}
       {-!! insert_2 -}
       {-!
       | x < y = balance rb (ins x vx a) y vy b
@@ -60,9 +58,11 @@ insert x vx s = blacken (ins x vx s)
       | otherwise = T rb a y vx b
       -}
       {-!! no_balance_insert_2 -}
+      {-!
       | x < y = balance rb (ins x vx a) y vy b
       | x > y = T rb a y vy (insert x vx b)
       | otherwise = T rb a y vx b
+      -}
       {- !-}
 
 ----------

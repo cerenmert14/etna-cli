@@ -47,7 +47,9 @@ let prop_Q_DeleteValid gen seed =
   make ~name:"Q_DeleteValid" (tup2 gen int)
     (fun (t, k) ->
       assume (is_rbt t);
-      is_rbt (delete k t))
+      match delete k t with
+      | None -> false
+      | Some t' -> is_rbt t')
     ~seed
 
 (** -- Postcondition properties *)
@@ -62,7 +64,10 @@ let prop_Q_DeletePost gen seed =
   make ~name:"Q_DeletePost" (tup3 gen int int)
     (fun (t, k, k') ->
       assume (is_rbt t);
-      find k' (delete k t) = if k = k' then None else find k' t)
+      match delete k t with
+      | None -> false
+      | Some t' ->
+          find k' t' = if k = k' then None else find k' t)
     ~seed
 
 (** -- Model-based properties *)
@@ -70,86 +75,53 @@ let prop_Q_InsertModel gen seed =
   make ~name:"Q_InsertModel" (tup3 gen int int)
     (fun (t, k, v) ->
       assume (is_rbt t);
-      to_list (insert k v t) = l_insert k v (delete_key k (to_list t)))
+      to_list (insert k v t) = l_insert (k, v) (delete_key k (to_list t)))
     ~seed
 
 let prop_Q_DeleteModel gen seed =
   make ~name:"Q_DeleteModel" (tup2 gen int)
     (fun (t, k) ->
       assume (is_rbt t);
-      to_list (delete k t) = delete_key k (to_list t))
-    ~seed
-
-let prop_Q_UnionModel gen seed =
-  make ~name:"Q_UnionModel" (tup2 gen gen)
-    (fun (t, t') ->
-      assume (is_bst t);
-      assume (is_bst t');
-      to_list (union t t')
-      = List.sort compare (l_union (to_list t) (to_list t')))
+      match delete k t with
+      | None -> false
+      | Some t' -> to_list t' = delete_key k (to_list t))
     ~seed
 
 (** Metamorphic properties *)
 let prop_Q_InsertInsert gen seed =
   make ~name:"Q_InsertInsert" (tup5 gen int int int int)
     (fun (t, k, k', v, v') ->
-      assume (is_bst t);
-      insert k v (insert k' v' t)
-      === if k = k' then insert k v t else insert k' v' (insert k v t))
+      assume (is_rbt t);
+      to_list (insert k v (insert k' v' t))
+      = to_list (if k = k' then insert k v t else insert k' v' (insert k v t)))
     ~seed
 
 let prop_Q_InsertDelete gen seed =
   make ~name:"Q_InsertDelete" (tup4 gen int int int)
     (fun (t, k, k', v) ->
-      assume (is_bst t);
-      insert k v (delete k' t)
-      === if k = k' then insert k v t else delete k' (insert k v t))
+      assume (is_rbt t);
+      match delete k' t with
+    | None -> false
+    | Some t' -> match delete k' (insert k v t) with
+                | None -> false
+                | Some t'' ->
+                    to_list (insert k v t') = to_list (if k = k' then insert k v t else t''))
     ~seed
-
-let prop_Q_InsertUnion gen seed =
-  make ~name:"Q_InsertUnion" (tup4 gen gen int int) (fun (t, t', k, v) ->
-      assume (is_bst t);
-      assume (is_bst t');
-      insert k v (union t t') === union (insert k v t) t')
-  ~seed
-
-let prop_Q_DeleteUnion gen seed =
-  make ~name:"Q_DeleteUnion" (tup3 gen gen int) (fun (t, t', k) ->
-      assume (is_bst t);
-      assume (is_bst t');
-      delete k (union t t') === union (delete k t) (delete k t'))
-  ~seed
 
 let prop_Q_DeleteInsert gen seed =
   make ~name:"Q_DeleteInsert" (tup4 gen int int int) (fun (t, k, k', v) ->
-      assume (is_bst t);
-      delete k (insert k' v t)
-      === if k = k' then delete k t else insert k' v (delete k t))
+      assume (is_rbt t);
+      match delete k (insert k' v t) with
+    | None -> false
+    | Some t' -> match delete k t with  
+                | None -> false
+                | Some t'' ->
+                    let t''' = insert k' v t'' in
+                    to_list t' = to_list (if k = k' then t'' else t'''))
   ~seed
 
 let prop_Q_DeleteDelete gen seed =
   make ~name:"Q_DeleteDelete" (tup3 gen int int) (fun (t, k, k') ->
-      assume (is_bst t);
-      delete k (delete k' t) === delete k' (delete k t))
-  ~seed
-
-let prop_Q_UnionDeleteInsert gen seed =
-  make ~name:"Q_UnionDeleteInsert" (tup4 gen gen int int) (fun (t, t', k, v) ->
-      assume (is_bst t);
-      assume (is_bst t');
-      union (delete k t) (insert k v t') === insert k v (union t t'))
-  ~seed
-
-let prop_Q_UnionUnionIdem gen seed =
-  make ~name:"Q_UnionUnionIdem" gen (fun t ->
-      assume (is_bst t);
-      union t t === t)
-  ~seed
-
-let prop_Q_UnionUnionAssoc gen seed =
-  make ~name:"Q_UnionUnionAssoc" (tup3 gen gen gen) (fun (t1, t2, t3) ->
-      assume (is_bst t1);
-      assume (is_bst t2);
-      assume (is_bst t3);
-      union (union t1 t2) t3 = union t1 (union t2 t3))
+      assume (is_rbt t);
+      (delete k =<< delete k' t =~= (delete k' =<< delete k t)))
   ~seed

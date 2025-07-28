@@ -95,7 +95,7 @@ prop_DeleteValid (t, k) =
 prop_InsertPost :: Task (RBT, Key, Key, Val)
 prop_InsertPost (t, k, k', v) =
   isRBT t
-    --> (find k' $ insert k v t)
+    --> find k' ( insert k v t)
     == (if k == k' then Just v else find k' t)
 
 prop_DeletePost :: Task (RBT, Key, Key)
@@ -111,8 +111,8 @@ prop_DeletePost (t, k, k') =
 prop_InsertModel :: Task (RBT, Key, Val)
 prop_InsertModel (t, k, v) =
   isRBT t
-    --> (toList <$> insert k v t)
-    == return (L.insert (k, v) (deleteKey k $ toList t))
+    --> toList (insert k v t)
+    == L.insert (k, v) (deleteKey k $ toList t)
 
 prop_DeleteModel :: Task (RBT, Key)
 prop_DeleteModel (t, k) =
@@ -136,14 +136,27 @@ prop_InsertInsert (t, k, k', v, v') =
 prop_InsertDelete :: Task (RBT, Key, Key, Val)
 prop_InsertDelete (t, k, k', v) =
   isRBT t
-    --> (insert k v =<< delete k' t)
-    =~= if k == k' then insert k v t else delete k' =<< insert k v t
+    --> 
+      case delete k' t of
+        Left _ -> False
+        Right t' -> case delete k' $ insert k v t of
+          Left _ -> False
+          Right t'' -> toList (insert k v t') == toList (if k == k' then insert k v t else t'')
+    -- (insert k v =<< delete k' t)
+    -- =~= if k == k' then insert k v t else delete k' =<< insert k v t
 
 prop_DeleteInsert :: Task (RBT, Key, Key, Val)
 prop_DeleteInsert (t, k, k', v') =
   isRBT t
-    --> (delete k =<< insert k' v' t)
-    =~= if k == k' then delete k t else insert k' v' =<< delete k t
+    --> 
+      case delete k $ insert k' v' t of
+        Left _ -> False
+        Right t' -> case delete k t of
+          Left _ -> False
+          Right t'' -> let t''' = insert k' v' t'' in
+            (toList t' == toList (if k == k' then t'' else t'''))
+    -- (delete k =<< insert k' v' t)
+    -- =~= if k == k' then delete k t else insert k' v' =<< delete k t
 
 prop_DeleteDelete :: Task (RBT, Key, Key)
 prop_DeleteDelete (t, k, k') =

@@ -30,15 +30,17 @@ let balance (col : color) (tl : rbt) (k : key) (v : value) (tr : rbt) : rbt =
       (*!
         T (R, T (B, a, x, vx, b), y, vy, T (B, d, z, vz, c))
       *)
+      (* !*)
   | B, T (R, a, x, vx, T (R, b, y, vy, c)), z, vz, d ->
       T (R, T (B, a, x, vx, b), y, vy, T (B, c, z, vz, d))
   | B, a, x, vx, T (R, T (R, b, y, vy, c), z, vz, d) ->
       (*! *)
       T (R, T (B, a, x, vx, b), y, vy, T (B, c, z, vz, d))
-  (*!! swap_bc *)
-  (*!
+      (*!! swap_bc *)
+      (*!
       T (R, T (B, a, x, vx, c), y, vy, T (B, b, z, vz, d))
-  *)
+      *)
+      (* !*)
   | B, a, x, vx, T (R, b, y, vy, T (R, c, z, vz, d)) ->
       T (R, T (B, a, x, vx, b), y, vy, T (B, c, z, vz, d))
   | rb, a, x, vx, b -> T (rb, a, x, vx, b)
@@ -50,43 +52,45 @@ let rec insert (k : key) (v : value) (t : rbt) : rbt =
     | x, vx, E ->
         (*! *)
         T (R, E, x, vx, E)
-    (*!! miscolor_insert *)
-    (*!
-      T (B, E, x, vx, E)
-    *)
+        (*!! miscolor_insert *)
+        (*!
+          T (B, E, x, vx, E)
+        *)
+        (* !*)
     | x, vx, T (rb, a, y, vy, b) ->
         let _ = ignore (rb, a, y, vy, b, ins) in
         (*! *)
         if x < y then balance rb (ins x vx a) y vy b
         else if y < x then balance rb a y vy (ins x vx b)
         else T (rb, a, y, vx, b)
-    (*!! insert_1 *)
-    (*!
-      T (R, E, x, vx, E)
-    *)
-    (*!! insert_2 *)
-    (*!
-      if x < y then balance rb (ins x vx a) y vy b
-      else T (rb, a, y, vx, b)
-    *)
-    (*!! insert_3 *)
-    (*!
-      if x < y then balance rb (ins x vx a) y vy b
-      else if y < x then balance rb a y vy (ins x vx b)
-      else T (rb, a, y, vy, b)
-    *)
-    (*!! no_balance_insert_1 *)
-    (*!
-      if x < y then T (rb, ins x vx a, y, vy, b)
-      else if y < x then balance rb a y vy (ins x vx b)
-      else T (rb, a, y, vx, b)
-    *)
-    (*!! no_balance_insert_2 *)
-    (*!
-      if x < y then balance rb (ins x vx a) y vy b
-      else if y < x then T (rb, a, y, vy, ins x vx b)
-      else T (rb, a, y, vx, b)
-    *)
+        (*!! insert_1 *)
+        (*!
+          T (R, E, x, vx, E)
+        *)
+        (*!! insert_2 *)
+        (*!
+          if x < y then balance rb (ins x vx a) y vy b
+          else T (rb, a, y, vx, b)
+        *)
+        (*!! insert_3 *)
+        (*!
+          if x < y then balance rb (ins x vx a) y vy b
+          else if y < x then balance rb a y vy (ins x vx b)
+          else T (rb, a, y, vy, b)
+        *)
+        (*!! no_balance_insert_1 *)
+        (*!
+          if x < y then T (rb, ins x vx a, y, vy, b)
+          else if y < x then balance rb a y vy (ins x vx b)
+          else T (rb, a, y, vx, b)
+        *)
+        (*!! no_balance_insert_2 *)
+        (*!
+          if x < y then balance rb (ins x vx a) y vy b
+          else if y < x then T (rb, a, y, vy, ins x vx b)
+          else T (rb, a, y, vx, b)
+        *)
+        (* !*)
   in
 
   blacken (ins k v t)
@@ -100,10 +104,11 @@ let balLeft (tl : rbt) (k : key) (v : value) (tr : rbt) : rbt option =
       (*! *)
       redden c >>= fun c' ->
       return (T (R, T (B, bl, x, vx, a), y, vy, balance B b z vz c'))
-  (*!! miscolor_balLeft *)
-  (*!
-    return (T (R, T (B, bl, x, vx, a), y, vy, (balance B b z vz c)))
-  *)
+      (*!! miscolor_balLeft *)
+      (*!
+        return (T (R, T (B, bl, x, vx, a), y, vy, (balance B b z vz c)))
+      *)
+      (* !*)
   | _, _, _, _ -> None
 
 let balRight (tl : rbt) (k : key) (v : value) (tr : rbt) : rbt option =
@@ -115,10 +120,11 @@ let balRight (tl : rbt) (k : key) (v : value) (tr : rbt) : rbt option =
       (*! *)
       redden a >>= fun a' ->
       return (T (R, balance B a' x vx b, y, vy, T (B, c, z, vz, bl)))
-  (*!! miscolor_balRight *)
-  (*!
-      return (T (R, (balance B a x vx b), y, vy, T (B, c, z, vz, bl)))
-  *)
+      (*!! miscolor_balRight *)
+      (*!
+          return (T (R, (balance B a x vx b), y, vy, T (B, c, z, vz, bl)))
+      *)
+      (* !*)
   | _, _, _, _ -> None
 
 let rec join (t1 : rbt) (t2 : rbt) : rbt option =
@@ -135,6 +141,7 @@ let rec join (t1 : rbt) (t2 : rbt) : rbt option =
           (*!
             return (T (R, T (B, a, x, vx, b'), z, vz, T (B, c', y, vy, d)))
           *)
+          (* !*)
       | bc -> return (T (R, a, x, vx, T (R, bc, y, vy, d))))
   | T (B, a, x, vx, b), T (B, c, y, vy, d) -> (
       join b c >>= fun t' ->
@@ -146,6 +153,7 @@ let rec join (t1 : rbt) (t2 : rbt) : rbt option =
           (*!
             return (T (R, T (R, a, x, vx, b'), z, vz, T (R, c', y, vy, d)))
           *)
+          (* !*)
       | bc -> balLeft a x vx (T (B, bc, y, vy, d)))
   | a, T (R, b, x, vx, c) -> join a b >>= fun t' -> return (T (R, t', x, vx, c))
   | T (R, a, x, vx, b), c -> t R a x vx <$> join b c
@@ -170,25 +178,27 @@ let delete x tr =
         if x < y then delLeft a y vy b
         else if x > y then delRight a y vy b
         else join a b
-    (*!! delete_4 *)
-    (*!
-      if x < y then del a
-      else if x > y then del b
-      else join a b
-    *)
-    (*!! delete_5 *)
-    (*!
-      if x > y then delLeft a y vy b
-      else if x < y then delRight a y vy b
-      else join a b
-    *)
+        (*!! delete_4 *)
+        (*!
+          if x < y then del a
+          else if x > y then del b
+          else join a b
+        *)
+        (*!! delete_5 *)
+        (*!
+          if x > y then delLeft a y vy b
+          else if x < y then delRight a y vy b
+          else join a b
+        *)
+        (* !*)
   in
   (*! *)
   blacken <$> del tr
-(*!! miscolor_delete *)
-(*!
-  del tr
-*)
+  (*!! miscolor_delete *)
+  (*!
+    del tr
+  *)
+  (* !*)
 
 let rec find (x : key) (t : rbt) : value option =
   match t with

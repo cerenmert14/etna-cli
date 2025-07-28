@@ -1,5 +1,5 @@
+open QCheck2
 open Impl
-open List
 
 let blacken_correct (t : ('a, 'b) tree) : ('a, 'b) tree =
   match t with E -> E | T (_, a, k, v, b) -> T (B, a, k, v, b)
@@ -28,13 +28,16 @@ let insert_correct (k : 'a) (vk : 'b) (s : ('a, 'b) tree) : ('a, 'b) tree =
   in
   blacken_correct (ins k vk s)
 
-let bespoke =
-  let open QCheck.Gen in
-  sized (fun n ->
-      list_repeat n (pair small_int small_int) >>= fun kvs ->
-      return (fold_left (fun t (k, v) -> insert_correct k v t) E kvs))
+let gen_Q_Bespoke =
+  let open Gen in
+  let* xs =
+    list_size (int_bound 20) (pair (int_bound 100) (int_bound 100))
+  in
+  let xs = List.sort_uniq (fun (k1, _) (k2, _) -> (compare k1 k2)) xs in
+  let tree = List.fold_left (fun acc (k, v) -> insert k v acc) E xs in
+  return tree
 
 
 
 
-let qcheck_bespoke = QCheck.make bespoke ~print:Display.string_of_tree
+(* let gen_Q_Bespoke = QCheck.make bespoke ~print:Display.string_of_tree *)

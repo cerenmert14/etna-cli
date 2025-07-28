@@ -13,7 +13,7 @@ let print_result (r : Rbt.Spec_qcheck.test_result) =
 let run
     ~prop:
       (make_test :
-        Rbt.Impl.t QCheck2.Gen.t -> int -> unit -> Rbt.Spec_qcheck.test_result)
-    ~(gen : Rbt.Impl.t QCheck2.Gen.t)
+        Rbt.Impl.rbt QCheck2.Gen.t -> int -> unit -> Rbt.Spec_qcheck.test_result)
+    ~(gen : Rbt.Impl.rbt QCheck2.Gen.t)
     ~(seed: int) : unit =
   make_test gen seed () |> print_result
