@@ -208,3 +208,17 @@ let rec find (x : key) (t : rbt) : value option =
 
 let rec size (t : rbt) : int =
   match t with E -> 0 | T (_, l, _, _, r) -> 1 + size l + size r
+
+let color_to_string (c : color) : string =
+  match c with
+  | R -> "(R)"
+  | B -> "(B)"
+
+let to_string t =
+  let rec aux t =
+    match t with
+    | E -> "(E)"
+    | T (c, l, k, v, r) -> Printf.sprintf "(T %s %s %d %d %s)" (color_to_string c) (aux l) k v (aux r)
+  in
+  aux t
+

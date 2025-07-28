@@ -291,6 +291,6 @@ let print_result (r : test_result) =
 
 let run
     (make_test :
-      Rbt.Impl.t QCheck2.Gen.t -> unit -> test_result)
-    (gen : Rbt.Impl.t QCheck2.Gen.t) : unit =
+      Rbt.Impl.rbt QCheck2.Gen.t -> unit -> test_result)
+    (gen : Rbt.Impl.rbt QCheck2.Gen.t) : unit =
   make_test gen () |> print_result
