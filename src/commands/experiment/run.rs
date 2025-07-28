@@ -56,7 +56,6 @@ pub fn invoke(
     test: Option<String>,
     tests: Vec<String>,
     short_circuit: bool,
-    cross: bool,
 ) -> anyhow::Result<()> {
     log::trace!("running experiment with name '{:?}'", experiment_name);
     let etna_config = EtnaConfig::get_etna_config()?;
@@ -99,7 +98,7 @@ pub fn invoke(
     // python_driver::run_experiment(&etna_config, &experiment_config, snapshot)?;
     for test in &tests {
         info!("Running test: {}", test);
-        run_experiment(test, &experiment_config, snapshot.clone(), short_circuit, cross)?;
+        run_experiment(test, &experiment_config, snapshot.clone(), short_circuit)?;
     }
 
     Ok(())

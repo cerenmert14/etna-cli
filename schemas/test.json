@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["language", "workload", "mutations", "trials", "timeout", "tasks"],
+    "properties": {
+      "language": {
+        "type": "string"
+      },
+      "workload": {
+        "type": "string"
+      },
+      "mutations": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "trials": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "timeout": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "cross": {
+        "type": "boolean"
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "tests": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "tasks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["strategy", "property"],
+          "properties": {
+            "strategy": {
+              "type": "string"
+            },
+            "property": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "additionalProperties": false
+  }
+}

@@ -20,8 +20,8 @@ instance (Show k, Show v) => Show (Tree k v) where
   show (T c l k v r) = "(T " ++ show c ++ " " ++ show l ++ " " ++ show k ++ " " ++ show v ++ " " ++ show r ++ ")"
 
 
-insert :: Ord k => k -> v -> Tree k v -> Either Error (Tree k v)
-insert x vx s = return $ blacken (ins x vx s)
+insert :: Ord k => k -> v -> Tree k v -> Tree k v
+insert x vx s = blacken (ins x vx s)
   where
     ins x vx E =
       {-! -}
@@ -33,9 +33,11 @@ insert x vx s = return $ blacken (ins x vx s)
       {- !-}
     ins x vx (T rb a y vy b)
       {-! -}
+{-!
       | x < y = balance rb (ins x vx a) y vy b
       | x > y = balance rb a y vy (ins x vx b)
       | otherwise = T rb a y vx b
+-}
       {-!! insert_1 -}
       {-!
       = T R E x vx E
@@ -58,11 +60,9 @@ insert x vx s = return $ blacken (ins x vx s)
       | otherwise = T rb a y vx b
       -}
       {-!! no_balance_insert_2 -}
-      {-!
       | x < y = balance rb (ins x vx a) y vy b
       | x > y = T rb a y vy (insert x vx b)
       | otherwise = T rb a y vx b
-      -}
       {- !-}
 
 ----------
@@ -85,11 +85,9 @@ delete x t =
     del E = return E
     del (T _ a y vy b)
       {-! -}
-{-!
       | x < y = delLeft a y vy b
       | x > y = delRight a y vy b
       | otherwise = join a b
--}
       {-!! delete_4 -}
       {-!
       | x < y = del a
@@ -97,9 +95,11 @@ delete x t =
       | otherwise = join a b
       -}
       {-!! delete_5 -}
+      {-!
       | x > y = delLeft a y vy b
       | x < y = delRight a y vy b
       | otherwise = join a b
+      -}
       {- !-}
 
     delLeft a@(T B _ _ _ _) y vy b = do

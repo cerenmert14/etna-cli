@@ -115,9 +115,10 @@ quickSample n p = do
                                                                    t' <- getCurrentTime
                                                                    modifyIORef ins ((t', testCase res):))) p)
   cs <- readIORef ins
-  let cs' = reverse cs
-  let jsonify (t', c) =
-        "{ \"time\" : \"" ++ show (diffUTCTime t' t) ++ "\","
-          ++ " \"value\": \"" ++ unwords c ++ "\"}"
-  let json = "[" ++ intercalate "," (map jsonify cs') ++ "]"
-  putStrLn json
+  tr <- newIORef t
+  opts <- forM (reverse cs) $ \(t', c) -> do
+    t0 <- readIORef tr
+    writeIORef tr t'
+    return ("{ \"time\" : \"" ++ show (diffUTCTime t' t0) ++ "\"," ++
+            "  \"value\": \"" ++ unwords c ++ "\"}")
+  putStrLn ("[" ++ intercalate ", " opts ++ "]")

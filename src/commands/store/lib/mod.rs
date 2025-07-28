@@ -6,7 +6,7 @@ use crate::{
 };
 
 use anyhow::Context;
-use jaq_interpret::{Ctx, Error, FilterT, ParseCtx, RcIter, Val};
+use jaq_interpret::{Ctx, Error, Filter, FilterT, ParseCtx, RcIter, Val};
 
 use serde_json::Value;
 
@@ -56,6 +56,60 @@ fn jaq_error_to_anyhow_error(e: Error) -> anyhow::Error {
         }
         _ => anyhow::Error::msg("Unknown error"),
     }
+}
+
+pub fn jaq_compile(program: &str) -> anyhow::Result<Filter> {
+    let mut defs = ParseCtx::new(Vec::new());
+    defs.insert_natives(jaq_core::core());
+    defs.insert_defs(jaq_std::std());
+
+    let parser = jaq_parse::defs();
+
+    // parse the include file
+    let (f, errs) = jaq_parse::parse(include_str!("lib.jq"), parser);
+    anyhow::ensure!(
+        errs.is_empty(),
+        format!("Failed to parse lib.jq {:?} with errors: {:?}", f, errs)
+    );
+
+    if let Some(f) = f {
+        defs.insert_defs(f);
+    } else {
+        anyhow::bail!("Failed to parse lib.jq '{:?}' with errors: {:?}", f, errs);
+    }
+
+    // parse the filter
+    let (f, errs) = jaq_parse::parse(program, jaq_parse::main());
+    anyhow::ensure!(
+        errs.is_empty(),
+        format!(
+            "Failed to parse the jq program {:?} with errors: {:?}",
+            program, errs
+        )
+    );
+
+    anyhow::ensure!(
+        f.is_some(),
+        format!(
+            "Failed to parse the jq program {:?} with errors: {:?}",
+            f, errs
+        )
+    );
+
+    // compile the filter in the context of the given definitions
+    let f = defs.compile(f.unwrap());
+    anyhow::ensure!(
+        defs.errs.is_empty(),
+        format!(
+            "Failed to compile the jq program with errors: {:?}",
+            defs.errs
+                .iter()
+                .map(|e| format!("({}, {:?})", e.0, e.1))
+                .collect::<Vec<String>>()
+        )
+    );
+
+    Ok(f)
 }
 
 fn jaq_handler(input: Value, program: &str) -> anyhow::Result<Value> {
@@ -125,42 +179,42 @@ fn jaq_handler(input: Value, program: &str) -> anyhow::Result<Value> {
     Ok(res)
 }
 
-pub(crate) fn handle_jq_query(store: Store, query_option: QueryOption) -> anyhow::Result<()> {
-    let query_string = match query_option {
-        QueryOption::Jq { query_string } => query_string,
-        QueryOption::ExperimentById { experiment_id } => {
-            format!(r#"experiment_by_id("{}")"#, experiment_id)
-        }
-        QueryOption::ExperimentByName { experiment_name } => {
-            format!(r#"last_experiment_by_name("{}")"#, experiment_name)
-        }
-        QueryOption::AllExperimentsByName { experiment_name } => {
-            format!(r#"experiments_by_name("{}")"#, experiment_name)
-        }
-        QueryOption::MetricsByExperimentId { experiment_id } => {
-            format!(r#"metrics_by_experiment_id("{}")"#, experiment_id)
-        }
-        QueryOption::MetricsByFields { fields_json_string } => {
-            let fields_json: serde_json::Value = serde_json::from_str(&fields_json_string)
-                .context("Failed to parse the fields json string")?;
+pub(crate) fn handle_jq_query(store: Store, query_string: String) -> anyhow::Result<()> {
+    // let query_string = match query_option {
+    //     QueryOption::Jq { experiment: _, query_string } => query_string,
+    //     QueryOption::ExperimentById { experiment_id } => {
+    //         format!(r#"experiment_by_id("{}")"#, experiment_id)
+    //     }
+    //     QueryOption::ExperimentByName { experiment_name } => {
+    //         format!(r#"last_experiment_by_name("{}")"#, experiment_name)
+    //     }
+    //     QueryOption::AllExperimentsByName { experiment_name } => {
+    //         format!(r#"experiments_by_name("{}")"#, experiment_name)
+    //     }
+    //     QueryOption::MetricsByExperimentId { experiment_id } => {
+    //         format!(r#"metrics_by_experiment_id("{}")"#, experiment_id)
+    //     }
+    //     QueryOption::MetricsByFields { fields_json_string } => {
+    //         let fields_json: serde_json::Value = serde_json::from_str(&fields_json_string)
+    //             .context("Failed to parse the fields json string")?;
 
-            format!(r#"metrics_by_json_string({:?})"#, fields_json.to_string())
-        }
-        QueryOption::SnapshotsByFields { fields_json_string } => {
-            let fields_json: serde_json::Value = serde_json::from_str(&fields_json_string)
-                .context("Failed to parse the fields json string")?;
+    //         format!(r#"metrics_by_json_string({:?})"#, fields_json.to_string())
+    //     }
+    //     QueryOption::SnapshotsByFields { fields_json_string } => {
+    //         let fields_json: serde_json::Value = serde_json::from_str(&fields_json_string)
+    //             .context("Failed to parse the fields json string")?;
 
-            format!(r#"snapshots_by_json_string({:?})"#, fields_json.to_string())
-        }
-        QueryOption::SnapshotsByName { snapshot_name } => {
-            format!(r#"snapshots_by_name("{}")"#, snapshot_name)
-        }
-        QueryOption::SnapshotByHash { snapshot_hash } => {
-            format!(r#"snapshot_by_hash("{}")"#, snapshot_hash)
-        }
-    };
+    //         format!(r#"snapshots_by_json_string({:?})"#, fields_json.to_string())
+    //     }
+    //     QueryOption::SnapshotsByName { snapshot_name } => {
+    //         format!(r#"snapshots_by_name("{}")"#, snapshot_name)
+    //     }
+    //     QueryOption::SnapshotByHash { snapshot_hash } => {
+    //         format!(r#"snapshot_by_hash("{}")"#, snapshot_hash)
+    //     }
+    // };
 
-    let result = jaq_handler(serde_json::json!(store), &query_string)
+    let result = jaq_handler(serde_json::json!(store.metrics), &query_string)
         .context(format!("jq query '{query_string}' has failed"))?;
 
     println!("{}", serde_json::to_string_pretty(&result)?);

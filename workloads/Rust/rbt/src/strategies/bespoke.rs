@@ -73,14 +73,11 @@ pub(crate) fn insert(key: i32, val: i32, t: Tree) -> Tree {
     blacken(ins(key, val, t))
 }
 
-pub(crate) fn gen_tree(s: usize, g: &mut Gen) -> Tree {
+pub(crate) fn bespoke(g: &mut Gen) -> Tree {
+    let s= g.size() + 1;
     let sz = choose(1, s, g);
     let kvs = gen_kvs(sz, g);
     kvs.iter().fold(E, |t, (k, v)| insert(*k, *v, t))
-}
-
-pub(crate) fn bespoke(g: &mut Gen) -> Tree {
-    gen_tree(20, g)
 }
 
 impl Arbitrary for Tree {

@@ -27,6 +27,11 @@
     - [ ] Validation
   - [ ] (not for now) System F
 
+check the following tasks:
+  RBT, DeleteInsert, miscolor_insert
+  RBT, DeleteInsert, no_balance_insert_1
+  RBT, DeleteInsert, no_balance_insert_2
+
 @ceren
 
 Use cross-mode checking for validating the properties. You will run

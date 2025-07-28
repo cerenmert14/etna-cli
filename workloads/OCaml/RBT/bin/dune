@@ -1,4 +1,4 @@
 (executable
- (public_name RBT)
+ (public_name rbt)
  (name main)
- (libraries RBT))
+ (libraries rbt))

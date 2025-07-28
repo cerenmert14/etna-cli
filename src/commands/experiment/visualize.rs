@@ -3,10 +3,7 @@ use std::{fmt::Display, io::Write};
 use ab_glyph::{Font, FontRef, ScaleFont as _};
 use anyhow::Context as _;
 use image::{Rgb, RgbImage};
-use imageproc::{
-    drawing::draw_filled_rect_mut,
-    rect::Rect,
-};
+use imageproc::{drawing::draw_filled_rect_mut, rect::Rect};
 use itertools::Itertools;
 use serde_json::{Map, Value};
 
@@ -122,7 +119,10 @@ pub fn invoke(
                 .join(test)
                 .with_extension("json");
             let test: Vec<Test> =
-                serde_json::from_str(&std::fs::read_to_string(test_path).unwrap()).unwrap();
+                serde_json::from_str(&std::fs::read_to_string(&test_path).expect(
+                    format!("Failed to read test file at {}", test_path.display()).as_str(),
+                ))
+                .unwrap();
             test
         })
         .collect::<Vec<Test>>();
@@ -142,13 +142,15 @@ pub fn invoke(
                     .and_then(serde_json::Value::as_array)?;
                 let strategy = data.get("strategy").and_then(serde_json::Value::as_str)?;
                 let property = data.get("property").and_then(serde_json::Value::as_str)?;
+                let cross = data.get("cross").and_then(serde_json::Value::as_bool)?;
 
                 let result = test.language == language
                     && test.workload == workload
                     && &test.mutations == mutations
                     && test
                         .tasks
-                        .contains(&(strategy.to_string(), property.to_string()));
+                        .contains(&(strategy.to_string(), property.to_string()))
+                    && test.cross == cross;
 
                 if result {
                     Some(m)
@@ -226,6 +228,7 @@ pub fn invoke(
                     "strategy": agg[2],
                     "property": agg[3],
                     "mutations": agg[4],
+                    "cross": agg[5],
                     "discards": f64::NAN,
                     "tests": f64::NAN,
                     "shrinks": f64::NAN,
@@ -259,7 +262,8 @@ pub fn invoke(
                         .and_then(serde_json::Value::as_str)
                         .into_iter()
                         .flat_map(parse_duration::parse)
-                        .next().map(|d| d.as_secs_f64())
+                        .next()
+                        .map(|d| d.as_secs_f64())
                         .expect("Failed to parse time");
                     acc
                 });
@@ -286,6 +290,7 @@ pub fn invoke(
                 "strategy": agg[2],
                 "property": agg[3],
                 "mutations": agg[4],
+                "cross": agg[5],
                 "discards": avgs.0,
                 "tests": avgs.1,
                 "shrinks": avgs.2,
@@ -303,7 +308,7 @@ pub fn invoke(
 
     log::trace!("Groupby fields: {:#?}", groupby);
 
-    let groups = groupby
+    let mut groups = groupby
         .iter()
         .map(|g| {
             agg_metrics
@@ -318,12 +323,31 @@ pub fn invoke(
         .multi_cartesian_product()
         .collect::<Vec<Vec<_>>>();
 
-    log::trace!("groups: {:?}", groups);
+    // Remove empty groups, meaning groups that filter no metrics.
+    groups.retain(|g| {
+        agg_metrics
+            .iter()
+            .any(|m| {
+                groupby.iter().enumerate().all(|(i, g_)| {
+                    m.get(g_).is_some_and(|v| g[i] == v)
+                })
+            })
+    });
 
+    // The following code creates the sizes of the image;
+    // Image width is fixed at 4000px.
     let width = 4000.0;
-    let height = 1600.0;
-    let margin = 160.0;
-    let bucket_height = (height - margin) / (groups.len() as f64) - margin;
+    // The ratio of the height is calculated based on the number of groups.
+    let ratio = 0.2 + 0.1 * (groups.len() as f64);
+    let height = (width * ratio).round();
+    // The height of each bucket is calculated based on the number of groups.
+    // The margins between the buckets are 10% of the bucket height.
+    // For N groups, the height of the image is;
+    // height  = N * bucket_height + (N+1) / 10 * bucket_height.
+    // --> bucket_height = height / (N * 1.1 + 0.1).
+    let bucket_height = height / (groups.len() as f64 * 1.1 + 0.1);
+    // The margin between the buckets is 10% of the bucket height.
+    let margin = bucket_height * 0.1;
 
     let mut image = RgbImage::new(width as u32, height as u32);
 
@@ -433,10 +457,16 @@ pub fn invoke(
             margin,
             bucket_height,
             bucket_index: i,
-            fill_color: colors[i],
+            fill_color: colors[i % colors.len()],
             legend: false,
         };
-        draw_buckets_line(&mut image, buckets, cfg);
+        let group = group
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(" - ");
+
+        draw_buckets_line(&mut image, &group, buckets, cfg);
     }
 
     let name = format!("{}_{}.png", figure_name, metric.to_string());
@@ -477,9 +507,15 @@ pub fn invoke(
             bucket_height,
             bucket_index: i,
             legend: true,
-            fill_color: colors[i],
+            fill_color: colors[i % colors.len()],
         };
-        draw_buckets_line(&mut image, buckets, cfg);
+        let group = group
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(" - ");
+
+        draw_buckets_line(&mut image, &group, buckets, cfg);
     }
 
     let name = format!("{}_{}_legend.png", figure_name, metric.to_string());
@@ -532,6 +568,7 @@ fn rendered_text_width_and_height(text: &str, font: &FontRef, font_size: f64) ->
 
 fn draw_buckets_line(
     image: &mut RgbImage,
+    group_label: &str,
     buckets: Vec<((f64, f64), Vec<f64>)>,
     mut cfg: BucketDrawConfig,
 ) {
@@ -561,6 +598,27 @@ fn draw_buckets_line(
         "../../../assets/SourceCodePro-Medium.ttf"
     ))
     .expect("Failed to load font");
+
+    // Draw the group label at the top of the line
+    let (text_width, text_height) = rendered_text_width_and_height(group_label, &font, scale);
+    let text_x = cfg.margin + (cfg.width - 2.0 * cfg.margin) / 2.0 - text_width / 2.0;
+    let text_y = y - text_height - cfg.margin;
+    log::trace!(
+        "Drawing group label '{}' at ({}, {}) with color {:?}",
+        group_label,
+        text_x,
+        text_y,
+        text_color(cfg.fill_color)
+    );
+    imageproc::drawing::draw_text_mut(
+        image,
+        text_color(cfg.fill_color),
+        text_x as i32,
+        text_y as i32,
+        scale as f32,
+        &font,
+        group_label,
+    );
 
     for ((begin, end), metrics) in buckets {
         if metrics.is_empty() {

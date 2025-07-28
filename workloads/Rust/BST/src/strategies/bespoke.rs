@@ -2,22 +2,32 @@ use quickcheck::Arbitrary;
 
 use crate::implementation::Tree;
 
-fn gen_tree(g: &mut quickcheck::Gen, size: usize, lo: i32, hi: i32) -> Tree {
-    if size == 0 || lo + 1 >= hi - 1 {
-        return Tree::E;
-    }
+use Tree::*;
 
-    let k = *g.choose(&((lo + 1)..(hi - 1)).into_iter().collect::<Vec<_>>()).unwrap();
-    let left = gen_tree(g, size - 1, lo, k);
-    let right = gen_tree(g, size - 1, k, hi);
-    Tree::T(Box::new(left), k, k, Box::new(right))
+fn insert_(k: i32, v: i32, t: Tree) -> Tree {
+    match t {
+        E => T(Box::new(E), k, v, Box::new(E)),
+        T(l, k2, v2, r) => {
+            /*| insert */
+            if k < k2 {
+                T(Box::new(insert_(k, v, *l)), k2, v2, r)
+            } else if k2 < k {
+                T(l, k2, v2, Box::new(insert_(k, v, *r)))
+            } else {
+                T(l, k2, v, r)
+            }
+        }
+    }
 }
 
 impl Arbitrary for Tree {
     fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-        let size = ((g.size() as f64) * 100.0) as usize;
-        let lo = 0;
-        let hi = 100;
-        gen_tree(g, size, lo, hi)
+        let mut t = E;
+        for _ in 0..g.size() {
+            let k = i32::arbitrary(g);
+            let v = i32::arbitrary(g);
+            t = insert_(k, v, t);
+        }
+        t
     }
 }

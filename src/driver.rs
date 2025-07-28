@@ -391,6 +391,8 @@ pub(crate) fn run(
             cmd.current_dir(run_at);
         }
 
+        println!("running trial with '{} {}' at {}", step.command, step.args.join(" "), cdir.display());
+
         let result = serde_json::json!({
             "language": run_config.language,
             "workload": run_config.workload,
@@ -438,7 +440,7 @@ fn run_canonical_serialized(
     mutations: &[String],
     property: &str,
     tests: &str,
-) -> anyhow::Result<Option<usize>> {
+) -> anyhow::Result<serde_json::Value> {
     // Change the current working directory to the workload directory
     let workload_dir = PathBuf::from(
         std::env::var("ETNA_DIR").context("ETNA_DIR environment variable is not set")?,
@@ -508,27 +510,15 @@ fn run_canonical_serialized(
     let output = cmd.output();
     match output {
         Ok(output) => {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            // Parse the stderr to find the index of the failing test
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            // Parse the stdout to find the index of the failing test
             // The JSON output starts at [| and ends at |]
-            log::trace!("Canonical serializer output: {}", stderr);
+            log::trace!("Canonical serializer output: {}", stdout);
 
             let json_value: serde_json::Value =
-                serde_json::from_str(&stderr).context("Failed to parse JSON output")?;
+                serde_json::from_str(&stdout).context("Failed to parse JSON output")?;
 
-            let index = json_value.get("test").and_then(|v| v.as_i64());
-
-            if let Some(index) = index {
-                log::info!(
-                    "Canonical serializer found a failing test at index {}",
-                    index
-                );
-                Ok(Some(index as usize))
-            } else {
-                log::info!("Canonical serializer failed while running, no failing test found");
-                log::debug!("Canonical serializer output: {}", stderr);
-                Ok(None)
-            }
+            Ok(json_value)
         }
         Err(e) => {
             log::error!("Failed to run canonical serializer: {}", e);
@@ -558,6 +548,8 @@ fn run_cross(
     let timeout = Duration::from_secs_f64(run_config.timeout);
 
     let mut total_time = Duration::default();
+    let mut total_passed = 0;
+    let mut total_discards = 0;
     let mut total_samples = 0;
 
     while total_time < timeout {
@@ -594,8 +586,8 @@ fn run_cross(
                 let status = output.status;
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                log::debug!("stdout: {}", &stdout[..10000.min(stdout.len())]);
-                log::debug!("stderr: {}", &stderr[..10000.min(stderr.len())]);
+                log::debug!("stdout: {}", &stdout);
+                log::debug!("stderr: {}", &stderr);
                 if !status.success() {
                     log::error!("Command '{}' failed with status: {}", step, status);
                     panic!("Command should not have a non-zero exit status when running in cross-language mode");
@@ -651,16 +643,35 @@ fn run_cross(
                     return Ok(result);
                 };
 
-                let time_cutoff = results.map(|r| r + 1).unwrap_or(durations.len());
+                let status = results
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
 
-                for d in durations.iter().take(time_cutoff) {
+                let passed = results.get("tests").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+
+                let discarded = results
+                    .get("discarded")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as usize;
+
+                let time_cutoff = if status == "FoundBug" {
+                    passed + discarded + 1
+                } else {
+                    passed + discarded
+                };
+
+                for (i, d) in durations.iter().take(time_cutoff).enumerate() {
                     let d = parse_duration::parse(d)
                         .with_context(|| format!("Failed to parse duration: {}", d))?;
 
                     total_time += d;
-                    total_samples += 1;
 
                     if total_time > timeout {
+                        // these are approximate values, we divide by the time_cutoff to get the average
+                        total_passed += passed * i / time_cutoff;
+                        total_discards += discarded * i / time_cutoff;
+                        total_samples += i;
                         log::info!("Timeout reached after {:?}, stopping the run", total_time);
                         break;
                     }
@@ -671,19 +682,24 @@ fn run_cross(
                     total_time,
                     time_cutoff
                 );
-                if results.is_some() {
-                    let index = results.unwrap();
-                    log::info!(
-                        "Canonical serializer found a failing test at index {}",
-                        index
-                    );
+                if status == "FoundBug" {
+                    log::info!("Found a bug in the canonical serializer, stopping the run");
+
                     result.as_object_mut().unwrap().insert(
                         "result".to_owned(),
                         serde_json::Value::String("foundbug".to_owned()),
                     );
                     result.as_object_mut().unwrap().insert(
-                        "test".to_owned(),
-                        serde_json::Value::Number(total_samples.into()),
+                        "passed".to_owned(),
+                        serde_json::Value::Number(total_passed.into()),
+                    );
+                    result.as_object_mut().unwrap().insert(
+                        "discarded".to_owned(),
+                        serde_json::Value::Number(total_discards.into()),
+                    );
+                    result.as_object_mut().unwrap().insert(
+                        "tests".to_owned(),
+                        serde_json::Value::Number((total_discards + total_passed + 1).into()),
                     );
                     result.as_object_mut().unwrap().insert(
                         "time".to_owned(),
@@ -691,16 +707,16 @@ fn run_cross(
                     );
                     result.as_object_mut().unwrap().insert(
                         "counterexample".to_owned(),
-                        serde_json::Value::String(
-                            samples
-                                .get(index)
-                                .cloned()
-                                .unwrap_or_else(|| "No counterexample found".to_string()),
-                        ),
+                        results
+                            .get("counterexample")
+                            .unwrap_or_else(|| &serde_json::Value::Null)
+                            .clone(),
                     );
                     return Ok(result);
                 } else {
-                    log::info!("Canonical serializer did not find any failing test");
+                    log::info!(
+                        "No bugs found in this batch, continuing to the next batch if time allows"
+                    );
                 }
             }
             Err(err) => {
@@ -923,14 +939,12 @@ pub(crate) fn run_experiment(
     experiment_config: &crate::config::ExperimentConfig,
     snapshot: ExperimentSnapshot,
     short_circuit: bool,
-    cross: bool,
 ) -> anyhow::Result<()> {
     pub(crate) fn aux(
         test: &Test,
         experiment_config: &crate::config::ExperimentConfig,
         snapshot: ExperimentSnapshot,
         short_circuit: bool,
-        cross: bool,
     ) -> anyhow::Result<()> {
         let lang = marauders::Language::name_to_language(&test.language, &vec![])
             .with_context(|| format!("language '{}' is not known or supported", test.language))?;
@@ -966,10 +980,10 @@ pub(crate) fn run_experiment(
         };
 
         let config_path = workload_dir.join("config").with_extension("json");
-        println!("config path: {}", config_path.display());
+        log::debug!("config path: {}", config_path.display());
         let cfg: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&config_path).unwrap()).unwrap();
-        println!("config: {}", cfg);
+        log::debug!("config: {}", cfg);
         let tags: HashMap<String, Vec<String>> = serde_json::from_value(
             cfg.get("tags")
                 .unwrap_or(&serde_json::Value::Object(Map::new()))
@@ -994,7 +1008,7 @@ pub(crate) fn run_experiment(
                 test.timeout,
                 test.trials,
                 short_circuit,
-                cross,
+                test.cross,
                 &store.metrics,
             )
         });
@@ -1033,7 +1047,7 @@ pub(crate) fn run_experiment(
                 property: property.to_string(),
                 timeout: test.timeout,
                 short_circuit,
-                cross,
+                cross: test.cross,
                 seeds: None,
             };
             let result = run(
@@ -1054,7 +1068,7 @@ pub(crate) fn run_experiment(
         Ok(())
     }
 
-    let result = aux(test, experiment_config, snapshot, short_circuit, cross);
+    let result = aux(test, experiment_config, snapshot, short_circuit);
     if let Err(e) = &result {
         log::error!("Experiment failed with error: {}", e);
     } else {

@@ -1,16 +1,20 @@
 use anyhow::Context;
 use clap::Subcommand;
 
-use lib::{handle_jq_query, handle_specialized_query};
-
-use crate::{config::EtnaConfig, store::Store};
-
-mod lib;
+use crate::{
+    commands::store::lib::{handle_jq_query, handle_specialized_query},
+    config::{EtnaConfig, ExperimentConfig},
+    store::Store,
+};
 
 #[derive(Debug, Subcommand)]
 pub enum QueryOption {
     #[clap(name = "--jq", about = "JQ Query")]
     Jq {
+        /// Name of the experiment
+        /// [default: current directory]
+        #[clap(short, long, default_value = None)]
+        experiment: Option<String>,
         /// Query string
         query_string: String,
     },
@@ -74,27 +78,18 @@ pub enum QueryOption {
     },
 }
 
-pub fn invoke(query_option: QueryOption) -> anyhow::Result<()> {
+pub fn invoke(experiment: Option<String>, filter: String) -> anyhow::Result<()> {
     let etna_config = EtnaConfig::get_etna_config()?;
-    let store = Store::load(&etna_config.store_path())?;
 
-    let use_jq = std::env::var("ETNA_USE_JQ")
-        .unwrap_or("false".to_string())
-        .parse::<bool>()?;
+    let experiment_config = match experiment {
+        Some(name) => ExperimentConfig::from_etna_config(&name, &etna_config).context(format!(
+            "Failed to get experiment config for '{}'",
+            name
+        )),
+        None => ExperimentConfig::from_current_dir().context("No experiment name is provided, and the current directory is not an experiment directory"),
+    }?;
+    // Load the Store
+    let store = Store::load(&experiment_config.store)?;
 
-    match query_option {
-        QueryOption::Jq { .. }
-        | QueryOption::MetricsByFields { .. }
-        | QueryOption::SnapshotsByFields { .. } => {
-            handle_jq_query(store, query_option).context("Failed to handle jq query")
-        }
-        _ => {
-            if use_jq {
-                handle_jq_query(store, query_option).context("Failed to handle jq query")
-            } else {
-                handle_specialized_query(store, query_option)
-                    .context("Failed to handle special query")
-            }
-        }
-    }
+    handle_jq_query(store, filter).context("Failed to handle jq query")
 }

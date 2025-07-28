@@ -14,6 +14,7 @@ instance (Show k, Show v) => Show (Tree k v) where
   show E = "(E)"
   show (T l k v r) = "(T " ++ show l ++ " " ++ show k ++ " " ++ show v ++ " " ++ show r ++ ")"
 
+
 ----------
 
 insert :: Ord k => k -> v -> Tree k v -> Tree k v

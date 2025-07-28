@@ -7,6 +7,17 @@ pub enum Tree {
     T(Box<Tree>, i32, i32, Box<Tree>),
 }
 
+impl Display for Tree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Tree::E => write!(f, "(E)"),
+            Tree::T(l, k, v, r) => write!(f, "(T {} {} {} {})", l, k, v, r),
+        }
+    }
+}
+
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 use Tree::*;
 

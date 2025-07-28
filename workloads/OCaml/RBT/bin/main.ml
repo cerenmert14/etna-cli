@@ -2,23 +2,23 @@ open QCheck
 open Crowbar
 open Util.Runner
 open Util.Io
-open RBT.Impl
-open RBT.Test
-open RBT.QcheckType
-open RBT.QcheckBespoke
-open RBT.CrowbarType
-open RBT.CrowbarBespoke
-open RBT.BaseType
-open RBT.BaseBespoke
+open Rbt.Impl
+open Rbt.Test
+open Rbt.QcheckType
+open Rbt.QcheckBespoke
+open Rbt.CrowbarType
+open Rbt.CrowbarBespoke
+open Rbt.BaseType
+open Rbt.BaseBespoke
 
 (* RUNNER COMMAND:
-   dune exec RBT -- qcheck prop_DeleteValid bespoke out.txt
-   dune exec RBT -- qcheck prop_DeleteValid type out.txt
-   dune exec RBT -- crowbar prop_DeleteValid bespoke out.txt
-   dune exec RBT -- crowbar prop_DeleteValid type out.txt
-   dune exec RBT -- afl prop_DeleteValid bespoke out.txt
-   dune exec RBT -- afl prop_DeleteValid type out.txt
-   dune exec RBT -- base prop_DeleteValid type out
+   dune exec rnt -- qcheck prop_DeleteValid bespoke out.txt
+   dune exec rnt -- qcheck prop_DeleteValid type out.txt
+   dune exec rnt -- crowbar prop_DeleteValid bespoke out.txt
+   dune exec rnt -- crowbar prop_DeleteValid type out.txt
+   dune exec rnt -- afl prop_DeleteValid bespoke out.txt
+   dune exec rnt -- afl prop_DeleteValid type out.txt
+   dune exec rnt -- base prop_DeleteValid type out
 *)
 
 let properties : (string * rbt property) list =
@@ -44,4 +44,57 @@ let cstrategies : (string * rbt gen) list =
 let bstrategies : (string * rbt basegen) list =
   [ ("type", (module BaseType)); ("bespoke", (module BaseBespoke)) ]
 
-let () = main properties qstrategies cstrategies bstrategies
+
+
+let main property strategy seed =
+  (* Your logic here: select property and generator by name *)
+  let (framework, generator) = 
+    match String.split_on_char ':' strategy with
+    | [ framework; generator ] -> (framework, generator)
+    | _ -> failwith "Strategy must be in the form FRAMEWORK:GENERATOR" in
+  match framework |> String.lowercase_ascii with
+  | "qcheck" -> 
+      Runner_qcheck.run
+        ~prop: (qcheck_property property)
+        ~gen: (qcheck_generator generator)
+        ~seed
+  | "crowbar" ->
+      (* have to do this because crowbar reads command lines args *)
+      Random.self_init ();
+      Sys.argv.(1) <- "--repeat=10000000";
+      Sys.argv.(2) <- Printf.sprintf "--seed=%d" (Random.int 1000000);
+      Runner_crowbar.run
+        (crowbar_property property)
+        (crowbar_generator generator)
+  | _ -> failwith "framework must be either 'qcheck' or 'crowbar'"
+
+(** *)
+
+(** Cmdliner stuff *)
+
+(** | *)
+
+(** v *)
+
+let _ = Random.self_init ()
+
+let property_arg =
+  let doc = "Name of the property test to run." in
+  Arg.(required & opt (some string) None & info [ "property" ] ~docv:"PROPERTY" ~doc)
+
+let generator_arg =
+  let doc = "Name of the strategy to use." in
+  Arg.(
+    required
+    & opt (some string) None
+    & info [ "strategy" ] ~docv:"FRAMEWORK:GENERATOR" ~doc)
+
+let seed_arg =
+  let doc = "Random seed for the generator." in
+  Arg.(
+    value
+    & opt int (Random.int 1000000)
+    & info [ "seed" ] ~docv:"SEED" ~doc)
+
+let term = Term.(const main $ property_arg $ generator_arg $ seed_arg)
+let () = Cmd.(exit @@ eval (v (info "BST") term))

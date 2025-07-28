@@ -82,7 +82,7 @@ type RBT = Tree Key Val
 
 prop_InsertValid :: Task (RBT, Key, Val)
 prop_InsertValid (t, k, v) =
-  isRBT t --> fromRight False (isRBT <$> insert k v t)
+  isRBT t --> isRBT $ insert k v t
 
 prop_DeleteValid :: Task (RBT, Key)
 prop_DeleteValid (t, k) =
@@ -95,8 +95,8 @@ prop_DeleteValid (t, k) =
 prop_InsertPost :: Task (RBT, Key, Key, Val)
 prop_InsertPost (t, k, k', v) =
   isRBT t
-    --> (find k' <$> insert k v t)
-    == return (if k == k' then Just v else find k' t)
+    --> (find k' $ insert k v t)
+    == (if k == k' then Just v else find k' t)
 
 prop_DeletePost :: Task (RBT, Key, Key)
 prop_DeletePost (t, k, k') =
@@ -130,8 +130,8 @@ deleteKey k = filter ((/= k) . fst)
 prop_InsertInsert :: Task (RBT, Key, Key, Val, Val)
 prop_InsertInsert (t, k, k', v, v') =
   isRBT t
-    --> (insert k v =<< insert k' v' t)
-    =~= if k == k' then insert k v t else insert k' v' =<< insert k v t
+    --> toList (insert k v (insert k' v' t)) 
+    == toList(if k == k' then insert k v t else insert k' v' (insert k v t))
 
 prop_InsertDelete :: Task (RBT, Key, Key, Val)
 prop_InsertDelete (t, k, k', v) =

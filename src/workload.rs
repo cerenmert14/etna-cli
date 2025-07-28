@@ -140,6 +140,11 @@ impl Step {
                 elaborates.push(param);
             }
         }
+        for (tag, _) in tags.iter() {
+            if step.contains(&format!("!{}", tag)) {
+                elaborates.push(tag);
+            }
+        }
         let all_elaborations = elaborates
             .iter()
             .map(|key| {

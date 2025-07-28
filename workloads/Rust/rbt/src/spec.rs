@@ -151,20 +151,30 @@ pub fn prop_insert_delete(t: Tree, k: i32, kp: i32, v: i32) -> Option<bool> {
 }
 
 pub fn prop_delete_insert(t: Tree, k: i32, kp: i32, v: i32) -> Option<bool> {
-    is_rbt(&t).implies(|| {
-        let t1 = delete(k, insert(kp, v, t.clone()))?;
-        let t2 = delete(k, t.clone())?;
-        let t3 = insert(kp, v, t2.clone());
-        Some(to_list(&t1) == to_list(if k == kp { &t2 } else { &t3 }))
+    is_rbt(&t).implies(|| match delete(k, insert(kp, v, t.clone())) {
+        None => false,
+        Some(tp) => match delete(k, t.clone()) {
+            None => false,
+            Some(tpp) => {
+                let tppp = insert(kp, v, tpp.clone());
+                to_list(&tp) == to_list(if k == kp { &tpp } else { &tppp })
+            }
+        },
     })
 }
 
 pub fn prop_delete_delete(t: Tree, k: i32, kp: i32) -> Option<bool> {
-    is_rbt(&t).implies(|| {
-        let t1 = delete(kp, t.clone())?;
-        let t2 = delete(k, t1.clone())?;
-        let t3 = delete(k, t.clone())?;
-        let t4 = delete(kp, t3.clone())?;
-        Some(to_list(&t2) == to_list(&t4))
+    is_rbt(&t).implies(|| match delete(kp, t.clone()) {
+        None => false,
+        Some(tp) => match delete(k, tp) {
+            None => false,
+            Some(tpp) => match delete(k, t.clone()) {
+                None => false,
+                Some(t1p) => match delete(kp, t1p) {
+                    None => false,
+                    Some(t1pp) => to_list(&tpp) == to_list(&t1pp),
+                },
+            },
+        },
     })
 }

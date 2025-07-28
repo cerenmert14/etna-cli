@@ -42,7 +42,7 @@ let consistentBlackHeight (t : rbt) : bool =
   in
   fst (go t)
 
-let isRBT (t : rbt) : bool = isBST t && consistentBlackHeight t && noRedRed t
+let is_rbt (t : rbt) : bool = isBST t && consistentBlackHeight t && noRedRed t
 
 let rec toList (t : rbt) : kvlist =
   match t with E -> [] | T (_, l, k, v, r) -> toList l @ [ (k, v) ] @ toList r
@@ -50,21 +50,21 @@ let rec toList (t : rbt) : kvlist =
 (* -- Validity properties. *)
 
 let prop_InsertValid : rbt * key * value -> test =
- fun (t, k, v) -> isRBT t ->> fromSome false (isRBT <$> insert k v t)
+ fun (t, k, v) -> is_rbt t ->> is_rbt (insert k v t)
 
 let prop_DeleteValid : rbt * key -> test =
- fun (t, k) -> isRBT t ->> fromSome false (isRBT <$> delete k t)
+ fun (t, k) -> is_rbt t ->> fromSome false (is_rbt <$> delete k t)
 
 (* ---------- *)
 
 let prop_InsertPost : rbt * key * key * value -> test =
  fun (t, k, k', v) ->
-  isRBT t
-  ->> (find k' <$> insert k v t = return (if k = k' then Some v else find k' t))
+  is_rbt t
+  ->> (find k' (insert k v t) = return (if k = k' then Some v else find k' t))
 
 let prop_DeletePost : rbt * key * key -> test =
  fun (t, k, k') ->
-  isRBT t
+  is_rbt t
   ->> (find k' <$> delete k t = return (if k = k' then None else find k' t))
 
 (* ---------- *)
@@ -89,13 +89,13 @@ let rec l_insert (kv : key * value) (l : kvlist) : kvlist =
 
 let prop_InsertModel : rbt * key * value -> test =
  fun (t, k, v) ->
-  isRBT t
+  is_rbt t
   ->> (toList <$> insert k v t
       = return (l_insert (k, v) (deleteKey k (toList t))))
 
 let prop_DeleteModel : rbt * key -> test =
  fun (t, k) ->
-  isRBT t ->> (toList <$> delete k t = return (deleteKey k (toList t)))
+  is_rbt t ->> (toList <$> delete k t = return (deleteKey k (toList t)))
 
 (* ---------- *)
 
@@ -106,25 +106,25 @@ let ( =~= ) t t' =
 
 let prop_InsertInsert : rbt * key * key * value * value -> test =
  fun (t, k, k', v, v') ->
-  isRBT t
+  is_rbt t
   ->> (insert k v =<< insert k' v' t
       =~= if k = k' then insert k v t else insert k' v' =<< insert k v t)
 
 let prop_InsertDelete : rbt * key * key * value -> test =
  fun (t, k, k', v) ->
-  isRBT t
+  is_rbt t
   ->> (insert k v =<< delete k' t
       =~= if k = k' then insert k v t else delete k' =<< insert k v t)
 
 let prop_DeleteInsert : rbt * key * key * value -> test =
  fun (t, k, k', v') ->
-  isRBT t
+  is_rbt t
   ->> (delete k =<< insert k' v' t
       =~= if k = k' then delete k t else insert k' v' =<< delete k t)
 
 let prop_DeleteDelete : rbt * key * key -> test =
  fun (t, k, k') ->
-  isRBT t ->> (delete k =<< delete k' t =~= (delete k' =<< delete k t))
+  is_rbt t ->> (delete k =<< delete k' t =~= (delete k' =<< delete k t))
 
 (* ---------- *)
 

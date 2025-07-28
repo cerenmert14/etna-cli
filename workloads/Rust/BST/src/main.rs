@@ -14,7 +14,7 @@ fn main() {
     let tool = args[1].as_str();
     let property = args[2].as_str();
 
-    let num_tests = 200;
+    let num_tests = 200_00;
     let mut qc = quickcheck::QuickCheck::new()
         .tests(num_tests)
         .max_tests(num_tests * 2)

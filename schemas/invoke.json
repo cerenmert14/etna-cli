@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["clean_steps", "build_steps", "run_step", "tags"],
+  "properties": {
+    "clean_steps": { "type": "array", "items": { "$ref": "#/$defs/Step" } },
+    "build_steps": { "type": "array", "items": { "$ref": "#/$defs/Step" } },
+    "run_step": { "$ref": "#/$defs/Step" },
+    "tags": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "Step": {
+      "type": "object",
+      "oneOf": [
+        {
+          "required": ["Command"],
+          "properties": {
+            "Command": {
+              "type": "object",
+              "required": ["command"],
+              "properties": {
+                "command": { "type": "string" },
+                "args": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "default": []
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["Match"],
+          "properties": {
+            "Match": {
+              "type": "object",
+              "required": ["value", "options"],
+              "properties": {
+                "value": { "type": "string" },
+                "options": {
+                  "type": "object",
+                  "additionalProperties": { "$ref": "#/$defs/Step" }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

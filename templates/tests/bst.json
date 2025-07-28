@@ -8,27 +8,27 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertPost"
+                "property": "InsertPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertModel"
+                "property": "InsertModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertInsert"
+                "property": "InsertInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertUnion"
+                "property": "InsertUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             }
         ]
     },
@@ -41,31 +41,31 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertPost"
+                "property": "InsertPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertModel"
+                "property": "InsertModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertInsert"
+                "property": "InsertInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertUnion"
+                "property": "InsertUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             }
         ]
     },
@@ -78,27 +78,27 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertPost"
+                "property": "InsertPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertModel"
+                "property": "InsertModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertInsert"
+                "property": "InsertInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertUnion"
+                "property": "InsertUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             }
         ]
     },
@@ -111,31 +111,31 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteModel"
+                "property": "DeleteModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeletePost"
+                "property": "DeletePost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteDelete"
+                "property": "DeleteDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteUnion"
+                "property": "DeleteUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             }
         ]
     },
@@ -148,27 +148,27 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteModel"
+                "property": "DeleteModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeletePost"
+                "property": "DeletePost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteDelete"
+                "property": "DeleteDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteUnion"
+                "property": "DeleteUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             }
         ]
     },
@@ -181,31 +181,31 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionValid"
+                "property": "UnionValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionPost"
+                "property": "UnionPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionModel"
+                "property": "UnionModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteUnion"
+                "property": "DeleteUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertUnion"
+                "property": "InsertUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionUnionAssoc"
+                "property": "UnionUnionAssoc"
             }
         ]
     },
@@ -218,31 +218,31 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionValid"
+                "property": "UnionValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionPost"
+                "property": "UnionPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionModel"
+                "property": "UnionModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteUnion"
+                "property": "DeleteUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertUnion"
+                "property": "InsertUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionUnionAssoc"
+                "property": "UnionUnionAssoc"
             }
         ]
     },
@@ -255,27 +255,27 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionPost"
+                "property": "UnionPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionModel"
+                "property": "UnionModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteUnion"
+                "property": "DeleteUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertUnion"
+                "property": "InsertUnion"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionDeleteInsert"
+                "property": "UnionDeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_UnionUnionAssoc"
+                "property": "UnionUnionAssoc"
             }
         ]
     }

@@ -10,23 +10,23 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteDelete"
+                "property": "DeleteDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteModel"
+                "property": "DeleteModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeletePost"
+                "property": "DeletePost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             }
         ]
     },
@@ -41,19 +41,19 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertPost"
+                "property": "InsertPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertModel"
+                "property": "InsertModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertInsert"
+                "property": "InsertInsert"
             }
         ]
     },
@@ -68,23 +68,23 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertPost"
+                "property": "InsertPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertModel"
+                "property": "InsertModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertInsert"
+                "property": "InsertInsert"
             }
         ]
     },
@@ -99,19 +99,19 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertPost"
+                "property": "InsertPost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertModel"
+                "property": "InsertModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertInsert"
+                "property": "InsertInsert"
             }
         ]
     },
@@ -126,19 +126,19 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteModel"
+                "property": "DeleteModel"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeletePost"
+                "property": "DeletePost"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteDelete"
+                "property": "DeleteDelete"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             }
         ]
     },
@@ -153,11 +153,11 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertValid"
+                "property": "InsertValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             }
         ]
     },
@@ -172,7 +172,7 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteValid"
+                "property": "DeleteValid"
             }
         ]
     },
@@ -187,11 +187,11 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteValid"
+                "property": "DeleteValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteDelete"
+                "property": "DeleteDelete"
             }
         ]
     },
@@ -206,11 +206,11 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteValid"
+                "property": "DeleteValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteDelete"
+                "property": "DeleteDelete"
             }
         ]
     },
@@ -225,7 +225,7 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteValid"
+                "property": "DeleteValid"
             }
         ]
     },
@@ -240,11 +240,11 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteValid"
+                "property": "DeleteValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteDelete"
+                "property": "DeleteDelete"
             }
         ]
     },
@@ -259,15 +259,15 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertValid"
+                "property": "InsertValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             }
         ]
     },
@@ -282,15 +282,15 @@
         "tasks": [
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertValid"
+                "property": "InsertValid"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_DeleteInsert"
+                "property": "DeleteInsert"
             },
             {
                 "strategy": "BespokeGenerator",
-                "property": "test_prop_InsertDelete"
+                "property": "InsertDelete"
             }
         ]
     }

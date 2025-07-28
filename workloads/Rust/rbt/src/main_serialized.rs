@@ -1,6 +1,303 @@
+use etna_rs_utils::{SamplingResult, Status};
 use rbt::{implementation::Tree, spec};
 use std::path::Path;
 use std::process::ExitCode;
+
+fn sample(property: String, tests: &str) -> SamplingResult {
+    let mut discarded = 0;
+    let mut passed = 0;
+
+    match property.as_str() {
+        "InsertValid" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("Failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, v) in tests.into_iter() {
+                match spec::prop_insert_valid(t.clone(), k, v) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {})", t, k, v)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "DeleteValid" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k) in tests.into_iter() {
+                match spec::prop_delete_valid(t.clone(), k) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {})", t, k)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "InsertPost" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, v, query_k) in tests.into_iter() {
+                match spec::prop_insert_post(t.clone(), k, v, query_k) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {} {})", t, k, v, query_k)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "DeletePost" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, query_k) in tests.into_iter() {
+                match spec::prop_delete_post(t.clone(), k, query_k) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {})", t, k, query_k)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "InsertModel" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, v) in tests.into_iter() {
+                match spec::prop_insert_model(t.clone(), k, v) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {})", t, k, v)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "DeleteModel" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k) in tests.into_iter() {
+                match spec::prop_delete_model(t.clone(), k) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {})", t, k)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "InsertInsert" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, kp, v, vp) in tests.into_iter() {
+                match spec::prop_insert_insert(t.clone(), k, kp, v, vp) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {} {} {})", t, k, kp, v, vp)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "InsertDelete" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, kp, v) in tests.into_iter() {
+                match spec::prop_insert_delete(t.clone(), k, kp, v) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {} {})", t, k, kp, v)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "DeleteInsert" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, kp, v) in tests.into_iter() {
+                match spec::prop_delete_insert(t.clone(), k, kp, v) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {} {})", t, k, kp, v)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+        "DeleteDelete" => {
+            let Ok(tests) = serde_lexpr::from_str::<Vec<(Tree, i32, i32)>>(&tests) else {
+                return SamplingResult {
+                    property,
+                    status: Status::Aborted("failed to parse tests".to_string()),
+                    tests: 0,
+                    passed,
+                    discarded,
+                };
+            };
+
+            for (t, k, kp) in tests.into_iter() {
+                match spec::prop_delete_delete(t.clone(), k, kp) {
+                    None => discarded += 1,
+                    Some(true) => passed += 1,
+                    Some(false) => {
+                        return SamplingResult {
+                            property,
+                            status: Status::FoundBug(format!("({} {} {})", t, k, kp)),
+                            tests: passed + discarded + 1,
+                            passed,
+                            discarded,
+                        };
+                    }
+                }
+            }
+        }
+
+        _ => {
+            return SamplingResult {
+                status: Status::Aborted(format!("Unknown property: {}", property)),
+                property,
+                tests: 0,
+                passed,
+                discarded,
+            };
+        }
+    }
+
+    return SamplingResult {
+        property,
+        status: Status::Finished,
+        tests: passed + discarded,
+        passed,
+        discarded,
+    };
+}
 
 fn main() -> ExitCode {
     let args = std::env::args().collect::<Vec<_>>();
@@ -20,258 +317,13 @@ fn main() -> ExitCode {
     } else {
         tests.to_string()
     };
-    let mut discards = 0;
-    let mut passed = 0;
 
-    match property {
-        "InsertValid" => {
-            let tests: Vec<(Tree, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "InsertValid", "status": "failed parsing"}}"#);
+    let result = sample(property.to_string(), &tests);
 
-            for (i, (t, k, v)) in tests.into_iter().enumerate() {
-                match spec::prop_insert_valid(t.clone(), k, v) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{ "property": "InsertValid", "test": {}, "args": ({} {} {})}}"#,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            v
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "DeleteValid" => {
-            let tests: Vec<(Tree, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "DeleteValid", "status": "failed parsing"}}"#);
+    println!("{}", result);
 
-            for (i, (t, k)) in tests.into_iter().enumerate() {
-                match spec::prop_delete_valid(t.clone(), k) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{ "property": "DeleteValid", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            t.to_string(),
-                            k
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "InsertPost" => {
-            let tests: Vec<(Tree, i32, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "InsertPost", "status": "failed parsing"}}"#);
-
-            for (i, (t, k, v, query_k)) in tests.into_iter().enumerate() {
-                match spec::prop_insert_post(t.clone(), k, v, query_k) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "InsertPost", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            v,
-                            query_k
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "DeletePost" => {
-            let tests: Vec<(Tree, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "DeletePost", "status": "failed parsing"}}"#);
-
-            for (i, (t, k, query_k)) in tests.into_iter().enumerate() {
-                match spec::prop_delete_post(t.clone(), k, query_k) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "DeletePost", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            query_k
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "InsertModel" => {
-            let tests: Vec<(Tree, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "InsertModel", "status": "failed parsing"}}"#);
-
-            for (i, (t, k, v)) in tests.into_iter().enumerate() {
-                match spec::prop_insert_model(t.clone(), k, v) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "InsertModel", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            v
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "DeleteModel" => {
-            let tests: Vec<(Tree, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "DeleteModel", "status": "failed parsing"}}"#);
-
-            for (i, (t, k)) in tests.into_iter().enumerate() {
-                match spec::prop_delete_model(t.clone(), k) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "DeleteModel", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "InsertInsert" => {
-            let tests: Vec<(Tree, i32, i32, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "InsertInsert", "status": "failed parsing"}}"#);
-
-            for (i, (t, k, kp, v, vp)) in tests.into_iter().enumerate() {
-                match spec::prop_insert_insert(t.clone(), k, kp, v, vp) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "InsertInsert", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {} {} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            kp,
-                            v,
-                            vp
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "InsertDelete" => {
-            let tests: Vec<(Tree, i32, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "InsertDelete", "status": "failed parsing"}}"#);
-
-            for (i, (t, k, kp, v)) in tests.into_iter().enumerate() {
-                match spec::prop_insert_delete(t.clone(), k, kp, v) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "InsertDelete", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            kp,
-                            v
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "DeleteInsert" => {
-            let tests: Vec<(Tree, i32, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "DeleteInsert", "status": "failed parsing"}}"#);
-
-            for (i, (t, k, kp, v)) in tests.into_iter().enumerate() {
-                match spec::prop_delete_insert(t.clone(), k, kp, v) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "DeleteInsert", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            kp,
-                            v
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-        "DeleteDelete" => {
-            let tests: Vec<(Tree, i32, i32)> = serde_lexpr::from_str(&tests)
-                .expect(r#"{{"property": "DeleteDelete", "status": "failed parsing"}}"#);
-
-            for (i, (t, k, kp)) in tests.into_iter().enumerate() {
-                match spec::prop_delete_delete(t.clone(), k, kp) {
-                    None => discards += 1,
-                    Some(true) => passed += 1,
-                    Some(false) => {
-                        eprintln!(
-                            r#"{{"property": "DeleteDelete", "status": "foundbug", "passed": {}, "discards": {}, "test": {}, "args": "({} {} {})"}}"#,
-                            passed,
-                            discards,
-                            i,
-                            serde_lexpr::to_string(&t)
-                                .unwrap_or_else(|_| "failed to serialize tree".to_string()),
-                            k,
-                            kp
-                        );
-                        return ExitCode::SUCCESS;
-                    }
-                }
-            }
-        }
-
-        _ => {
-            eprintln!("Unknown property: {}", property);
-        }
+    match result.status {
+        Status::Finished => ExitCode::SUCCESS,
+        Status::FoundBug(_) | Status::Aborted(_) => ExitCode::FAILURE,
     }
-    eprintln!(
-        r#"{{ "property": "{}", "passed": {}, "discards": {} }}"#,
-        property, passed, discards
-    );
-    ExitCode::FAILURE
 }

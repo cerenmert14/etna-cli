@@ -36,6 +36,20 @@ fn main() -> anyhow::Result<()> {
             )),
         })
         .chain(std::io::stdout())
+        .format(move |out, message, record| match record.level() {
+            log::Level::Info if log_level.is_none() => out.finish(format_args!("{}", message,)),
+            log::Level::Info
+            | log::Level::Error
+            | log::Level::Warn
+            | log::Level::Debug
+            | log::Level::Trace => out.finish(format_args!(
+                "[{}][{}] {}",
+                record.level(),
+                record.target(),
+                message
+            )),
+        })
+        .chain(fern::log_file("etna.log").context("Failed to create log file")?)
         .apply()
         .context("Failed to initialize the logger")?;
 
@@ -56,7 +70,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         description,
                         local_store,
             } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
-            ExperimentCommand::Run { name, test, tests, short_circuit, cross } => commands::experiment::run::invoke(name, test, tests, short_circuit, cross),
+            ExperimentCommand::Run { name, test, tests, short_circuit } => commands::experiment::run::invoke(name, test, tests, short_circuit),
             ExperimentCommand::Show {
                         hash,
                         name,
@@ -91,7 +105,8 @@ pub(crate) fn run() -> anyhow::Result<()> {
                 experiment_id,
                 metric,
             } => commands::store::write::invoke(None, experiment_id, metric),
-            StoreCommand::Query(query_option) => commands::store::query::invoke(query_option),
+            StoreCommand::Query { experiment, filter } => commands::store::query::invoke(experiment, filter),
+            StoreCommand::Remove { experiment, filter } => commands::store::remove::invoke(experiment, filter),
         },
         Command::Analyze(_analyze_command) => todo!(),
         Command::Check { restore, remove } => commands::check::integrity::invoke(restore, remove),
@@ -145,9 +160,6 @@ enum ExperimentCommand {
         /// Short circuit the trials if any test fails
         #[clap(short = 's', long, default_value = "false")]
         short_circuit: bool,
-        /// Run the tests in cross language mode
-        #[clap(short = 'c', long, default_value = "false")]
-        cross: bool,
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {
@@ -170,13 +182,13 @@ enum ExperimentCommand {
         #[clap(long)]
         figure: String,
         /// Tests to visualize the results of
-        #[clap(short, long)]
+        #[clap(short, long, value_parser, num_args = 1.., value_delimiter = ' ')]
         tests: Vec<String>,
         /// Group by fields
-        #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string()])]
+        #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string(), "cross".to_string()])]
         groupby: Vec<String>,
         /// Aggregate by fields
-        #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string(), "property".to_string(), "mutations".to_string()])]
+        #[clap(short, long, default_values_t = vec!["language".to_string(), "workload".to_string(), "strategy".to_string(), "property".to_string(), "mutations".to_string(), "cross".to_string()])]
         aggby: Vec<String>,
         /// Metric to visualize
         /// [default: "time"]
@@ -244,8 +256,24 @@ enum StoreCommand {
         /// Metric as a json string
         metric: String,
     },
-    #[command(subcommand, name = "query", about = "Query the store")]
-    Query(QueryOption),
+    #[command(name = "query", about = "Query the store")]
+    Query {
+        /// Name of the experiment
+        /// [default: current directory]
+        #[clap(short, long, default_value = None)]
+        experiment: Option<String>,
+        /// Query string
+        filter: String,
+    },
+    #[command(name = "remove", about = "Remove metrics from the store based on a filter")]
+    Remove {
+        /// Name of the experiment
+        /// [default: current directory]
+        #[clap(short, long, default_value = None)]
+        experiment: Option<String>,
+        /// Filter to apply to the metrics
+        filter: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]

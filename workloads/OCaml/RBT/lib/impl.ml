@@ -43,7 +43,7 @@ let balance (col : color) (tl : rbt) (k : key) (v : value) (tr : rbt) : rbt =
       T (R, T (B, a, x, vx, b), y, vy, T (B, c, z, vz, d))
   | rb, a, x, vx, b -> T (rb, a, x, vx, b)
 
-let rec insert (k : key) (v : value) (t : rbt) : rbt option =
+let rec insert (k : key) (v : value) (t : rbt) : rbt =
   let _ = ignore insert in
   let rec ins x vx t : rbt =
     match (x, vx, t) with
@@ -89,7 +89,7 @@ let rec insert (k : key) (v : value) (t : rbt) : rbt option =
     *)
   in
 
-  return (blacken (ins k v t))
+  blacken (ins k v t)
 
 let balLeft (tl : rbt) (k : key) (v : value) (tr : rbt) : rbt option =
   match (tl, k, v, tr) with

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "oneOf": [
+    {
+      "properties": {
+        "status": { "const": "FoundBug" },
+        "tests": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "discarded": { "type": "integer", "minimum": 0 },
+        "time": { "type": "string" },
+        "counterexample": { "type": "string" }
+      },
+      "required": ["status", "tests", "passed", "discarded", "time", "counterexample"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "status": { "const": "TimedOut" },
+        "tests": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "discarded": { "type": "integer", "minimum": 0 },
+        "timeout": { "type": "number", "minimum": 0 }
+      },
+      "required": ["status", "tests", "passed", "discarded", "timeout"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "status": { "const": "Finished" },
+        "tests": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "discarded": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["status", "tests", "passed", "discarded"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "status": { "const": "GaveUp" },
+        "tests": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "discarded": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["status", "tests", "passed", "discarded"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "status": { "const": "Aborted" },
+        "error": { "type": "string" },
+        "tests": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "discarded": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["status", "error", "tests", "passed", "discarded"],
+      "additionalProperties": false
+    }
+  ]
+}
