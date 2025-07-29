@@ -5,12 +5,28 @@ let ( >>= ) = bind
 
 type typ = TBool | TFun of typ * typ [@@deriving sexp, quickcheck]
 
+let rec string_of_typ (t : typ) : string =
+  match t with
+  | TBool -> "(TBool)"
+  | TFun (t1, t2) ->
+      Printf.sprintf "(TFun %s %s)" (string_of_typ t1) (string_of_typ t2)
+
 type expr =
   | Var of Core.Int.t
   | Bool of Core.Bool.t
   | Abs of typ * expr
   | App of expr * expr
 [@@deriving sexp, quickcheck]
+
+let to_string (e : expr) : string =
+  let rec aux e =
+    match e with
+    | Var n -> Printf.sprintf "(Var %d)" n
+    | Bool b -> Printf.sprintf "(Bool %s)" (if b then "#t" else "#f")
+    | Abs (t, e) -> Printf.sprintf "(Abs %s %s)" (string_of_typ t) (aux e)
+    | App (e1, e2) -> Printf.sprintf "(App %s %s)" (aux e1) (aux e2)
+  in
+  aux e
 
 type ctx = typ list
 
@@ -36,21 +52,22 @@ let shift (d : int) (ex : expr) : expr =
     match e with
     | Var n ->
         (*! *)
+(*!
         if n < c then Var n
         else Var (n + d)
-          (*!! shift_var_none *)
-          (*!
-            Var n
-          *)
-          (*!! shift_var_all *)
-          (*!
-            Var (n + d)
-          *)
-          (*!! shift_var_leq *)
-          (*!
-            if n <= c then Var n
-            else Var (n + d)
-          *)
+*)
+        (*!! shift_var_none *)
+          Var n
+        (*!! shift_var_all *)
+        (*!
+          Var (n + d)
+        *)
+        (*!! shift_var_leq *)
+        (*!
+          if n <= c then Var n
+          else Var (n + d)
+        *)
+        (* !*)
     | Bool b -> Bool b
     | Abs (t, e) ->
         (*! *)
@@ -59,6 +76,7 @@ let shift (d : int) (ex : expr) : expr =
         (*!
           Abs (t, go c e)
         *)
+        (* !*)
     | App (e1, e2) -> App (go c e1, go c e2)
   in
   go 0 ex
@@ -77,6 +95,7 @@ let rec subst (n : int) (s : expr) (e : expr) : expr =
       (*!
         Var m
       *)
+      (* !*)
   | _, _, Bool b -> Bool b
   | n, s, Abs (t, e) ->
       (*! *)
@@ -89,19 +108,21 @@ let rec subst (n : int) (s : expr) (e : expr) : expr =
       (*!
         Abs (t, subst n (shift 1 s) e)
       *)
+      (* !*)
   | n, s, App (e1, e2) -> App (subst n s e1, subst n s e2)
 
 let substTop (s : expr) (e : expr) : expr =
   (*! *)
   shift (-1) (subst 0 (shift 1 s) e)
-(*!! substTop_no_shift *)
-(*!
-  subst 0 s e
-*)
-(*!! substTop_no_shift_back *)
-(*!
-  subst 0 (shift 1 s) e
-*)
+  (*!! substTop_no_shift *)
+  (*!
+    subst 0 s e
+  *)
+  (*!! substTop_no_shift_back *)
+  (*!
+    subst 0 (shift 1 s) e
+  *)
+  (* !*)
 
 let fromOption a a' = match a' with Some v -> v | None -> a
 
