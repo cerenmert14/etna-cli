@@ -202,6 +202,7 @@ fn get_agg_metrics(
     let metrics = tests
         .iter()
         .flat_map(|test| {
+            log::trace!("Processing test: {}", test);
             store.metrics.iter().filter_map(|m| {
                 let data = m.data.as_object().unwrap();
 
@@ -334,7 +335,7 @@ fn get_agg_metrics(
                         .flat_map(parse_duration::parse)
                         .next()
                         .map(|d| d.as_secs_f64())
-                        .expect("Failed to parse time");
+                        .expect(format!("Failed to parse time for metric: {:?}", m).as_str());
                     acc
                 });
             let avgs = (
@@ -978,7 +979,7 @@ pub fn draw_bar_chart(
         let bar_height = (total / max) * (height - 2.0 * hmargin);
         let x = vmargin + i as f64 * bar_width;
         let y = height - hmargin - bar_height;
-        log::trace!(
+        log::debug!(
             "Drawing bar for group {i} at ({}, {}) with size ({}, {}) and color {:?}",
             x,
             y,
@@ -986,8 +987,14 @@ pub fn draw_bar_chart(
             bar_height,
             colors[i % colors.len()]
         );
+        if bar_height < 1.0 {
+            log::warn!(
+                "Bar height for group {i} is less than 1px, skipping drawing to avoid artifacts"
+            );
+            continue; // Skip drawing bars that are too small
+        }
         let rect = Rect::at(x as i32, y as i32).of_size(bar_width as u32, bar_height as u32);
-        log::trace!(
+        log::debug!(
             "Drawing rectangle for group {i} at ({}, {}) with size ({}, {}) and color {:?}",
             x,
             y,

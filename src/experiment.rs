@@ -84,8 +84,8 @@ impl Display for Test {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "(language: {}, workload: {}, trials: {}, timeout: {}, mutations: {:?}, tasks: {:?})",
-            self.language, self.workload, self.trials, self.timeout, self.mutations, self.tasks
+            "(language: {}, workload: {}, trials: {}, timeout: {}, cross: {}, mutations: {:?}, tasks: {:?})",
+            self.language, self.workload, self.trials, self.timeout, self.cross, self.mutations, self.tasks
         )
     }
 }

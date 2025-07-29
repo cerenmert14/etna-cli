@@ -166,7 +166,7 @@ fn sample(property: &str, tests: &str) -> SamplingResult {
                             tests: passed + discarded + 1,
                             status: Status::FoundBug(format!(
                                 "({} {} {})",
-                                t1, t2
+                                t1, t2,
                                 k
                             )),
                             passed,
@@ -461,7 +461,7 @@ fn sample(property: &str, tests: &str) -> SamplingResult {
                 match spec::prop_union_union_idempotent(t1.clone()) {
                     None => discarded += 1,
                     Some(true) => passed += 1,
-                    Some(false) => {frm
+                    Some(false) => {
                         return SamplingResult {
                             property: "UnionUnionIdempotent".to_string(),
                             tests: passed + discarded + 1,
