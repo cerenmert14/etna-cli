@@ -6,14 +6,27 @@ import GHC.Generics (Generic)
 data Typ
   = TBool
   | TFun Typ Typ
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
+
+instance Show Typ where
+  show TBool = "(TBool)"
+  show (TFun t1 t2) = "(TFun" ++ show t1 ++ " " ++ show t2 ++ ")"
 
 data Expr
   = Var Int
   | Bool Bool
   | Abs Typ Expr
   | App Expr Expr
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
+
+instance Show Expr where
+  show (Var n) = "(Var " ++ show n ++ ")"
+  show (Bool b) = "(Bool " ++ sexp b ++ ")"
+    where
+      sexp True = "#t"
+      sexp False = "#f"
+  show (Abs t e) = "(Abs " ++ show t ++ " " ++ show e ++ ")"
+  show (App e1 e2) = "(App " ++ show e1 ++ " " ++ show e2 ++ ")"
 
 type Ctx = [Typ]
 
@@ -56,6 +69,7 @@ shift d = go 0
       | n <= c = Var n
       | otherwise = Var (n + d)
       -}
+      {- !-}
     go _ (Bool b) = Bool b
     go c (Abs t e) =
       {-! -}
@@ -64,6 +78,7 @@ shift d = go 0
       {-!
       Abs t (go c e)
       -}
+      {- !-}
     go c (App e1 e2) = App (go c e1) (go c e2)
 
 -- [n -> s]e
@@ -80,6 +95,7 @@ subst n s (Var m)
   {-!
   = Var m
   -}
+  {- !-}
 subst _ _ (Bool b) = Bool b
 subst n s (Abs t e) =
   {-! -}
@@ -92,6 +108,7 @@ subst n s (Abs t e) =
   {-!
   Abs t (subst n (shift 1 s) e)
   -}
+  {- !-}
 subst n s (App e1 e2) = App (subst n s e1) (subst n s e2)
 
 -- [0 -> s]e
@@ -107,6 +124,7 @@ substTop s e =
   {-!
   subst 0 (shift 1 s) e
   -}
+  {- !-}
 
 pstep :: Expr -> Maybe Expr
 pstep (Abs t e) = Abs t <$> pstep e
