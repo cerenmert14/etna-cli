@@ -57,16 +57,16 @@ let shift (d : int) (ex : expr) : expr =
         else Var (n + d)
 *)
         (*!! shift_var_none *)
+        (*!
           Var n
+        *)
         (*!! shift_var_all *)
         (*!
           Var (n + d)
         *)
         (*!! shift_var_leq *)
-        (*!
           if n <= c then Var n
           else Var (n + d)
-        *)
         (* !*)
     | Bool b -> Bool b
     | Abs (t, e) ->

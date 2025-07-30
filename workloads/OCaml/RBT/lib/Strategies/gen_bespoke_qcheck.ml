@@ -31,9 +31,9 @@ let insert_correct (k : 'a) (vk : 'b) (s : ('a, 'b) tree) : ('a, 'b) tree =
 let gen_Q_Bespoke =
   let open Gen in
   let* xs =
-    list_size (int_bound 20) (pair (int_bound 100) (int_bound 100))
+    list_size (int_bound 20) (pair (int_bound 40) (int_bound 40))
   in
-  let xs = List.sort_uniq (fun (k1, _) (k2, _) -> (compare k1 k2)) xs in
+  (* let xs = List.sort_uniq (fun (k1, _) (k2, _) -> (compare k1 k2)) xs in *)
   let tree = List.fold_left (fun acc (k, v) -> insert_correct k v acc) E xs in
   return tree
 

@@ -51,11 +51,11 @@ let rec insert (k : key) (v : value) (t : rbt) : rbt =
     match (x, vx, t) with
     | x, vx, E ->
         (*! *)
-(*!
         T (R, E, x, vx, E)
-*)
         (*!! miscolor_insert *)
+        (*!
           T (B, E, x, vx, E)
+        *)
         (* !*)
     | x, vx, T (rb, a, y, vy, b) ->
         let _ = ignore (rb, a, y, vy, b, ins) in
@@ -102,12 +102,12 @@ let balLeft (tl : rbt) (k : key) (v : value) (tr : rbt) : rbt option =
       return (balance B bl x vx (T (R, a, y, vy, b)))
   | bl, x, vx, T (R, T (B, a, y, vy, b), z, vz, c) ->
       (*! *)
+(*!
       redden c >>= fun c' ->
       return (T (R, T (B, bl, x, vx, a), y, vy, balance B b z vz c'))
+*)
       (*!! miscolor_balLeft *)
-      (*!
         return (T (R, T (B, bl, x, vx, a), y, vy, (balance B b z vz c)))
-      *)
       (* !*)
   | _, _, _, _ -> None
 

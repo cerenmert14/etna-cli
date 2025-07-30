@@ -3,7 +3,10 @@ use std::{fmt::Display, io::Write};
 use ab_glyph::{Font, FontRef, ScaleFont as _};
 use anyhow::Context as _;
 use image::{Rgb, RgbImage};
-use imageproc::{drawing::{draw_filled_rect_mut, draw_line_segment_mut}, rect::Rect};
+use imageproc::{
+    drawing::{draw_filled_rect_mut, draw_line_segment_mut},
+    rect::Rect,
+};
 use itertools::Itertools;
 use serde_json::{Map, Value};
 
@@ -278,6 +281,7 @@ fn get_agg_metrics(
             }
             log::trace!("Group: {:#?}", agg);
             log::trace!("Number of metrics in agg: {}", agg_metrics.len());
+            // if it timed out, finished, gave up, or aborted, we want to return NaN.
             let timed_out = agg_metrics.iter().find_map(|m| {
                 m.data
                     .get("result")
@@ -309,6 +313,61 @@ fn get_agg_metrics(
                 let _ = write_row(&mut raw_data_file, &data, &aggby);
                 return data.as_object().cloned();
             }
+
+            // let aborted = agg_metrics.iter().any(|m| {
+            //     m.data
+            //         .get("result")
+            //         .map(serde_json::Value::as_str)
+            //         .unwrap()
+            //         .map(|t| t == "aborted")
+            //         .unwrap()
+            // });
+            // if aborted {
+            //     log::warn!("Some metrics in group {:?} were aborted", agg);
+            //     let data = serde_json::json!({
+            //         "language": agg[0],
+            //         "workload": agg[1],
+            //         "strategy": agg[2],
+            //         "property": agg[3],
+            //         "mutations": agg[4],
+            //         "cross": agg[5],
+            //         "discards": f64::NAN,
+            //         "tests": f64::NAN,
+            //         "shrinks": f64::NAN,
+            //         "time": f64::NAN,
+            //     });
+            //     log::trace!("Returning aborted data: {:#?}", data);
+            //     let _ = write_row(&mut raw_data_file, &data, &aggby);
+            //     return data.as_object().cloned();
+            // }
+
+            // let finished_or_gave_up = agg_metrics.iter().any(|m| {
+            //     m.data
+            //         .get("result")
+            //         .map(serde_json::Value::as_str)
+            //         .unwrap()
+            //         .map(|t| t == "finished" || t == "gave_up")
+            //         .unwrap()
+            // });
+
+            // if finished_or_gave_up {
+            //     log::warn!("Some metrics in group {:?} finished or gave up", agg);
+            //     let data = serde_json::json!({
+            //         "language": agg[0],
+            //         "workload": agg[1],
+            //         "strategy": agg[2],
+            //         "property": agg[3],
+            //         "mutations": agg[4],
+            //         "cross": agg[5],
+            //         "discards": f64::NAN,
+            //         "tests": f64::NAN,
+            //         "shrinks": f64::NAN,
+            //         "time": f64::NAN,
+            //     });
+            //     log::trace!("Returning finished or gave up data: {:#?}", data);
+            //     let _ = write_row(&mut raw_data_file, &data, &aggby);
+            //     return data.as_object().cloned();
+            // }
 
             let sums: (f64, f64, f64, f64) =
                 agg_metrics.iter().fold((0.0, 0.0, 0.0, 0.0), |mut acc, m| {
@@ -888,8 +947,8 @@ pub fn draw_bar_chart(
     draw_filled_rect_mut(&mut image, line_rect, line_color);
 
     // Draw the horizontal line at the bottom of the image
-    let horizontal_line_rect = Rect::at(vmargin as i32, (height - hmargin) as i32)
-        .of_size(width as u32, 20);
+    let horizontal_line_rect =
+        Rect::at(vmargin as i32, (height - hmargin) as i32).of_size(width as u32, 20);
     draw_filled_rect_mut(&mut image, horizontal_line_rect, line_color);
 
     // Tick marks on the vertical line
@@ -917,10 +976,12 @@ pub fn draw_bar_chart(
         let tick_y = height - hmargin - (tick_value / max) * (height - 2.0 * vmargin);
         log::trace!(
             "Tick value: {}, Tick X:{}, Tick Y: {}",
-            tick_value, (vmargin * 0.75) as i32, tick_y
+            tick_value,
+            (vmargin * 0.75) as i32,
+            tick_y
         );
-        let tick_rect = Rect::at((vmargin * 0.75) as i32, tick_y as i32)
-            .of_size((vmargin  * 0.25) as u32, 20);
+        let tick_rect =
+            Rect::at((vmargin * 0.75) as i32, tick_y as i32).of_size((vmargin * 0.25) as u32, 20);
         draw_filled_rect_mut(&mut image, tick_rect, line_color);
         // Draw the tick label
         let label = format!("{:.2}", tick_value);
@@ -930,7 +991,7 @@ pub fn draw_bar_chart(
         .expect("Failed to load font");
         let scale = bar_width * 0.1;
         let (text_width, text_height) = rendered_text_width_and_height(&label, &font, scale);
-        let text_x = vmargin  * 0.75 - text_width - 5.0; // 5px padding
+        let text_x = vmargin * 0.75 - text_width - 5.0; // 5px padding
         let text_y = tick_y + (2.0 - text_height) / 2.0; // Center the text vertically
         log::trace!(
             "Drawing tick label '{}' at ({}, {}) with color {:?}",

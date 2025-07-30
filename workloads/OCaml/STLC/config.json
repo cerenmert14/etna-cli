@@ -51,7 +51,7 @@
                             "--",
                             "dune",
                             "exec",
-                            "rbt-sampler",
+                            "stlc-sampler",
                             "--",
                             "--property=$property",
                             "--strategy=$strategy",
@@ -68,7 +68,7 @@
                             "--",
                             "dune",
                             "exec",
-                            "rbt",
+                            "stlc",
                             "--",
                             "--property=$property",
                             "--strategy=$strategy"

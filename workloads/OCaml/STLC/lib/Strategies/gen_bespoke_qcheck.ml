@@ -11,7 +11,7 @@ let typGen =
     if n <= 0 then return TBool
     else oneof [ return TBool; map2 tfun (_typGen (n / 2)) (_typGen (n / 2)) ]
   in
-  sized _typGen
+  sized (fun n -> _typGen (min n 5))
 
 let genExactExpr (ctx : ctx) (t : typ) : expr QCheck2.Gen.t =
   let e_var v = Var v in
@@ -43,7 +43,7 @@ let genExactExpr (ctx : ctx) (t : typ) : expr QCheck2.Gen.t =
       in
       oneof ([ genOne ctx t ] @ [ genApp ctx t ] @ absGen @ genVar ctx t)
   in
-  sized (fun n -> go n ctx t)
+  sized (fun n -> go (min n 10) ctx t)
 
 let gen_Q_Bespoke =
   let open QCheck2.Gen in
