@@ -76,7 +76,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         name,
                         show_all,
                     } => commands::experiment::show::invoke(hash, name, show_all),
-            ExperimentCommand::Visualize { name, figure, tests, groupby, aggby, metric, buckets, visualization_type } => commands::experiment::visualize::invoke(name, figure, tests, groupby, aggby, metric, buckets, visualization_type),
+            ExperimentCommand::Visualize { name, figure, tests, groupby, aggby, metric, buckets, max, visualization_type } => commands::experiment::visualize::invoke(name, figure, tests, groupby, aggby, metric, buckets, max, visualization_type),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -198,10 +198,14 @@ enum ExperimentCommand {
         /// Buckets to use for the visualization
         #[clap(short, long, value_parser, num_args = 1.., value_delimiter = ' ', default_values_t = vec![0.1, 1.0, 10.0, 60.0])]
         buckets: Vec<f64>,
+        /// Maximum value for the bar chart
+        /// [default: None]
+        #[clap(long)]
+        max: Option<f64>,
         /// Type of visualization
         /// [default: "bucket"]
         /// [possible_values(line, bar, bucket)]
-        #[clap(short, long, default_value_t = VisualizationType::Bucket)]
+        #[clap(short, long, default_value = "VisualizationType::Bucket")]
         visualization_type: VisualizationType,
     },
 }

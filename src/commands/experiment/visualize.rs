@@ -56,15 +56,6 @@ pub enum VisualizationType {
     Bar,
     Line,
 }
-impl Display for VisualizationType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            VisualizationType::Bucket => write!(f, "bucket"),
-            VisualizationType::Bar => write!(f, "bar"),
-            VisualizationType::Line => write!(f, "line"),
-        }
-    }
-}
 
 pub(crate) fn write_row<W: std::io::Write>(
     writer: &mut W,
@@ -107,6 +98,7 @@ pub fn invoke(
     aggby: Vec<String>,
     metric: MetricType,
     buckets: Vec<f64>,
+    max: Option<f64>,
     typ_: VisualizationType,
 ) -> anyhow::Result<()> {
     log::trace!("visualizing experiment with name '{:?}'", experiment_name);
@@ -150,6 +142,7 @@ pub fn invoke(
                 aggby,
                 AggregationType::Avg, // Assuming avg for bar chart
                 metric,
+                max,
             )
         }
         VisualizationType::Line => {
@@ -737,25 +730,25 @@ fn draw_buckets_line(
     .expect("Failed to load font");
 
     // Draw the group label at the top of the line
-    let (text_width, text_height) = rendered_text_width_and_height(group_label, &font, scale);
-    let text_x = cfg.margin + (cfg.width - 2.0 * cfg.margin) / 2.0 - text_width / 2.0;
-    let text_y = y - text_height - cfg.margin;
-    log::trace!(
-        "Drawing group label '{}' at ({}, {}) with color {:?}",
-        group_label,
-        text_x,
-        text_y,
-        text_color(cfg.fill_color)
-    );
-    imageproc::drawing::draw_text_mut(
-        image,
-        text_color(cfg.fill_color),
-        text_x as i32,
-        text_y as i32,
-        scale as f32,
-        &font,
-        group_label,
-    );
+    // let (text_width, text_height) = rendered_text_width_and_height(group_label, &font, scale);
+    // let text_x = cfg.margin + (cfg.width - 2.0 * cfg.margin) / 2.0 - text_width / 2.0;
+    // let text_y = y - text_height - cfg.margin;
+    // log::trace!(
+    //     "Drawing group label '{}' at ({}, {}) with color {:?}",
+    //     group_label,
+    //     text_x,
+    //     text_y,
+    //     text_color(cfg.fill_color)
+    // );
+    // imageproc::drawing::draw_text_mut(
+    //     image,
+    //     text_color(cfg.fill_color),
+    //     text_x as i32,
+    //     text_y as i32,
+    //     scale as f32,
+    //     &font,
+    //     group_label,
+    // );
 
     for ((begin, end), metrics) in buckets {
         if metrics.is_empty() {
@@ -839,6 +832,7 @@ pub fn draw_bar_chart(
     aggby: Vec<String>,
     agg: AggregationType,
     metric: MetricType,
+    max: Option<f64>,
 ) -> anyhow::Result<()> {
     log::trace!("Drawing bar chart for experiment '{:?}'", experiment_name);
 
@@ -880,7 +874,7 @@ pub fn draw_bar_chart(
 
     // The following code creates the sizes of the image;
     // Image width is fixed at 4000px.
-    let height = 8000.0;
+    let height = 4000.0;
     // The ratio of the height is calculated based on the number of groups.
     let ratio = 2.0 * (0.99_f64.powi(groups.len() as i32));
     let width = (height / ratio).round();
@@ -915,31 +909,36 @@ pub fn draw_bar_chart(
         Rgb([0x00, 0x00, 0x00]), // black
     ];
 
-    let mut max = 0.0;
+    let max = if let Some(max_value) = max {
+        log::trace!("Max value: {}", max_value);
+        max_value
+    } else {
+        let mut max = 0.0;
+        for (i, group) in groups.iter().enumerate() {
+            let group_metrics = agg_metrics
+                .iter()
+                .filter(|m| {
+                    groupby
+                        .iter()
+                        .enumerate()
+                        .all(|(i, g)| m.get(g).is_some_and(|v| group[i] == v))
+                })
+                .collect::<Vec<_>>();
 
-    for (i, group) in groups.iter().enumerate() {
-        let group_metrics = agg_metrics
-            .iter()
-            .filter(|m| {
-                groupby
-                    .iter()
-                    .enumerate()
-                    .all(|(i, g)| m.get(g).is_some_and(|v| group[i] == v))
-            })
-            .collect::<Vec<_>>();
+            // get total of the metric for the group
+            let total = group_metrics.iter().fold(0.0, |acc, m| {
+                acc + m
+                    .get(metric.to_string().as_str())
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0)
+            });
 
-        // get total of the metric for the group
-        let total = group_metrics.iter().fold(0.0, |acc, m| {
-            acc + m
-                .get(metric.to_string().as_str())
-                .and_then(serde_json::Value::as_f64)
-                .unwrap_or(0.0)
-        });
-
-        if total > max {
-            max = total;
+            if total > max {
+                max = total;
+            }
         }
-    }
+        max
+    };
 
     // Draw the vertical line at the left side of the image
     let line_color = Rgb([0x00, 0x00, 0x00]); // black
