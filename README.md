@@ -16,12 +16,9 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/alpaylan/etna-cli/relea
 
 We are currently working on expanding the coverage of ETNA with more workloads and testing tools. Below is a list of the currently supported workloads and tools:
 
-
-
-
-| Language       | Testing Tools                | Workloads                              |
-|:---------------|:-----------------------------|:---------------------------------------|
-| Haskell        | QuickCheck, Hedgehog         | BST, RBT, STLC, System F               |
-| Rocq           | QuickChick                   | BST, RBT, STLC, System F, IFC          |
-| Racket         | RackCheck                    | BST, RBT, STLC, System F               |
-| Rust           | QuickCheck(WIP)              | BST, RBT, STLC, System F               |
+| Language       | Testing Tools                             | Workloads                              |
+|:---------------|:------------------------------------------|:---------------------------------------|
+| Haskell        | QuickCheck, LeanCheck, SmallCheck         | BST, RBT, STLC, System F<:, LuParser   |
+| Rocq           | QuickChick                                | BST, RBT, STLC, IFC                    |
+| Racket         | RackCheck                                 | BST, RBT, STLC, System F               |
+| Rust           | QuickCheck(WIP)                           | BST, RBT, STLC                         |
