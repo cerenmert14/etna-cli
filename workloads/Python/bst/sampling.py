@@ -1,17 +1,40 @@
 from hypothesis import strategies as st
-from generation import bst_strategy
+from hypothesis.strategies import SearchStrategy
 from dataclasses import dataclass
 from typing import Callable, Any
-from hypothesis.strategies import SearchStrategy
 
-# Replace this with your actual bespoke tree generator
-def bespoke_tree():
+from generation import bst_strategy
+from spec import (
+    prop_delete_delete,
+    prop_delete_insert,
+    prop_delete_model,
+    prop_delete_post,
+    prop_delete_union,
+    prop_insert_delete,
+    prop_insert_insert,
+    prop_insert_model,
+    prop_insert_post,
+    prop_insert_union,
+    prop_union_delete_insert,
+    prop_union_model,
+    prop_union_post,
+    prop_union_union_assoc,
+    prop_union_union_idempotent,
+    prop_delete_valid,
+    prop_insert_valid,
+    prop_union_valid,
+)
+
+
+# Tree generator similar to Rust Arbitrary (BST built via inserts)
+def bespoke_tree() -> SearchStrategy:
     return bst_strategy()
+
 
 @dataclass
 class Property:
     strategy: SearchStrategy
-    property: Callable[[Any], bool]
+    property: Callable[[Any], bool] | None = None
 
 
 class Tuple:
@@ -33,56 +56,105 @@ class Tuple:
     def to_json(self):
         return list(self.items)
 
-def pretty_tuples(*strategies):
+
+def pretty_tuples(*strategies: SearchStrategy) -> SearchStrategy:
     return st.tuples(*strategies).map(lambda values: Tuple(*values))
 
-# Validity Properties
-def insert_property(args):
-    t, k, v = args
-    # your real property check goes here
-    return True  # dummy always-passes
 
+def i32() -> SearchStrategy:
+    return st.integers(min_value=-(2**31), max_value=2**31 - 1)
+
+
+# Validity Properties
 sample_insert_valid = Property(
-    strategy=pretty_tuples(bespoke_tree(), st.integers(0, 100), st.integers(0, 100)),
-    property=insert_property,
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32()),
+    property=lambda args: prop_insert_valid(*args),
 )
 
+sample_delete_valid = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32()),
+    property=lambda args: prop_delete_valid(*args),
+)
 
-sample_delete_valid = pretty_tuples(bespoke_tree(), st.integers(min_value=0))
-sample_union_valid  = pretty_tuples(bespoke_tree(), bespoke_tree())
+sample_union_valid = Property(
+    strategy=pretty_tuples(bespoke_tree(), bespoke_tree()),
+    property=lambda args: prop_union_valid(*args),
+)
 
 # Post-condition Properties
-sample_insert_post = pretty_tuples(bespoke_tree(), st.integers(min_value=0), st.integers(min_value=0), st.integers(min_value=0))
-sample_delete_post = pretty_tuples(bespoke_tree(), st.integers(min_value=0), st.integers(min_value=0))
-sample_union_post  = pretty_tuples(bespoke_tree(), bespoke_tree(), st.integers(min_value=0))
+sample_insert_post = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32(), i32()),
+    property=lambda args: prop_insert_post(*args),
+)
+
+sample_delete_post = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32()),
+    property=lambda args: prop_delete_post(*args),
+)
+
+sample_union_post = Property(
+    strategy=pretty_tuples(bespoke_tree(), bespoke_tree(), i32()),
+    property=lambda args: prop_union_post(*args),
+)
 
 # Model-based Properties
-sample_insert_model = sample_insert_valid
-sample_delete_model = sample_delete_valid
-sample_union_model  = sample_union_valid
+sample_insert_model = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32()),
+    property=lambda args: prop_insert_model(*args),
+)
+
+sample_delete_model = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32()),
+    property=lambda args: prop_delete_model(*args),
+)
+
+sample_union_model = Property(
+    strategy=pretty_tuples(bespoke_tree(), bespoke_tree()),
+    property=lambda args: prop_union_model(*args),
+)
 
 # Metamorphic Properties
-sample_insert_insert = pretty_tuples(
-    bespoke_tree(),
-    st.integers(min_value=0), st.integers(min_value=0),
-    st.integers(min_value=0), st.integers(min_value=0),
+sample_insert_insert = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32(), i32(), i32()),
+    property=lambda args: prop_insert_insert(*args),
 )
 
-sample_insert_delete = pretty_tuples(
-    bespoke_tree(),
-    st.integers(min_value=0), st.integers(min_value=0),
-    st.integers(min_value=0)
+sample_insert_delete = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32(), i32()),
+    property=lambda args: prop_insert_delete(*args),
 )
 
-sample_insert_union = pretty_tuples(
-    bespoke_tree(), bespoke_tree(),
-    st.integers(min_value=0), st.integers(min_value=0)
+sample_insert_union = Property(
+    strategy=pretty_tuples(bespoke_tree(), bespoke_tree(), i32(), i32()),
+    property=lambda args: prop_insert_union(*args),
 )
 
-sample_delete_insert = sample_insert_delete
-sample_delete_delete = sample_delete_post
-sample_delete_union  = sample_union_post
+sample_delete_insert = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32(), i32()),
+    property=lambda args: prop_delete_insert(*args),
+)
 
-sample_union_delete_insert = sample_insert_union
-sample_union_union_idem = bespoke_tree()
-sample_union_union_assoc = pretty_tuples(bespoke_tree(), bespoke_tree(), bespoke_tree())
+sample_delete_delete = Property(
+    strategy=pretty_tuples(bespoke_tree(), i32(), i32()),
+    property=lambda args: prop_delete_delete(*args),
+)
+
+sample_delete_union = Property(
+    strategy=pretty_tuples(bespoke_tree(), bespoke_tree(), i32()),
+    property=lambda args: prop_delete_union(*args),
+)
+
+sample_union_delete_insert = Property(
+    strategy=pretty_tuples(bespoke_tree(), bespoke_tree(), i32(), i32()),
+    property=lambda args: prop_union_delete_insert(*args),
+)
+
+sample_union_union_idempotent = Property(
+    strategy=bespoke_tree(),
+    property=lambda t: prop_union_union_idempotent(t),
+)
+
+sample_union_union_assoc = Property(
+    strategy=pretty_tuples(bespoke_tree(), bespoke_tree(), bespoke_tree()),
+    property=lambda args: prop_union_union_assoc(*args),
+)

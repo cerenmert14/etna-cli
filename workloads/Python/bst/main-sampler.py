@@ -20,7 +20,7 @@ from sampling import (
     sample_delete_delete,
     sample_delete_union,
     sample_union_delete_insert,
-    sample_union_union_idem,
+    sample_union_union_idempotent,
     sample_union_union_assoc,
 )
 
@@ -42,7 +42,7 @@ PROPS = {
     "DeleteDelete": sample_delete_delete,
     "DeleteUnion": sample_delete_union,
     "UnionDeleteInsert": sample_union_delete_insert,
-    "UnionUnionIdem": sample_union_union_idem,
+    "UnionUnionIdempotent": sample_union_union_idempotent,
     "UnionUnionAssoc": sample_union_union_assoc,
 }
 
