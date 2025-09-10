@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::Subcommand;
 
 use crate::{
-    commands::store::lib::{handle_jq_query, handle_specialized_query},
+    commands::store::lib::handle_jq_query,
     config::{EtnaConfig, ExperimentConfig},
     store::Store,
 };

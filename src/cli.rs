@@ -3,7 +3,10 @@ use std::{env, path::PathBuf};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 
-use etna::commands::{self, experiment::visualize::{MetricType, VisualizationType}, store::query::QueryOption};
+use etna::commands::{
+    self,
+    experiment::visualize::{MetricType, VisualizationType},
+};
 use fern::colors::ColoredLevelConfig;
 
 fn main() -> anyhow::Result<()> {
@@ -110,6 +113,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
         },
         Command::Analyze(_analyze_command) => todo!(),
         Command::Check { restore, remove } => commands::check::integrity::invoke(restore, remove),
+        Command::Bash { path } => commands::bash::invoke(path),
     }
     .context("Aborting run due to an error")
 }
@@ -274,7 +278,10 @@ enum StoreCommand {
         /// Query string
         filter: String,
     },
-    #[command(name = "remove", about = "Remove metrics from the store based on a filter")]
+    #[command(
+        name = "remove",
+        about = "Remove metrics from the store based on a filter"
+    )]
     Remove {
         /// Name of the experiment
         /// [default: current directory]
@@ -333,4 +340,14 @@ enum Command {
         about = "Run analysis on results of the experiments"
     )]
     Analyze(AnalyzeCommand),
+    #[command(
+        name = "bash",
+        about = "Generate a bash script from a workload configuration"
+    )]
+    Bash {
+        /// Path of the `config.toml`
+        /// [default: current directory]
+        #[clap(short, long, default_value = None)]
+        path: Option<PathBuf>,
+    },
 }

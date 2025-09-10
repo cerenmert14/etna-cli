@@ -3,10 +3,8 @@ use std::{
     io::Write as _,
     path::{Path, PathBuf},
     process::Stdio,
-    time::SystemTime,
 };
 
-use git2::build;
 use serde_json::{Map, Value};
 use std::time::Duration;
 
@@ -14,7 +12,7 @@ use crate::{
     commands::store,
     config::ExperimentConfig,
     store::{Metric, Store},
-    workload::{Command, Language, Step, Workload},
+    workload::{Command, Language, Step, Steps, Workload},
 };
 
 use anyhow::Context;
@@ -36,6 +34,7 @@ pub(crate) struct RunConfig {
     pub(crate) timeout: f64,
     pub(crate) short_circuit: bool,
     pub(crate) cross: bool,
+    #[allow(dead_code)]
     pub(crate) seeds: Option<Vec<u64>>,
 }
 
@@ -70,50 +69,6 @@ fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Langu
     Ok(language)
 }
 
-pub(crate) fn get_steps(
-    config: &serde_json::Value,
-    step_index: &str,
-    language_steps: &dyn Fn() -> Vec<Step>,
-) -> Vec<Step> {
-    let step = config.get(step_index);
-
-    if let Some(step) = step {
-        let steps = serde_json::from_value::<Vec<Step>>(step.clone());
-        if let Ok(steps) = steps {
-            return steps;
-        } else {
-            log::error!("Failed to parse step: '{}'", step_index);
-            log::debug!("Step: {}", step);
-            log::debug!("Error: {}", steps.unwrap_err());
-        }
-    }
-
-    log::debug!("Step '{}' not found, using default step", step_index);
-    language_steps()
-}
-
-pub(crate) fn get_step(
-    config: &serde_json::Value,
-    step_index: &str,
-    language_steps: &dyn Fn() -> Step,
-) -> Step {
-    let step = config.get(step_index);
-
-    if let Some(step) = step {
-        let steps = serde_json::from_value::<Step>(step.clone());
-        if let Ok(steps) = steps {
-            return steps;
-        } else {
-            log::error!("Failed to parse step: '{}'", step_index);
-            log::debug!("Step: {}", step);
-            log::debug!("Error: {}", steps.unwrap_err());
-        }
-    }
-
-    log::debug!("Step '{}' not found, using default step", step_index);
-    language_steps()
-}
-
 pub(crate) fn load_workload(
     experiment_path: &Path,
     language: &str,
@@ -138,10 +93,16 @@ pub(crate) fn load_workload(
         config_path.display()
     );
 
-    let workload_config: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(config_path).unwrap()).unwrap();
+    let workload_config: Option<serde_json::Value> =
+        serde_json::from_str(&std::fs::read_to_string(config_path).unwrap()).ok();
 
     let language = load_language(experiment_path, language)?;
+
+    let steps = if let Some(workload_config) = workload_config {
+        Steps::with_default(&workload_config, &language.steps)
+    } else {
+        language.steps.clone()
+    };
 
     Ok(Workload {
         name: workload.to_string(),
@@ -150,13 +111,7 @@ pub(crate) fn load_workload(
         properties: vec![],
         variations: vec![],
         strategies: vec![],
-        build_steps: get_steps(&workload_config, "build_steps", &|| {
-            language.build_steps.clone()
-        }),
-        check_steps: get_steps(&workload_config, "check_steps", &|| {
-            language.check_steps.clone()
-        }),
-        run_step: get_step(&workload_config, "run_step", &|| language.run_step.clone()),
+        steps,
     })
 }
 
@@ -171,52 +126,48 @@ fn metric_matches<'a>(
     trial: Option<usize>,
     cross: Option<bool>,
 ) -> Option<&'a Metric> {
-    let language_match = language.map_or(true, |l| {
+    let language_match = language.is_none_or(|l| {
         m.data
             .get("language")
-            .map_or(false, |v| v.as_str() == Some(l))
+            .is_some_and(|v| v.as_str() == Some(l))
     });
-    let workload_match = workload.map_or(true, |w| {
+    let workload_match = workload.is_none_or(|w| {
         m.data
             .get("workload")
-            .map_or(false, |v| v.as_str() == Some(w))
+            .is_some_and(|v| v.as_str() == Some(w))
     });
-    let mutations_match = mutations.map_or(true, |muts| {
-        m.data.get("mutations").map_or(false, |v| {
-            v.as_array().map_or(false, |arr| {
+    let mutations_match = mutations.is_none_or(|muts| {
+        m.data.get("mutations").is_some_and(|v| {
+            v.as_array().is_some_and(|arr| {
                 arr.iter()
                     .all(|mv| muts.contains(&mv.as_str().unwrap().to_string()))
             })
         })
     });
-    let strategy_match = strategy.map_or(true, |s| {
+    let strategy_match = strategy.is_none_or(|s| {
         m.data
             .get("strategy")
-            .map_or(false, |v| v.as_str() == Some(s))
+            .is_some_and(|v| v.as_str() == Some(s))
     });
-    let property_match = property.map_or(true, |p| {
+    let property_match = property.is_none_or(|p| {
         m.data
             .get("property")
-            .map_or(false, |v| v.as_str() == Some(p))
+            .is_some_and(|v| v.as_str() == Some(p))
     });
-    let timeout_match = timeout.map_or(true, |t| {
+    let timeout_match = timeout.is_none_or(|t| {
         m.data
             .get("timeout")
             .and_then(|v| v.as_f64())
-            .map_or(false, |v| v >= t)
+            .is_some_and(|v| v >= t)
     });
-    let trial_match = trial.map_or(true, |t| {
+    let trial_match = trial.is_none_or(|t| {
         m.data
             .get("trial")
             .and_then(|v| v.as_u64())
-            .map_or(false, |v| v as usize == t)
+            .is_some_and(|v| v as usize == t)
     });
-    let cross_match = cross.map_or(true, |c| {
-        m.data
-            .get("cross")
-            .and_then(|v| v.as_bool())
-            .map_or(false, |v| v == c)
-    });
+    let cross_match =
+        cross.is_none_or(|c| m.data.get("cross").and_then(|v| v.as_bool()) == Some(c));
 
     if language_match
         && workload_match
@@ -268,7 +219,7 @@ fn task_completed(
         .collect::<Vec<_>>();
 
     let mut timed_out = false;
-    (0..trials as u64).into_iter().all(|i| {
+    (0..trials as u64).all(|i| {
         filtered_metrics
             .iter()
             .find(|m| m.data.get("trial").and_then(|v| v.as_u64()).map(|u| u == i) == Some(true))
@@ -280,7 +231,7 @@ fn task_completed(
                     }
                     if m.data
                         .get("result")
-                        .map_or(false, |v| v.as_str() == Some("timed_out"))
+                        .is_some_and(|v| v.as_str() == Some("timed_out"))
                     {
                         timed_out = true;
                     }
@@ -325,7 +276,7 @@ pub(crate) fn run(
 
     log::trace!("Final params for step: {:?}", params);
 
-    let run_steps = run_step.realize(&params, tags)?;
+    let run_steps = run_step.realize(params, tags)?;
     anyhow::ensure!(
         run_steps.len() == 1,
         "Expected exactly one run step, got {}",
@@ -360,7 +311,7 @@ pub(crate) fn run(
                 && metric
                     .data
                     .get("result")
-                    .map_or(false, |v| v.as_str() == Some("timed_out"))
+                    .is_some_and(|v| v.as_str() == Some("timed_out"))
             {
                 log::info!("Short-circuiting the experiment due to previous timeout");
                 break;
@@ -379,19 +330,12 @@ pub(crate) fn run(
         }
 
         let old_step = step;
-        let step = old_step.decide(&params, tags);
+        let step = old_step.decide(params, tags);
         log::trace!("step '{old_step}' is evaluated to '{step}' with params: {params:?}");
 
-        let cdir = PathBuf::from(step.run_at.clone().unwrap_or(".".to_string()));
+        let cmd = std::process::Command::from(&step);
 
-        let mut cmd = std::process::Command::new(&step.command);
-        cmd.args(&step.args);
-        if let Some(run_at) = &step.run_at {
-            log::trace!("Setting current directory to '{}'", run_at);
-            cmd.current_dir(run_at);
-        }
-
-        println!("running trial with '{} {}' at {}", step.command, step.args.join(" "), cdir.display());
+        println!("running trial with '{}'", step);
 
         let result = serde_json::json!({
             "language": run_config.language,
@@ -408,10 +352,10 @@ pub(crate) fn run(
 
         let result = if run_config.cross {
             log::debug!("Running cross-language command: {}", step);
-            run_cross(cdir, result, cmd, &step, run_config)?
+            run_cross(result, cmd, &step, run_config)?
         } else {
             log::debug!("Running default command: {}", step);
-            run_default(cdir, result, cmd, &step.command, run_config)?
+            run_default(result, cmd, &step, run_config)?
         };
 
         store::write::invoke(
@@ -471,7 +415,7 @@ fn run_canonical_serialized(
     // Run the build command for the canonical serializer
     let mut cmd = std::process::Command::new("cargo");
     cmd.current_dir(&workload_dir);
-    cmd.args(&["build", "--release"]);
+    cmd.args(["build", "--release"]);
     log::debug!(
         "running 'cargo build --release' in '{}'",
         workload_dir.display()
@@ -503,7 +447,7 @@ fn run_canonical_serialized(
             .join("release")
             .join(format!("{}-serialized", workload.to_lowercase())),
     );
-    cmd.args(&[tests, property]);
+    cmd.args([tests, property]);
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
     log::trace!("Running canonical serializer command: {:?}", cmd);
@@ -539,7 +483,6 @@ fn run_canonical_serialized(
 /// The function is designed to run in a loop until the timeout is reached, with batches of 1000 samples
 /// collected in each iteration.
 fn run_cross(
-    cdir: PathBuf,
     mut result: serde_json::Value,
     mut cmd: std::process::Command,
     step: &Command,
@@ -555,19 +498,9 @@ fn run_cross(
     while total_time < timeout {
         // sample the command
         log::debug!("sampling command: {}", step);
-        log::debug!(
-            "running command: {} {} at {}",
-            cmd.get_program().to_string_lossy(),
-            cmd.get_args()
-                .map(|os| os.to_string_lossy())
-                .collect::<Vec<_>>()
-                .join(" "),
-            cdir.canonicalize()?.display()
-        );
         let child = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .current_dir(&cdir)
             .spawn()
             .map_err(|e| {
                 log::error!("Failed to spawn command '{}': {}", step, e);
@@ -709,7 +642,7 @@ fn run_cross(
                         "counterexample".to_owned(),
                         results
                             .get("counterexample")
-                            .unwrap_or_else(|| &serde_json::Value::Null)
+                            .unwrap_or(&serde_json::Value::Null)
                             .clone(),
                     );
                     return Ok(result);
@@ -756,33 +689,23 @@ fn run_cross(
 }
 
 fn run_default(
-    cdir: PathBuf,
     mut result: serde_json::Value,
     mut cmd: std::process::Command,
-    command: &str,
+    step: &Command,
     run_config: &RunConfig,
 ) -> anyhow::Result<serde_json::Value> {
-    log::debug!(
-        "Running command: {} {} at {}",
-        command,
-        cmd.get_args()
-            .map(|os| os.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(" "),
-        cdir.canonicalize()?.display()
-    );
+    log::debug!("Running command: {}", step);
 
     let output = cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .current_dir(&cdir)
         .spawn()
-        .with_context(|| format!("Failed to spawn '{}'", command))?
+        .with_context(|| format!("Failed to spawn '{}'", step))?
         .controlled_with_output()
         .time_limit(Duration::from_secs_f64(run_config.timeout))
         .terminate_for_timeout()
         .wait()
-        .context(format!("Failed to run command '{}'", command));
+        .context(format!("Failed to run command '{}'", step));
 
     log::trace!("metadata: {}", result);
 
@@ -802,11 +725,7 @@ fn run_default(
             log::debug!("stderr: {}", stderr);
 
             if !output.status.success() {
-                log::warn!(
-                    "Command '{}' failed with status: {}",
-                    command,
-                    output.status
-                );
+                log::warn!("Command '{}' failed with status: {}", step, output.status);
             }
 
             // look for the result between [| and |]
@@ -823,7 +742,7 @@ fn run_default(
                     }
                 }
             };
-            let mut metric = serde_json::from_str::<serde_json::Value>(metric)
+            let metric = serde_json::from_str::<serde_json::Value>(metric)
                 .with_context(|| format!("Failed to parse result: '{}'", metric))?;
 
             log::trace!("result: {}", metric);
@@ -834,7 +753,7 @@ fn run_default(
                 .extend(metric.as_object().unwrap().clone());
         }
         Err(err) => {
-            log::error!("Aborting! Failed to run command '{}': {}", command, err);
+            log::error!("Aborting! Failed to run command '{}': {}", step, err);
 
             result
                 .as_object_mut()
@@ -872,8 +791,8 @@ pub(crate) fn build(
         let step = step.decide(params, tags);
         log::debug!("step is evaluated to '{step}'");
 
-        let mut cmd = std::process::Command::new(&step.command);
-        cmd.current_dir(build_dir).args(&step.args);
+        let mut cmd = std::process::Command::from(&step);
+        cmd.current_dir(build_dir);
 
         let output = cmd.output().context("Failed to execute check command")?;
 
@@ -911,17 +830,14 @@ pub(crate) fn build(
         let step = step.decide(params, tags);
         log::debug!("step is evaluated to '{step}'");
 
-        let mut cmd = std::process::Command::new(&step.command);
-        cmd.current_dir(build_dir).args(&step.args);
+        let mut cmd = std::process::Command::from(&step);
+        cmd.current_dir(build_dir);
 
         let output = cmd.output().context("Failed to execute build command")?;
 
         if !output.status.success() {
             log::info!("[✗] '{}' failed", step);
-            log::debug!(
-                "command: {}",
-                step.command.clone() + " " + &step.args.join(" ")
-            );
+            log::debug!("command: {}", step);
             log::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
             log::debug!("stderr: {}", String::from_utf8_lossy(&output.stderr));
             anyhow::bail!("build command failed with status: {}", output.status);
@@ -1025,8 +941,8 @@ pub(crate) fn run_experiment(
 
         build(
             &workload_dir,
-            &workload.check_steps,
-            &workload.build_steps,
+            &workload.steps.check,
+            &workload.steps.build,
             &params,
             &tags,
         )?;
@@ -1053,7 +969,7 @@ pub(crate) fn run_experiment(
             let result = run(
                 experiment_config,
                 &run_config,
-                &workload.run_step,
+                &workload.steps.run,
                 &mut params,
                 &tags,
                 // todo: we already filter the metrics in the task_completed function, so we should not pass the whole metrics here but the filtered ones.

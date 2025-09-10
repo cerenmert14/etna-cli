@@ -12,30 +12,22 @@
     "build_steps": [
         {
             "Command": {
-                "command": "$workload_path/build"
+                "command": "${workload_path}/build"
             }
         },
         {
             "Command": {
-                "command": "$workload_path/build_generator",
+                "command": "${workload_path}/build_generator",
                 "args": [
                     "!generator"
-                ],
-                "params": [
-                    "workload_path",
-                    "generator"
                 ]
             }
         },
         {
             "Command": {
-                "command": "$workload_path/build_fuzzer",
+                "command": "${workload_path}/build_fuzzer",
                 "args": [
                     "!fuzzer"
-                ],
-                "params": [
-                    "workload_path",
-                    "fuzzer"
                 ]
             }
         }
@@ -46,14 +38,9 @@
             "options": {
                 "fuzzer": {
                     "Command": {
-                        "command": "$workload_path/main_exec",
+                        "command": "${workload_path}/main_exec",
                         "args": [
-                            "\"$strategy_exec $property\""
-                        ],
-                        "params": [
-                            "workload_path",
-                            "property",
-                            "strategy"
+                            "\"${strategy}_exec ${property}\""
                         ]
                     }
                 },
@@ -63,28 +50,18 @@
                         "options": {
                             "false": {
                                 "Command": {
-                                    "command": "$workload_path/$strategy_test_runner.native",
+                                    "command": "${workload_path}/${strategy}_test_runner.native",
                                     "args": [
-                                        "$property"
-                                    ],
-                                    "params": [
-                                        "workload_path",
-                                        "property",
-                                        "strategy"
+                                        "${property}"
                                     ]
                                 }
                             },
                             "true": {
                                 "Command": {
-                                    "command": "$workload_path/$strategy_sampler.native",
+                                    "command": "${workload_path}/${strategy}_sampler.native",
                                     "args": [
-                                        "$property",
-                                        "$tests"
-                                    ],
-                                    "params": [
-                                        "workload_path",
-                                        "property",
-                                        "strategy"
+                                        "${property}",
+                                        "${tests}"
                                     ]
                                 }
                             }
@@ -95,19 +72,6 @@
         }
     },
     "tags": {
-        "BespokeGenerator": [
-            "generator",
-            "sampler"
-        ],
-        "SpecificationBasedGenerator": [
-            "generator"
-        ],
-        "TypeBasedGenerator": [
-            "generator"
-        ],
-        "TypeBasedFuzzer": [
-            "fuzzer"
-        ],
         "generator": [
             "BespokeGenerator",
             "SpecificationBasedGenerator",

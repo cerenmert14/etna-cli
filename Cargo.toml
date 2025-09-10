@@ -2,6 +2,7 @@
 name = "etna"
 version = "0.1.0"
 edition = "2021"
+default-run = "etna"
 
 [dependencies]
 ab_glyph = "0.2.30"
@@ -21,8 +22,10 @@ jaq-parse = { version = "1.0.3", default-features = false }
 jaq-std = { version = "1.6.0", default-features = false }
 log = { version = "0.4.22", default-features = false }
 marauders = { git = "https://github.com/alpaylan/marauders.git", branch = "main" }
+minijinja = { version = "2.12.0", default-features = false, features = ["loader"] }
 parse_duration = { version = "2.1.1", default-features = false }
 process_control = { version = "5.0.0", default-features = false }
+regex = "1.11.2"
 serde = { version = "1.0.210", default-features = false }
 serde-lexpr = "0.1.3"
 serde_derive = { version = "1.0.210", default-features = false }

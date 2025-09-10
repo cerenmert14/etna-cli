@@ -1,3 +1,4 @@
+pub mod bash;
 pub mod check;
 pub mod config;
 pub mod experiment;

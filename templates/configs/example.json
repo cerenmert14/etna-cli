@@ -1,0 +1,43 @@
+{
+    "name": "Rocq",
+    "check_steps": [
+        {
+            "Command": {
+                "command": "echo",
+                "args": [
+                    "anything you want"
+                ]
+            }
+        }
+    ],
+    "build_steps": [
+        {
+            "Command": {
+                "command": "ls"
+            }
+        }
+    ],
+    "run_step": {
+        "Match": {
+            "value": "choice",
+            "options": {
+                "life": {
+                    "Command": {
+                        "command": "echo",
+                        "args": [
+                            "it lives!"
+                        ]
+                    }
+                },
+                "death": {
+                    "Command": {
+                        "command": "echo",
+                        "args": [
+                            "$death"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}

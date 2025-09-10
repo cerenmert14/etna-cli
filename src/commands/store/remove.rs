@@ -29,7 +29,7 @@ pub fn invoke(experiment: Option<String>, filter: String) -> anyhow::Result<()> 
         let Some(Ok(Val::Bool(true))) = result else {
             return true;
         };
-        return false;
+        false
     });
 
     store.save().context("Failed to save the store")?;

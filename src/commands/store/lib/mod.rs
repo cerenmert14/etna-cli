@@ -222,6 +222,7 @@ pub(crate) fn handle_jq_query(store: Store, query_string: String) -> anyhow::Res
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn handle_specialized_query(
     store: Store,
     query_option: QueryOption,

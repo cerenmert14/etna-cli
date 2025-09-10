@@ -3,17 +3,14 @@ use std::{fmt::Display, io::Write};
 use ab_glyph::{Font, FontRef, ScaleFont as _};
 use anyhow::Context as _;
 use image::{Rgb, RgbImage};
-use imageproc::{
-    drawing::{draw_filled_rect_mut, draw_line_segment_mut},
-    rect::Rect,
-};
+use imageproc::{drawing::draw_filled_rect_mut, rect::Rect};
 use itertools::Itertools;
 use serde_json::{Map, Value};
 
 use crate::{
-    config::{EtnaConfig, ExperimentConfig},
+    config::ExperimentConfig,
     experiment::{Experiment, Test},
-    store::{Metric, Store},
+    store::Store,
 };
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -124,7 +121,7 @@ pub fn invoke(
 
     match typ_ {
         VisualizationType::Bucket => draw_bucket_chart(
-            &experiment,
+            experiment,
             &figure_name,
             agg_metrics,
             groupby,
@@ -185,9 +182,9 @@ fn get_agg_metrics(
                 .join(test)
                 .with_extension("json");
             let test: Vec<Test> =
-                serde_json::from_str(&std::fs::read_to_string(&test_path).expect(
-                    format!("Failed to read test file at {}", test_path.display()).as_str(),
-                ))
+                serde_json::from_str(&std::fs::read_to_string(&test_path).unwrap_or_else(|_| {
+                    panic!("Failed to read test file at {}", test_path.display())
+                }))
                 .unwrap();
             test
         })
@@ -303,7 +300,7 @@ fn get_agg_metrics(
                     "time": format!("{timeout}s"),
                 });
                 log::trace!("Returning timeout data: {:#?}", data);
-                let _ = write_row(&mut raw_data_file, &data, &aggby);
+                let _ = write_row(&mut raw_data_file, &data, aggby);
                 return data.as_object().cloned();
             }
 
@@ -387,7 +384,7 @@ fn get_agg_metrics(
                         .flat_map(parse_duration::parse)
                         .next()
                         .map(|d| d.as_secs_f64())
-                        .expect(format!("Failed to parse time for metric: {:?}", m).as_str());
+                        .unwrap_or_else(|| panic!("Failed to parse time for metric: {:?}", m));
                     acc
                 });
             let avgs = (
@@ -419,7 +416,7 @@ fn get_agg_metrics(
                 "shrinks": avgs.2,
                 "time": avgs.3,
             });
-            let _ = write_row(&mut raw_data_file, &data, &aggby);
+            let _ = write_row(&mut raw_data_file, &data, aggby);
 
             data.as_object().cloned()
         })
@@ -435,7 +432,7 @@ fn draw_bucket_chart(
     figure_name: &str,
     agg_metrics: Vec<Map<String, Value>>,
     groupby: Vec<String>,
-    aggby: Vec<String>,
+    _aggby: Vec<String>,
     metric: MetricType,
     mut buckets: Vec<f64>,
 ) -> anyhow::Result<()> {
@@ -599,7 +596,7 @@ fn draw_bucket_chart(
         draw_buckets_line(&mut image, &group, buckets, cfg);
     }
 
-    let name = format!("{}_{}.png", figure_name, metric.to_string());
+    let name = format!("{}_{}.png", figure_name, metric);
 
     let path = experiment.path.join("figures").join(name);
     log::info!("Saving image to: {}", path.display());
@@ -648,7 +645,7 @@ fn draw_bucket_chart(
         draw_buckets_line(&mut image, &group, buckets, cfg);
     }
 
-    let name = format!("{}_{}_legend.png", figure_name, metric.to_string());
+    let name = format!("{}_{}_legend.png", figure_name, metric);
     let path = experiment.path.join("figures").join(name);
     log::info!("Saving legend image to: {}", path.display());
     image.save(path).expect("Failed to save image");
@@ -698,7 +695,7 @@ fn rendered_text_width_and_height(text: &str, font: &FontRef, font_size: f64) ->
 
 fn draw_buckets_line(
     image: &mut RgbImage,
-    group_label: &str,
+    _group_label: &str,
     buckets: Vec<((f64, f64), Vec<f64>)>,
     mut cfg: BucketDrawConfig,
 ) {
@@ -828,9 +825,9 @@ pub fn draw_bar_chart(
     figure_name: String,
     tests: Vec<String>,
     groupby: Vec<String>,
-    group: AggregationType,
+    _group: AggregationType,
     aggby: Vec<String>,
-    agg: AggregationType,
+    _agg: AggregationType,
     metric: MetricType,
     max: Option<f64>,
 ) -> anyhow::Result<()> {
@@ -914,7 +911,7 @@ pub fn draw_bar_chart(
         max_value
     } else {
         let mut max = 0.0;
-        for (i, group) in groups.iter().enumerate() {
+        for (_, group) in groups.iter().enumerate() {
             let group_metrics = agg_metrics
                 .iter()
                 .filter(|m| {
@@ -1065,7 +1062,7 @@ pub fn draw_bar_chart(
         draw_filled_rect_mut(&mut image, rect, colors[i % colors.len()]);
     }
 
-    let name = format!("{}_{}.png", figure_name, metric.to_string());
+    let name = format!("{}_{}.png", figure_name, metric);
 
     let path = experiment.path.join("figures").join(name);
     log::info!("Saving image to: {}", path.display());
