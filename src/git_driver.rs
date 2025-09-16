@@ -1,10 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Context;
-use log::{debug, warn};
-use tabled::settings::{Extract, Style};
-
-use crate::experiment::ExperimentSnapshot;
+use git2::{build::CheckoutBuilder, AutotagOption, FetchOptions, Repository};
+use tracing::debug;
 
 pub(crate) fn initialize_git_repo(path: &PathBuf, msg: &str) -> anyhow::Result<()> {
     // Initialize a git repository
@@ -22,114 +23,6 @@ pub(crate) fn initialize_git_repo(path: &PathBuf, msg: &str) -> anyhow::Result<(
     git_repo
         .commit(Some("HEAD"), &signature, &signature, msg, &tree, &[])
         .context("Failed to commit")?;
-    Ok(())
-}
-
-pub(crate) fn commit_add_workload(
-    repo_path: &Path,
-    language: &str,
-    workload: &str,
-) -> anyhow::Result<()> {
-    // Add contents of 'workloads/<language>/<workload>' directory to the git repository
-    let git_repo = git2::Repository::open(repo_path).context("Failed to open git repository")?;
-
-    let mut index = git_repo.index().context("Failed to get index")?;
-
-    // Add the workload to the index
-    index
-        .add_all(
-            [PathBuf::from("workloads")
-                .join(language)
-                .join(workload)
-                .as_path()],
-            git2::IndexAddOption::DEFAULT,
-            None,
-        )
-        .context("Failed to add workload to index")?;
-    // Add the config file to the index
-    index
-        .add_path(PathBuf::from("config.toml").as_path())
-        .context("Failed to add workload to index")?;
-    // Commit the changes
-    let mut index = git_repo.index().context("Failed to get index")?;
-    index.write().context("Failed to write index")?;
-    let tree_id = index.write_tree().context("Failed to write tree")?;
-    let tree = git_repo.find_tree(tree_id).context("Failed to find tree")?;
-
-    let signature = git2::Signature::now("Alperen Keles", "akeles@umd.edu")
-        .context("Failed to create signature")?;
-
-    git_repo
-        .commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            &format!("automated commit: add workload '{}/{}'", language, workload),
-            &tree,
-            &[&git_repo
-                .head()
-                .context("Failed to get head")?
-                .peel_to_commit()
-                .context("Failed to peel to commit")?],
-        )
-        .context("Failed to commit")?;
-
-    Ok(())
-}
-
-pub(crate) fn commit_remove_workload(
-    repo_path: &Path,
-    language: &str,
-    workload: &str,
-) -> anyhow::Result<()> {
-    // Add contents of 'workloads/<language>/<workload>' directory to the git repository
-    let git_repo = git2::Repository::open(repo_path).context("Failed to open git repository")?;
-
-    // Commit the changes
-    let mut index = git_repo.index().context("Failed to get index")?;
-
-    // Add the workload to the index
-    index
-        .add_all(
-            [PathBuf::from("workloads")
-                .join(language)
-                .join(workload)
-                .as_path()],
-            git2::IndexAddOption::DEFAULT,
-            None,
-        )
-        .context("Failed to add workload to index")?;
-
-    // Add the config file to the index
-    index
-        .add_path(PathBuf::from("config.toml").as_path())
-        .context("Failed to add workload to index")?;
-
-    index.write().context("Failed to write index")?;
-    let tree_id = index.write_tree().context("Failed to write tree")?;
-    let tree = git_repo.find_tree(tree_id).context("Failed to find tree")?;
-
-    let signature = git2::Signature::now("Alperen Keles", "akeles@umd.edu")
-        .context("Failed to create signature")?;
-
-    git_repo
-        .commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            &format!(
-                "automated commit: remove workload '{}/{}'",
-                language, workload
-            ),
-            &tree,
-            &[&git_repo
-                .head()
-                .context("Failed to get head")?
-                .peel_to_commit()
-                .context("Failed to peel to commit")?],
-        )
-        .context("Failed to commit")?;
-
     Ok(())
 }
 
@@ -169,7 +62,55 @@ pub(crate) fn _change_branch(repo_path: &PathBuf, branch: &str) -> anyhow::Resul
     Ok(())
 }
 
+/// Commit the entire repo with the given message.
+pub(crate) fn commit(repo_path: &Path, message: &str) -> anyhow::Result<String> {
+    debug!("repo path: {}", repo_path.display());
+    let git_repo = git2::Repository::open(repo_path).context("Failed to open git repository")?;
+
+    let mut index = git_repo.index().context("Failed to get index")?;
+    index.clear().context("Failed to clear index")?;
+
+    index
+        .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
+        .context("Failed to add files to index")?;
+
+    index.write().context("Failed to write index")?;
+    debug!(
+        "index {:?}",
+        index
+            .iter()
+            .map(|entry| std::ffi::CString::new(&entry.path[..]).unwrap())
+            .collect::<Vec<_>>()
+    );
+
+    let tree_id = index.write_tree().context("Failed to write tree")?;
+    let tree = git_repo.find_tree(tree_id).context("Failed to find tree")?;
+
+    let signature = git2::Signature::now("ETNA Commit Bot", "akeles@umd.edu")
+        .context("Failed to create signature")?;
+
+    git_repo
+        .commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            &format!("automated commit: '{message}'",),
+            &tree,
+            &[&git_repo
+                .head()
+                .context("Failed to get head")?
+                .peel_to_commit()
+                .context("Failed to peel to commit")?],
+        )
+        .context("Failed to commit")?;
+
+    let head = git_repo.head().context("Failed to get head")?;
+    let head = head.peel_to_commit().context("Failed to peel to commit")?;
+    Ok(head.id().to_string())
+}
+
 /// Get the hash of a path in a git repository
+#[allow(dead_code)]
 pub(crate) fn hash(repo_path: &Path, index_path: &Path) -> anyhow::Result<String> {
     debug!("repo path: {}", repo_path.display());
     let git_repo = git2::Repository::open(repo_path).context("Failed to open git repository")?;
@@ -206,44 +147,95 @@ pub(crate) fn _head_hash(repo_path: &Path) -> anyhow::Result<String> {
     Ok(head.id().to_string())
 }
 
-/// Writes out the diff of two git hashes
-pub(crate) fn print_diff(s1: &ExperimentSnapshot, s2: &ExperimentSnapshot) -> anyhow::Result<()> {
-    let mut table = vec![
-        ("".to_string(), "HEAD".to_string(), "snapshot".to_string()),
-        (
-            "experiment".to_string(),
-            s1.experiment.clone(),
-            s2.experiment.clone(),
-        ),
-    ];
+/// Create a repo with only `.git/` populated—no files checked out.
+pub fn init_metadata_only(repo_path: &Path, branch: &str) -> anyhow::Result<()> {
+    let url = std::env::var("ETNA_REMOTE")
+        .unwrap_or_else(|_| "https://github.com/alpaylan/etna-cli.git".to_string());
 
-    table.extend(
-        s1.scripts
-            .iter()
-            .zip(s2.scripts.iter())
-            .map(|(s1, s2)| (s1.0.clone(), s1.1.clone(), s2.1.clone())),
-    );
+    let repo = match Repository::open(repo_path) {
+        Ok(r) => r,
+        Err(_) => {
+            fs::create_dir_all(repo_path)?;
+            Repository::init(repo_path)?
+        }
+    };
 
-    table.extend(
-        s1.workloads
-            .iter()
-            .zip(s2.workloads.iter())
-            .map(|(w1, w2)| {
-                (
-                    w1.0.name.to_string() + "-" + &w1.0.language,
-                    w1.1.clone(),
-                    w2.1.clone(),
-                )
-            }),
-    );
+    // Ensure origin URL
+    match repo.find_remote("origin") {
+        Ok(_) => repo.remote_set_url("origin", &url)?,
+        Err(_) => {
+            repo.remote("origin", &url)?;
+        }
+    }
 
-    let mut table = tabled::Table::new(table);
+    // Shallow fetch refs/heads/<branch> -> refs/remotes/origin/<branch>
+    let refspec = format!("refs/heads/{b}:refs/remotes/origin/{b}", b = branch);
+    let mut fo = FetchOptions::new();
+    fo.download_tags(AutotagOption::None);
+    fo.depth(1);
 
-    table
-        .with(Extract::segment(1.., ..))
-        .with(Style::modern_rounded());
+    let mut remote = repo.find_remote("origin")?;
+    remote
+        .fetch(&[&refspec], Some(&mut fo), None)
+        .with_context(|| format!("fetching {branch} from {url}"))?;
 
-    warn!("\n{}", table);
+    // Resolve fetched tip
+    let remote_ref = format!("refs/remotes/origin/{branch}");
+    let tip = repo.refname_to_id(&remote_ref)?;
+    let commit = repo.find_commit(tip)?;
 
+    // Optionally create/update a local branch (handy later), but…
+    if repo
+        .find_reference(&format!("refs/heads/{branch}"))
+        .is_err()
+    {
+        let _ = repo.branch(branch, &commit, true)?;
+    }
+
+    // …critically, **detach** HEAD to a valid commit so checkout works even if the local
+    // branch ref is missing/corrupt in future runs.
+    repo.set_head_detached(commit.id())?;
+
+    // No checkout → working tree stays empty.
     Ok(())
+}
+
+pub fn materialize_paths(repo_path: &Path, paths: &[&str]) -> anyhow::Result<()> {
+    let repo = Repository::open(repo_path)?;
+    // Turn on sparse-checkout with an empty pattern file first (matches nothing)
+    repo.config()?.set_bool("core.sparseCheckout", true)?;
+    let info = repo.path().join("info/sparse-checkout");
+    fs::create_dir_all(info.parent().unwrap())?;
+    fs::write(&info, String::new())?;
+
+    // Now write the paths you want (cone-style)
+    let content = paths
+        .iter()
+        .map(|p| format!("/{}\n", p))
+        .collect::<String>();
+    fs::write(&info, content)?;
+
+    // Checkout only those paths
+    let mut co = CheckoutBuilder::new();
+    co.force().remove_untracked(true).remove_ignored(true);
+    for p in paths {
+        co.path(p);
+    }
+    repo.checkout_head(Some(&mut co))?;
+    Ok(())
+}
+
+pub(crate) fn pull_path(repo_path: &Path, path: &Path) -> anyhow::Result<()> {
+    materialize_paths(repo_path, &[&path.display().to_string()])
+        .context("Failed to materialize paths")
+}
+
+pub(crate) fn pull_workload(
+    repo_path: &Path,
+    language: &str,
+    workload: &str,
+) -> anyhow::Result<()> {
+    let subdir = format!("workloads/{}/{}", language, workload);
+
+    materialize_paths(repo_path, &[&subdir]).context("Failed to materialize paths")
 }

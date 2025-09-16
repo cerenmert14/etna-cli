@@ -1,9 +1,6 @@
 use std::rc::Rc;
 
-use crate::{
-    commands::store::query::QueryOption,
-    store::{self, ExperimentQuery, MetricQuery, Queriable, SpecializedQuery, Store},
-};
+use crate::store::Store;
 
 use anyhow::Context;
 use jaq_interpret::{Ctx, Error, Filter, FilterT, ParseCtx, RcIter, Val};
@@ -180,86 +177,10 @@ fn jaq_handler(input: Value, program: &str) -> anyhow::Result<Value> {
 }
 
 pub(crate) fn handle_jq_query(store: Store, query_string: String) -> anyhow::Result<()> {
-    // let query_string = match query_option {
-    //     QueryOption::Jq { experiment: _, query_string } => query_string,
-    //     QueryOption::ExperimentById { experiment_id } => {
-    //         format!(r#"experiment_by_id("{}")"#, experiment_id)
-    //     }
-    //     QueryOption::ExperimentByName { experiment_name } => {
-    //         format!(r#"last_experiment_by_name("{}")"#, experiment_name)
-    //     }
-    //     QueryOption::AllExperimentsByName { experiment_name } => {
-    //         format!(r#"experiments_by_name("{}")"#, experiment_name)
-    //     }
-    //     QueryOption::MetricsByExperimentId { experiment_id } => {
-    //         format!(r#"metrics_by_experiment_id("{}")"#, experiment_id)
-    //     }
-    //     QueryOption::MetricsByFields { fields_json_string } => {
-    //         let fields_json: serde_json::Value = serde_json::from_str(&fields_json_string)
-    //             .context("Failed to parse the fields json string")?;
-
-    //         format!(r#"metrics_by_json_string({:?})"#, fields_json.to_string())
-    //     }
-    //     QueryOption::SnapshotsByFields { fields_json_string } => {
-    //         let fields_json: serde_json::Value = serde_json::from_str(&fields_json_string)
-    //             .context("Failed to parse the fields json string")?;
-
-    //         format!(r#"snapshots_by_json_string({:?})"#, fields_json.to_string())
-    //     }
-    //     QueryOption::SnapshotsByName { snapshot_name } => {
-    //         format!(r#"snapshots_by_name("{}")"#, snapshot_name)
-    //     }
-    //     QueryOption::SnapshotByHash { snapshot_hash } => {
-    //         format!(r#"snapshot_by_hash("{}")"#, snapshot_hash)
-    //     }
-    // };
-
     let result = jaq_handler(serde_json::json!(store.metrics), &query_string)
         .context(format!("jq query '{query_string}' has failed"))?;
 
     println!("{}", serde_json::to_string_pretty(&result)?);
-
-    Ok(())
-}
-
-#[allow(dead_code)]
-pub(crate) fn handle_specialized_query(
-    store: Store,
-    query_option: QueryOption,
-) -> anyhow::Result<()> {
-    let query = match query_option {
-        QueryOption::Jq { .. }
-        | QueryOption::MetricsByFields { .. }
-        | QueryOption::SnapshotsByFields { .. } => {
-            anyhow::bail!("Unreachable, should have been handled by handle_jq_query")
-        }
-        QueryOption::ExperimentById { experiment_id } => {
-            SpecializedQuery::Experiment(ExperimentQuery::Id(experiment_id))
-        }
-        QueryOption::ExperimentByName { experiment_name } => {
-            SpecializedQuery::Experiment(ExperimentQuery::NameLast(experiment_name))
-        }
-        QueryOption::AllExperimentsByName { experiment_name } => {
-            SpecializedQuery::Experiment(ExperimentQuery::NameAll(experiment_name))
-        }
-        QueryOption::MetricsByExperimentId { experiment_id } => {
-            SpecializedQuery::Metric(MetricQuery::ByExperimentId(experiment_id))
-        }
-        QueryOption::SnapshotsByName { snapshot_name } => {
-            SpecializedQuery::Snapshot(store::SnapshotQuery::ByName(snapshot_name))
-        }
-        QueryOption::SnapshotByHash { snapshot_hash } => {
-            SpecializedQuery::Snapshot(store::SnapshotQuery::ByHash(snapshot_hash))
-        }
-    };
-
-    let results = query
-        .query(&store)
-        .context("Querying the store has failed")?;
-
-    for result in results {
-        println!("{}", result);
-    }
 
     Ok(())
 }

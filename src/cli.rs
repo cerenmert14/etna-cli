@@ -3,65 +3,146 @@ use std::{env, path::PathBuf};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 
-use etna::commands::{
-    self,
-    experiment::visualize::{MetricType, VisualizationType},
+use etna::{
+    commands::{
+        self,
+        experiment::visualize::{MetricType, VisualizationType},
+    },
+    experiment::ExperimentMetadata,
+    manager::Manager,
+    store::Store,
 };
-use fern::colors::ColoredLevelConfig;
+
+
+use tracing::Level;
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::{
+    filter,
+    fmt,
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+    EnvFilter, Layer as _,
+};
+
+/// Call this early in `main`. Keep the returned `WorkerGuard` alive
+/// (e.g., store in a global or a field) so file logs get flushed.
+pub fn init_tracing() -> anyhow::Result<WorkerGuard> {
+    // Base filter:
+    // - If RUST_LOG exists, use it.
+    // - Else default to `info` and clamp some noisy modules.
+    let base_filter = if env::var_os("RUST_LOG").is_some() {
+        EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| EnvFilter::new("info"))
+    } else {
+        // You can add more directives here if you like.
+        EnvFilter::new("info,marauders=error,ignore=error")
+    };
+
+    // -------- File layer (no ANSI) --------
+    // Append-only file (no rotation). Swap `never` with `daily` if you want rotation.
+    let file_appender = tracing_appender::rolling::never(".", "etna.log");
+    let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+
+    let file_layer = fmt::layer()
+        .with_writer(file_writer)
+        .with_ansi(false)
+        .with_target(true)
+        .with_level(true)
+        .without_time() // add a timer if you want timestamps
+        // .with_timer(fmt::time::OffsetTime::local_rfc_3339().unwrap())
+        ;
+
+    // -------- Stdout layer(s) --------
+    let stdout_is_colored_mode = env::var_os("RUST_LOG").is_some();
+
+    // Case 1: RUST_LOG is set → one colored stdout layer, normal formatting
+    let stdout_layer_colored = fmt::layer()
+        .with_writer(std::io::stdout)
+        .with_ansi(true)
+        .with_target(false)
+        .with_level(true)
+        .with_file(true)
+        .with_line_number(true)
+        .without_time();
+
+    // Case 2: RUST_LOG is NOT set → two stdout layers:
+    //  (a) INFO-only, plain message (println-like, no ANSI)
+    let info_only_filter = filter::filter_fn(|meta| meta.level() == &Level::INFO);
+    let stdout_info_plain = fmt::layer()
+        .with_writer(std::io::stdout)
+        .with_ansi(false)      // plain
+        .with_target(false)    // just the message
+        .with_level(false)
+        .without_time()
+        .with_filter(info_only_filter);
+
+    //  (b) WARN/ERROR with small colored headers so they’re visible
+    let warn_error_filter = filter::filter_fn(|meta| {
+        matches!(*meta.level(), Level::WARN | Level::ERROR)
+    });
+    let stdout_warn_err = fmt::layer()
+        .with_writer(std::io::stdout)
+        .with_ansi(true)
+        .with_target(true)
+        .with_level(true)
+        .with_file(true)
+        .with_line_number(true)
+        .without_time()
+        .with_filter(warn_error_filter);
+
+    // Build subscriber
+    let registry = tracing_subscriber::registry().with(base_filter);
+
+    if stdout_is_colored_mode {
+        registry
+            .with(file_layer)
+            .with(stdout_layer_colored)
+            .try_init()?;
+    } else {
+        registry
+            .with(file_layer)
+            .with(stdout_info_plain)
+            .with(stdout_warn_err)
+            .try_init()?;
+    }
+
+    Ok(guard)
+}
+
+
 
 fn main() -> anyhow::Result<()> {
-    // Initialize the logger
-    let color_config = ColoredLevelConfig::new()
-        .info(fern::colors::Color::Green)
-        .debug(fern::colors::Color::Blue)
-        .trace(fern::colors::Color::Cyan)
-        .error(fern::colors::Color::Red);
-
-    let log_level = env::var("RUST_LOG")
-        .ok()
-        .and_then(|lvl| lvl.parse::<log::LevelFilter>().ok());
-
-    fern::Dispatch::new()
-        .level(log_level.unwrap_or(log::LevelFilter::Info))
-        .level_for("marauders", log::LevelFilter::Error)
-        .level_for("ignore", log::LevelFilter::Error)
-        .format(move |out, message, record| match record.level() {
-            log::Level::Info if log_level.is_none() => out.finish(format_args!("{}", message,)),
-            log::Level::Info
-            | log::Level::Error
-            | log::Level::Warn
-            | log::Level::Debug
-            | log::Level::Trace => out.finish(format_args!(
-                "[{}][{}] {}",
-                color_config.color(record.level()),
-                record.target(),
-                message
-            )),
-        })
-        .chain(std::io::stdout())
-        .format(move |out, message, record| match record.level() {
-            log::Level::Info if log_level.is_none() => out.finish(format_args!("{}", message,)),
-            log::Level::Info
-            | log::Level::Error
-            | log::Level::Warn
-            | log::Level::Debug
-            | log::Level::Trace => out.finish(format_args!(
-                "[{}][{}] {}",
-                record.level(),
-                record.target(),
-                message
-            )),
-        })
-        .chain(fern::log_file("etna.log").context("Failed to create log file")?)
-        .apply()
-        .context("Failed to initialize the logger")?;
-
+    let _guard = init_tracing()?;
     // Invoke the CLI
     run()
 }
 
 pub(crate) fn run() -> anyhow::Result<()> {
     let cli = Args::parse();
+
+    // Load the manager
+    let mut mgr = Manager::load()?;
+
+    let experiment = if let Some(experiment) = cli.command.experiment_name() {
+        if let Some(experiment) = mgr.experiments.get(experiment) {
+            Some(experiment.clone())
+        } else {
+            anyhow::bail!("experiment '{}' is not found, please run `etna experiment list` to see available experiments", experiment);
+        }
+    } else {
+        // Check if the CWD is a subdirectory of an experiment
+        if let Ok(experiment) = ExperimentMetadata::from_current_dir(&mgr) {
+            Some(experiment)
+        } else if cli.command.requires_experiment() {
+            anyhow::bail!("no experiment name is provided, and the current dir is not an experiment directory, please run `etna experiment list` to see available experiments");
+        } else {
+            None
+        }
+    };
+
+    if let Some(experiment) = &experiment {
+        mgr.store = Store::new(experiment.store.clone())?;
+    }
 
     match cli.command {
         Command::Experiment(exp) => match exp {
@@ -70,49 +151,66 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         path,
                         overwrite,
                         register,
-                        description,
                         local_store,
-            } => commands::experiment::new::invoke(name, path, overwrite, register, description, local_store),
-            ExperimentCommand::Run { name, test, tests, short_circuit } => commands::experiment::run::invoke(name, test, tests, short_circuit),
+            } => commands::experiment::new::invoke(mgr, name, path, overwrite, register,  local_store),
+            ExperimentCommand::Run { name: _, tests, short_circuit } => commands::experiment::run::invoke(mgr, experiment.unwrap(), tests, short_circuit),
             ExperimentCommand::Show {
                         hash,
                         name,
                         show_all,
                     } => commands::experiment::show::invoke(hash, name, show_all),
-            ExperimentCommand::Visualize { name, figure, tests, groupby, aggby, metric, buckets, max, visualization_type } => commands::experiment::visualize::invoke(name, figure, tests, groupby, aggby, metric, buckets, max, visualization_type),
+            ExperimentCommand::Visualize { name: _, figure, tests, groupby, aggby, metric, buckets, max, visualization_type } => commands::experiment::visualize::invoke(mgr, experiment.unwrap(), figure, tests, groupby, aggby, metric, buckets, max, visualization_type),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
-                experiment,
+                experiment: _,
                 language,
                 workload,
-            } => commands::workload::add_workload::invoke(experiment, language, workload),
+            } => commands::workload::add_workload::invoke(mgr, experiment.unwrap(), language, workload),
             WorkloadCommand::RemoveWorkload {
-                experiment,
+                experiment: _,
                 language,
                 workload,
-            } => commands::workload::remove_workload::invoke(experiment, language, workload)
+            } => commands::workload::remove_workload::invoke(experiment.unwrap(), language, workload)
                 .context("Try running `etna workload remove` in an experiment directory, or explicitly specify the experiment name with `etna workload remove --experiment <NAME>`"),
             WorkloadCommand::ListWorkloads {
-                experiment,
+                experiment: _,
                 language,
                 kind,
-            } => commands::workload::list_workloads::invoke(experiment, language, kind),
+            } => commands::workload::list_workloads::invoke(experiment.unwrap(), language, kind),
         },
         Command::Config(cl) => match cl {
             ConfigCommand::Show => commands::config::show::invoke(),
         },
         Command::Setup { overwrite } => commands::config::setup::invoke(overwrite),
-        Command::Store(store_command) => match store_command {
+        Command::Store(store_command) => {
+            let experiment = match &store_command {
+                StoreCommand::Write { experiment, ..} => experiment,
+                StoreCommand::Query { experiment, ..} => experiment,
+                StoreCommand::Remove { experiment, ..} => experiment,
+            };
+            let store = if let Some(experiment) = experiment {
+                Store::new(
+            mgr.get_experiment(experiment)
+                .context(format!("Experiment '{experiment}' not found"))?
+                .store,
+                )?
+            } else {
+                mgr.store
+            };
+            
+            match store_command {
             StoreCommand::Write {
+                experiment: _,
                 experiment_id,
                 metric,
-            } => commands::store::write::invoke(None, experiment_id, metric),
-            StoreCommand::Query { experiment, filter } => commands::store::query::invoke(experiment, filter),
-            StoreCommand::Remove { experiment, filter } => commands::store::remove::invoke(experiment, filter),
-        },
+            } => commands::store::write::invoke(store, experiment_id, metric),
+            StoreCommand::Query { experiment: _, filter } => commands::store::query::invoke(store, filter),
+            StoreCommand::Remove { experiment: _, filter } => commands::store::remove::invoke(store, filter),
+        }
+    },
         Command::Analyze(_analyze_command) => todo!(),
-        Command::Check { restore, remove } => commands::check::integrity::invoke(restore, remove),
+        Command::Check { restore, remove } => commands::check::integrity::invoke(mgr, restore, remove),
         Command::Bash { path } => commands::bash::invoke(path),
     }
     .context("Aborting run due to an error")
@@ -140,10 +238,6 @@ enum ExperimentCommand {
         /// [default: false]
         #[clap(short = 'r', long)]
         register: bool,
-        /// Description of the experiment
-        /// [default: A description of the experiment]
-        #[clap(short = 'd', long)]
-        description: Option<String>,
         /// Does the experiment use a local store instead of the global store
         /// [default: false]
         #[clap(short = 's', long, default_value = "false")]
@@ -155,9 +249,6 @@ enum ExperimentCommand {
         /// [default: current directory]
         #[clap(short, long)]
         name: Option<String>,
-        /// A test to run
-        #[clap(long)]
-        test: Option<String>,
         /// A list of tests to run given as file name stems from the `tests` directory
         #[clap(long)]
         tests: Vec<String>,
@@ -264,6 +355,10 @@ enum WorkloadCommand {
 enum StoreCommand {
     #[clap(name = "write", about = "Write a metric to the store")]
     Write {
+        /// Name of the experiment
+        /// [default: current directory]
+        #[clap(short, long, default_value = None)]
+        experiment: Option<String>,
         /// Experiment ID
         experiment_id: String,
         /// Metric as a json string
@@ -350,4 +445,50 @@ enum Command {
         #[clap(short, long, default_value = None)]
         path: Option<PathBuf>,
     },
+}
+
+impl Command {
+    pub fn experiment_name(&self) -> Option<&String> {
+        match self {
+            Command::Experiment(exp) => match exp {
+                ExperimentCommand::New { .. } => None,
+                ExperimentCommand::Run { name, .. } => name.as_ref(),
+                ExperimentCommand::Show { name, .. } => name.as_ref(),
+                ExperimentCommand::Visualize { name, .. } => name.as_ref(),
+            },
+            Command::Workload(wl) => match wl {
+                WorkloadCommand::AddWorkload { experiment, .. } => experiment.as_ref(),
+                WorkloadCommand::RemoveWorkload { experiment, .. } => experiment.as_ref(),
+                WorkloadCommand::ListWorkloads { experiment, .. } => experiment.as_ref(),
+            },
+            Command::Store(store_command) => match store_command {
+                StoreCommand::Write { .. } => None,
+                StoreCommand::Query { experiment, .. } => experiment.as_ref(),
+                StoreCommand::Remove { experiment, .. } => experiment.as_ref(),
+            },
+            _ => None,
+        }
+    }
+
+    pub fn requires_experiment(&self) -> bool {
+        match self {
+            Command::Experiment(exp) => match exp {
+                ExperimentCommand::New { .. } => false,
+                ExperimentCommand::Run { .. } => true,
+                ExperimentCommand::Show { .. } => true,
+                ExperimentCommand::Visualize { .. } => true,
+            },
+            Command::Workload(wl) => match wl {
+                WorkloadCommand::AddWorkload { .. } => true,
+                WorkloadCommand::RemoveWorkload { .. } => true,
+                WorkloadCommand::ListWorkloads { .. } => true,
+            },
+            Command::Store(store_command) => match store_command {
+                StoreCommand::Write { .. } => false,
+                StoreCommand::Query { .. } => false,
+                StoreCommand::Remove { .. } => false,
+            },
+            _ => false,
+        }
+    }
 }

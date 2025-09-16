@@ -43,7 +43,7 @@ Fixpoint insert (k : nat) (v: nat) (t : Tree) :=
     (*!! insert_2 *)
     (*!
     if k <? k' then T (insert k v l) k' v' r
-        else T l k' v r
+    else T l k' v r
     *)
     (*!! insert_3 *)
     (*!

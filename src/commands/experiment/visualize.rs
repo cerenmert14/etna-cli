@@ -8,8 +8,8 @@ use itertools::Itertools;
 use serde_json::{Map, Value};
 
 use crate::{
-    config::ExperimentConfig,
-    experiment::{Experiment, Test},
+    experiment::{ExperimentMetadata, Test},
+    manager::Manager,
     store::Store,
 };
 
@@ -87,8 +87,10 @@ pub(crate) fn write_row<W: std::io::Write>(
     writer.write_all(b"\n").context("Failed to write newline")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn invoke(
-    experiment_name: Option<String>,
+    mgr: Manager,
+    experiment: ExperimentMetadata,
     figure_name: String,
     tests: Vec<String>,
     groupby: Vec<String>,
@@ -98,30 +100,23 @@ pub fn invoke(
     max: Option<f64>,
     typ_: VisualizationType,
 ) -> anyhow::Result<()> {
-    log::trace!("visualizing experiment with name '{:?}'", experiment_name);
+    tracing::trace!("visualizing experiment with name '{:?}'", experiment.name);
 
     if tests.is_empty() {
         anyhow::bail!("No tests provided. Please specify at least one test to run.");
     }
 
-    let experiment_config = ExperimentConfig::from_maybe_name(experiment_name.as_deref())
-        .context("Failed to load experiment configuration")?;
+    let agg_metrics = get_agg_metrics(&experiment, &mgr.store, &figure_name, &tests, &aggby)?;
 
-    let store: Store = Store::load(&experiment_config.store)?;
+    tracing::trace!("Aggregated metrics: {:#?}", agg_metrics);
 
-    let experiment = store.get_experiment_by_name(&experiment_config.name)?;
+    tracing::trace!("Number of aggregated metrics: {}", agg_metrics.len());
 
-    let agg_metrics = get_agg_metrics(experiment, &store, &figure_name, &tests, &aggby)?;
-
-    log::trace!("Aggregated metrics: {:#?}", agg_metrics);
-
-    log::trace!("Number of aggregated metrics: {}", agg_metrics.len());
-
-    log::trace!("Groupby fields: {:#?}", groupby);
+    tracing::trace!("Groupby fields: {:#?}", groupby);
 
     match typ_ {
         VisualizationType::Bucket => draw_bucket_chart(
-            experiment,
+            &experiment,
             &figure_name,
             agg_metrics,
             groupby,
@@ -131,7 +126,8 @@ pub fn invoke(
         ),
         VisualizationType::Bar => {
             draw_bar_chart(
-                experiment_name,
+                mgr,
+                &experiment,
                 figure_name,
                 tests,
                 groupby,
@@ -150,7 +146,7 @@ pub fn invoke(
 }
 
 fn get_agg_metrics(
-    experiment: &Experiment,
+    experiment: &ExperimentMetadata,
     store: &Store,
     figure_name: &str,
     tests: &[String],
@@ -190,12 +186,12 @@ fn get_agg_metrics(
         })
         .collect::<Vec<Test>>();
 
-    log::trace!("Loaded {} tests for visualization", tests.len());
+    tracing::trace!("Loaded {} tests for visualization", tests.len());
 
     let metrics = tests
         .iter()
         .flat_map(|test| {
-            log::trace!("Processing test: {}", test);
+            tracing::trace!("Processing test: {}", test);
             store.metrics.iter().filter_map(|m| {
                 let data = m.data.as_object().unwrap();
 
@@ -225,9 +221,9 @@ fn get_agg_metrics(
         })
         .collect::<Vec<_>>();
 
-    log::trace!("Aggregated metrics by: {:#?}", aggby);
+    tracing::trace!("Aggregated metrics by: {:#?}", aggby);
 
-    log::trace!("metrics: {:#?}", &metrics[..]);
+    tracing::trace!("metrics: {:#?}", &metrics[..]);
 
     let aggs = aggby
         .iter()
@@ -245,7 +241,7 @@ fn get_agg_metrics(
         .multi_cartesian_product()
         .collect::<Vec<Vec<_>>>();
 
-    log::trace!("Aggregations: {:#?}", aggs);
+    tracing::trace!("Aggregations: {:#?}", aggs);
 
     let agg_metrics = aggs
         .iter()
@@ -254,7 +250,7 @@ fn get_agg_metrics(
                 .iter()
                 .filter(|m| {
                     aggby.iter().enumerate().all(|(i, g)| {
-                        log::trace!(
+                        tracing::trace!(
                             "Checking if metric {} has groupby field {}: {:?} == {:?}",
                             m.data,
                             g,
@@ -266,11 +262,11 @@ fn get_agg_metrics(
                 })
                 .collect::<Vec<_>>();
             if agg_metrics.is_empty() {
-                log::trace!("No metrics found for group: {:?}", agg);
+                tracing::trace!("No metrics found for group: {:?}", agg);
                 return None;
             }
-            log::trace!("Group: {:#?}", agg);
-            log::trace!("Number of metrics in agg: {}", agg_metrics.len());
+            tracing::trace!("Group: {:#?}", agg);
+            tracing::trace!("Number of metrics in agg: {}", agg_metrics.len());
             // if it timed out, finished, gave up, or aborted, we want to return NaN.
             let timed_out = agg_metrics.iter().find_map(|m| {
                 m.data
@@ -286,7 +282,7 @@ fn get_agg_metrics(
             });
 
             if let Some(timeout) = timed_out {
-                log::warn!("Some metrics in group {:?} timed out", agg);
+                tracing::warn!("Some metrics in group {:?} timed out", agg);
                 let data = serde_json::json!({
                     "language": agg[0],
                     "workload": agg[1],
@@ -299,7 +295,7 @@ fn get_agg_metrics(
                     "shrinks": f64::NAN,
                     "time": format!("{timeout}s"),
                 });
-                log::trace!("Returning timeout data: {:#?}", data);
+                tracing::trace!("Returning timeout data: {:#?}", data);
                 let _ = write_row(&mut raw_data_file, &data, aggby);
                 return data.as_object().cloned();
             }
@@ -313,7 +309,7 @@ fn get_agg_metrics(
             //         .unwrap()
             // });
             // if aborted {
-            //     log::warn!("Some metrics in group {:?} were aborted", agg);
+            //     tracing::warn!("Some metrics in group {:?} were aborted", agg);
             //     let data = serde_json::json!({
             //         "language": agg[0],
             //         "workload": agg[1],
@@ -326,7 +322,7 @@ fn get_agg_metrics(
             //         "shrinks": f64::NAN,
             //         "time": f64::NAN,
             //     });
-            //     log::trace!("Returning aborted data: {:#?}", data);
+            //     tracing::trace!("Returning aborted data: {:#?}", data);
             //     let _ = write_row(&mut raw_data_file, &data, &aggby);
             //     return data.as_object().cloned();
             // }
@@ -341,7 +337,7 @@ fn get_agg_metrics(
             // });
 
             // if finished_or_gave_up {
-            //     log::warn!("Some metrics in group {:?} finished or gave up", agg);
+            //     tracing::warn!("Some metrics in group {:?} finished or gave up", agg);
             //     let data = serde_json::json!({
             //         "language": agg[0],
             //         "workload": agg[1],
@@ -354,7 +350,7 @@ fn get_agg_metrics(
             //         "shrinks": f64::NAN,
             //         "time": f64::NAN,
             //     });
-            //     log::trace!("Returning finished or gave up data: {:#?}", data);
+            //     tracing::trace!("Returning finished or gave up data: {:#?}", data);
             //     let _ = write_row(&mut raw_data_file, &data, &aggby);
             //     return data.as_object().cloned();
             // }
@@ -394,7 +390,7 @@ fn get_agg_metrics(
                 sums.3 / agg_metrics.len() as f64,
             );
 
-            log::debug!(
+            tracing::debug!(
                 "Aggregated metrics for group {:?}: \n\
             Discards: {:.2}, Tests: {:.2}, Shrinks: {:.2}, Time: {:.4} seconds",
                 agg,
@@ -422,13 +418,13 @@ fn get_agg_metrics(
         })
         .collect::<Vec<_>>();
 
-    log::trace!("Aggregated metrics: {:#?}", agg_metrics);
+    tracing::trace!("Aggregated metrics: {:#?}", agg_metrics);
 
     Ok(agg_metrics)
 }
 
 fn draw_bucket_chart(
-    experiment: &Experiment,
+    experiment: &ExperimentMetadata,
     figure_name: &str,
     agg_metrics: Vec<Map<String, Value>>,
     groupby: Vec<String>,
@@ -498,7 +494,7 @@ fn draw_bucket_chart(
     ];
 
     for (i, group) in groups.iter().enumerate() {
-        log::trace!("Processing group {i}: {:?}", group);
+        tracing::trace!("Processing group {i}: {:?}", group);
         let group_metrics = agg_metrics
             .iter()
             .filter(|m| {
@@ -517,6 +513,7 @@ fn draw_bucket_chart(
         }
 
         // create buckets between b[0-1], b[1-2], ..., b[n-1-n]
+        #[allow(clippy::type_complexity)]
         let mut buckets: Vec<((f64, f64), Vec<Map<String, Value>>)> = buckets
             .windows(2)
             .map(|w| ((w[0], w[1]), vec![]))
@@ -535,7 +532,7 @@ fn draw_bucket_chart(
             }
         }
 
-        log::trace!(
+        tracing::trace!(
             "\n\tGroup: {:?}\n\tBuckets: {:?}",
             group,
             buckets
@@ -557,7 +554,7 @@ fn draw_bucket_chart(
 
         for ((start, end), values) in &buckets {
             for m in values {
-                log::debug!("Bucket ({:.2}, {:.2}) contains metric: {:?}", start, end, m);
+                tracing::debug!("Bucket ({:.2}, {:.2}) contains metric: {:?}", start, end, m);
             }
         }
 
@@ -599,7 +596,7 @@ fn draw_bucket_chart(
     let name = format!("{}_{}.png", figure_name, metric);
 
     let path = experiment.path.join("figures").join(name);
-    log::info!("Saving image to: {}", path.display());
+    tracing::info!("Saving image to: {}", path.display());
     image.save(path).expect("Failed to save image");
 
     // Draw the legend
@@ -613,7 +610,7 @@ fn draw_bucket_chart(
     );
 
     for (i, group) in groups.iter().enumerate() {
-        log::trace!("Processing group {i}: {:?}", group);
+        tracing::trace!("Processing group {i}: {:?}", group);
         if buckets[0] != 0.0 {
             buckets.insert(0, 0.0);
         }
@@ -647,7 +644,7 @@ fn draw_bucket_chart(
 
     let name = format!("{}_{}_legend.png", figure_name, metric);
     let path = experiment.path.join("figures").join(name);
-    log::info!("Saving legend image to: {}", path.display());
+    tracing::info!("Saving legend image to: {}", path.display());
     image.save(path).expect("Failed to save image");
 
     Ok(())
@@ -730,7 +727,7 @@ fn draw_buckets_line(
     // let (text_width, text_height) = rendered_text_width_and_height(group_label, &font, scale);
     // let text_x = cfg.margin + (cfg.width - 2.0 * cfg.margin) / 2.0 - text_width / 2.0;
     // let text_y = y - text_height - cfg.margin;
-    // log::trace!(
+    // tracing::trace!(
     //     "Drawing group label '{}' at ({}, {}) with color {:?}",
     //     group_label,
     //     text_x,
@@ -762,7 +759,7 @@ fn draw_buckets_line(
         // Calculate the text color based on the fill color
         let text_color = text_color(cfg.fill_color);
 
-        log::trace!(
+        tracing::trace!(
             "Filling rectangle from ({}, {}) to ({}, {}) with color {:?}",
             x,
             y,
@@ -785,7 +782,7 @@ fn draw_buckets_line(
         let (text_width, text_height) = rendered_text_width_and_height(&label, &font, scale);
 
         if text_width > bucket_width {
-            log::trace!(
+            tracing::trace!(
                 "Text width ({}) exceeds bucket width ({}), not drawing text",
                 text_width,
                 bucket_width
@@ -793,7 +790,7 @@ fn draw_buckets_line(
         } else {
             let text_x = x + (bucket_width / 2.0) - (text_width / 2.0);
             let text_y = y + (cfg.bucket_height / 2.0) - (text_height / 2.0);
-            log::trace!(
+            tracing::trace!(
                 "Drawing text '{}' at ({}, {}) with color {:?}",
                 label,
                 text_x,
@@ -820,8 +817,10 @@ fn draw_buckets_line(
 
 /// Draw bar charts for the given data.
 /// The bars will show the total of a metric, aggregated
+#[allow(clippy::too_many_arguments)]
 pub fn draw_bar_chart(
-    experiment_name: Option<String>,
+    mgr: Manager,
+    experiment: &ExperimentMetadata,
     figure_name: String,
     tests: Vec<String>,
     groupby: Vec<String>,
@@ -831,18 +830,13 @@ pub fn draw_bar_chart(
     metric: MetricType,
     max: Option<f64>,
 ) -> anyhow::Result<()> {
-    log::trace!("Drawing bar chart for experiment '{:?}'", experiment_name);
+    tracing::trace!("Drawing bar chart for experiment '{:?}'", experiment.name);
 
     if tests.is_empty() {
         anyhow::bail!("No tests provided. Please specify at least one test to run.");
     }
 
-    let experiment_config = ExperimentConfig::from_maybe_name(experiment_name.as_deref())
-        .context("Failed to load experiment configuration")?;
-    let store = Store::load(&experiment_config.store)?;
-    let experiment = store.get_experiment_by_name(&experiment_config.name)?;
-
-    let agg_metrics = get_agg_metrics(experiment, &store, &figure_name, &tests, &aggby)?;
+    let agg_metrics = get_agg_metrics(experiment, &mgr.store, &figure_name, &tests, &aggby)?;
 
     let mut groups = groupby
         .iter()
@@ -907,11 +901,11 @@ pub fn draw_bar_chart(
     ];
 
     let max = if let Some(max_value) = max {
-        log::trace!("Max value: {}", max_value);
+        tracing::trace!("Max value: {}", max_value);
         max_value
     } else {
         let mut max = 0.0;
-        for (_, group) in groups.iter().enumerate() {
+        for group in groups.iter() {
             let group_metrics = agg_metrics
                 .iter()
                 .filter(|m| {
@@ -954,7 +948,7 @@ pub fn draw_bar_chart(
     // find the closest 10th value to the max
     let closest_tenth = (max / 10f64.powf(order - 1.0)).ceil() * 10f64.powf(order - 1.0);
     let tick_step = closest_tenth / tick_count as f64;
-    log::trace!(
+    tracing::trace!(
         "Max value: {}, Order: {}, Closest tenth: {}, Tick step: {}",
         max,
         order,
@@ -963,14 +957,14 @@ pub fn draw_bar_chart(
     );
     // Draw tick marks and labels on the vertical line
     for i in 0..=tick_count {
-        log::trace!(
+        tracing::trace!(
             "Drawing tick mark for value {} at index {}",
             i as f64 * tick_step,
             i
         );
         let tick_value = i as f64 * tick_step;
         let tick_y = height - hmargin - (tick_value / max) * (height - 2.0 * vmargin);
-        log::trace!(
+        tracing::trace!(
             "Tick value: {}, Tick X:{}, Tick Y: {}",
             tick_value,
             (vmargin * 0.75) as i32,
@@ -989,7 +983,7 @@ pub fn draw_bar_chart(
         let (text_width, text_height) = rendered_text_width_and_height(&label, &font, scale);
         let text_x = vmargin * 0.75 - text_width - 5.0; // 5px padding
         let text_y = tick_y + (2.0 - text_height) / 2.0; // Center the text vertically
-        log::trace!(
+        tracing::trace!(
             "Drawing tick label '{}' at ({}, {}) with color {:?}",
             label,
             text_x,
@@ -1008,7 +1002,7 @@ pub fn draw_bar_chart(
     }
 
     for (i, group) in groups.iter().enumerate() {
-        log::trace!("Processing group {i}: {:?}", group);
+        tracing::trace!("Processing group {i}: {:?}", group);
         let group_metrics = agg_metrics
             .iter()
             .filter(|m| {
@@ -1027,16 +1021,16 @@ pub fn draw_bar_chart(
                 .unwrap_or(0.0)
         });
 
-        log::trace!("Total for group {i}: {}", total);
+        tracing::trace!("Total for group {i}: {}", total);
         if total == 0.0 {
-            log::warn!("Total for group {i} is 0, skipping");
+            tracing::warn!("Total for group {i} is 0, skipping");
             continue; // Skip groups with no data
         }
         // let bar_width = (width - 2.0 * hmargin) / groups.len() as f64;
         let bar_height = (total / max) * (height - 2.0 * hmargin);
         let x = vmargin + i as f64 * bar_width;
         let y = height - hmargin - bar_height;
-        log::debug!(
+        tracing::debug!(
             "Drawing bar for group {i} at ({}, {}) with size ({}, {}) and color {:?}",
             x,
             y,
@@ -1045,13 +1039,13 @@ pub fn draw_bar_chart(
             colors[i % colors.len()]
         );
         if bar_height < 1.0 {
-            log::warn!(
+            tracing::warn!(
                 "Bar height for group {i} is less than 1px, skipping drawing to avoid artifacts"
             );
             continue; // Skip drawing bars that are too small
         }
         let rect = Rect::at(x as i32, y as i32).of_size(bar_width as u32, bar_height as u32);
-        log::debug!(
+        tracing::debug!(
             "Drawing rectangle for group {i} at ({}, {}) with size ({}, {}) and color {:?}",
             x,
             y,
@@ -1065,7 +1059,7 @@ pub fn draw_bar_chart(
     let name = format!("{}_{}.png", figure_name, metric);
 
     let path = experiment.path.join("figures").join(name);
-    log::info!("Saving image to: {}", path.display());
+    tracing::info!("Saving image to: {}", path.display());
     image.save(path).expect("Failed to save image");
 
     Ok(())

@@ -1,8 +1,6 @@
 use std::{fmt::Display, path::PathBuf};
 
-use anyhow::Context;
-
-use crate::{config::EtnaConfig, store};
+use crate::manager::Manager;
 
 enum IntegrityFault {
     ExperimentNotFound { name: String, path: PathBuf },
@@ -31,42 +29,38 @@ impl Display for IntegrityFault {
 /// In such a case, we need to identify divergences between the file system
 /// and ETNA's bookkeeping; and offer mechanisms for reconciliation.
 /// integrity check is one such mechanism.
-pub fn invoke(restore: bool, remove: bool) -> anyhow::Result<()> {
-    log::debug!("checking integrity of the store");
+pub fn invoke(mut mgr: Manager, restore: bool, remove: bool) -> anyhow::Result<()> {
+    tracing::debug!("checking integrity of the store");
     if restore && remove {
         anyhow::bail!("Cannot use both --restore and --remove at the same time in integrity check");
     }
     let mut integrity_faults = vec![];
-    // Get etna configuration
-    let etna_config = EtnaConfig::get_etna_config().context("Failed to get etna config")?;
-    // Load the store
-    let mut store =
-        store::Store::load(&etna_config.store_path()).context("Failed to load the store")?;
+
     // Check the integrity of the store
-    for experiment in store.experiments.iter() {
+    for (name, experiment) in mgr.experiments.iter() {
         // check that the experiment exists at the path
         match std::fs::metadata(&experiment.path) {
             Ok(metadata) => {
                 if !metadata.is_dir() {
-                    log::debug!(
+                    tracing::debug!(
                         "Experiment {} at {} is not a directory",
-                        experiment.name,
+                        name,
                         experiment.path.display()
                     );
                     integrity_faults.push(IntegrityFault::ExperimentNotFound {
-                        name: experiment.name.clone(),
+                        name: name.clone(),
                         path: experiment.path.clone(),
                     })
                 }
             }
             Err(_) => {
-                log::debug!(
+                tracing::debug!(
                     "Experiment {} at {} does not exist",
-                    experiment.name,
+                    name,
                     experiment.path.display()
                 );
                 integrity_faults.push(IntegrityFault::ExperimentNotFound {
-                    name: experiment.name.clone(),
+                    name: name.clone(),
                     path: experiment.path.clone(),
                 });
             }
@@ -78,29 +72,29 @@ pub fn invoke(restore: bool, remove: bool) -> anyhow::Result<()> {
     }
     if remove {
         for integrity_fault in integrity_faults.iter() {
-            log::info!("fixing '{}'", integrity_fault);
+            tracing::info!("fixing '{}'", integrity_fault);
             match integrity_fault {
                 IntegrityFault::ExperimentNotFound { name, .. } => {
-                    store.experiments.retain(|e| e.name != *name);
-                    store.save().context("Failed to save the store")?;
-                    log::info!("\tremoved experiment {} from the store", name);
+                    mgr.retain_experiments(|e| e.name != *name)?;
+
+                    tracing::info!("\tremoved experiment {} from the store", name);
                 }
             }
         }
     }
     if !restore && !remove {
         for integrity_fault in integrity_faults.iter() {
-            log::info!("{}", integrity_fault);
+            tracing::info!("{}", integrity_fault);
         }
         if !integrity_faults.is_empty() {
-            log::info!(
+            tracing::info!(
             "Integrity check found {} issues. Use `etna check integrity --restore` to restore or `--remove` to remove the faulty entries.",
             integrity_faults.len()
         );
         }
     }
     if integrity_faults.is_empty() {
-        log::info!("No integrity issues found!");
+        tracing::info!("No integrity issues found!");
     }
     Ok(())
 }

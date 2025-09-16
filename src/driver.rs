@@ -3,14 +3,14 @@ use std::{
     io::Write as _,
     path::{Path, PathBuf},
     process::Stdio,
+    sync::{Arc, Mutex},
 };
 
 use serde_json::{Map, Value};
 use std::time::Duration;
 
 use crate::{
-    commands::store,
-    config::ExperimentConfig,
+    manager::Manager,
     store::{Metric, Store},
     workload::{Command, Language, Step, Steps, Workload},
 };
@@ -19,7 +19,7 @@ use anyhow::Context;
 
 use process_control::{ChildExt, Control};
 
-use crate::experiment::{ExperimentSnapshot, Test};
+use crate::experiment::{ExperimentMetadata, Test};
 
 #[derive(Debug)]
 pub(crate) struct RunConfig {
@@ -35,36 +35,23 @@ pub(crate) struct RunConfig {
     pub(crate) short_circuit: bool,
     pub(crate) cross: bool,
     #[allow(dead_code)]
-    pub(crate) seeds: Option<Vec<u64>>,
+    pub(crate) seed: Option<u64>,
 }
 
 fn load_language(experiment_path: &Path, language: &str) -> anyhow::Result<Language> {
     let language_path = experiment_path.join("workloads").join(language);
-    let config_path = language_path.join("config").with_extension("json");
-    log::debug!("Loading language config from '{}'", config_path.display());
-    let mut config: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(&config_path)
-            .with_context(|| format!("could not read config at '{}'", config_path.display()))?,
+    let steps_path = language_path.join("steps.json");
+    tracing::debug!("Loading language config from '{}'", steps_path.display());
+    let steps: Steps = serde_json::from_str(
+        &std::fs::read_to_string(&steps_path)
+            .with_context(|| format!("could not read steps at '{}'", steps_path.display()))?,
     )
-    .with_context(|| {
-        format!(
-            "config file at '{}' is not a valid Language",
-            config_path.display()
-        )
-    })?;
+    .with_context(|| format!("steps file at '{}' is invalid", steps_path.display()))?;
 
-    config
-        .as_object_mut()
-        .context("config file is not a valid JSON object")?
-        .insert(
-            "name".to_string(),
-            serde_json::Value::String(language.to_string()),
-        );
-
-    log::debug!("Loaded language config: {:?}", language);
-    log::debug!("config: {}", config);
-    let language: Language =
-        serde_json::from_value(config).context("config file is not a valid Language")?;
+    let language = Language {
+        name: language.to_string(),
+        steps,
+    };
 
     Ok(language)
 }
@@ -85,21 +72,21 @@ pub(crate) fn load_workload(
         workload_path.display()
     );
 
-    let config_path = workload_path.join("config").with_extension("json");
+    let steps_path = workload_path.join("steps.json");
 
     anyhow::ensure!(
-        config_path.exists(),
-        "Config file not found at '{}'",
-        config_path.display()
+        steps_path.exists(),
+        "Steps file not found at '{}'",
+        steps_path.display()
     );
 
-    let workload_config: Option<serde_json::Value> =
-        serde_json::from_str(&std::fs::read_to_string(config_path).unwrap()).ok();
+    let workload_steps: Option<serde_json::Value> =
+        serde_json::from_str(&std::fs::read_to_string(steps_path).unwrap()).ok();
 
     let language = load_language(experiment_path, language)?;
 
-    let steps = if let Some(workload_config) = workload_config {
-        Steps::with_default(&workload_config, &language.steps)
+    let steps = if let Some(workload_steps) = workload_steps {
+        Steps::with_default(&workload_steps, &language.steps)
     } else {
         language.steps.clone()
     };
@@ -115,6 +102,7 @@ pub(crate) fn load_workload(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn metric_matches<'a>(
     m: &'a Metric,
     language: Option<&str>,
@@ -184,6 +172,7 @@ fn metric_matches<'a>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn task_completed(
     language: &str,
     workload: &str,
@@ -194,9 +183,9 @@ fn task_completed(
     trials: usize,
     short_circuit: bool,
     cross: bool,
-    metrics: &Vec<Metric>,
+    metrics: &[Metric],
 ) -> bool {
-    log::trace!(
+    tracing::trace!(
         "Checking if task is completed for language '{}', workload '{}', strategy '{}', property '{}', mutations '{:?}'",
         language, workload, strategy, property, mutations
     );
@@ -224,7 +213,7 @@ fn task_completed(
             .iter()
             .find(|m| m.data.get("trial").and_then(|v| v.as_u64()).map(|u| u == i) == Some(true))
             .and_then(|m| {
-                log::trace!("Checking metric: {:?} for trial {}", m.data, i);
+                tracing::trace!("Checking metric: {:?} for trial {}", m.data, i);
                 if short_circuit {
                     if timed_out {
                         return Some(true);
@@ -247,15 +236,14 @@ fn task_completed(
 }
 
 pub(crate) fn run(
-    experiment_config: &ExperimentConfig,
+    mgr: Arc<Mutex<Manager>>,
     run_config: &RunConfig,
-    run_step: &Step,
+    test_steps: &[Step],
     params: &mut HashMap<String, String>,
     tags: &HashMap<String, Vec<String>>,
-    metrics: &Vec<Metric>,
 ) -> anyhow::Result<()> {
-    log::trace!("Running with config: {:?}", run_config);
-    log::trace!("Run step: {:?}", run_step);
+    tracing::trace!("Running with config: {:?}", run_config);
+    tracing::trace!("Run step: {:?}", test_steps);
 
     params.insert("language".to_string(), run_config.language.clone());
     params.insert("workload".to_string(), run_config.workload.clone());
@@ -274,51 +262,57 @@ pub(crate) fn run(
         run_config.experiment_id.clone(),
     );
 
-    log::trace!("Final params for step: {:?}", params);
+    tracing::trace!("Final params for step: {:?}", params);
 
-    let run_steps = run_step.realize(params, tags)?;
-    anyhow::ensure!(
-        run_steps.len() == 1,
-        "Expected exactly one run step, got {}",
-        run_steps.len()
-    );
-    // unwrap here is fine because we just checked the length
-    let step = run_steps.first().unwrap();
+    let test_steps = test_steps
+        .iter()
+        .map(|step| step.realize(params, tags))
+        .collect::<Vec<_>>();
 
-    log::info!("running the trials via '{}'", step);
+    anyhow::ensure!(test_steps.iter().all(anyhow::Result::is_ok));
+
+    let test_steps = test_steps
+        .into_iter()
+        .flat_map(anyhow::Result::unwrap)
+        .collect::<Vec<_>>();
+
+    for step in &test_steps {
+        tracing::trace!("Test step: {:?}", step);
+    }
 
     for i in 0..run_config.trials {
-        log::trace!("running trial {}", i);
+        tracing::trace!("running trial {}", i);
+        {
+            let mgr = mgr.lock().unwrap();
+            let previous_metric = mgr.store.metrics.iter().find(|m| {
+                metric_matches(
+                    m,
+                    Some(&run_config.language),
+                    Some(&run_config.workload),
+                    Some(&run_config.mutations),
+                    Some(&run_config.strategy),
+                    Some(&run_config.property),
+                    Some(run_config.timeout),
+                    Some(i),
+                    Some(run_config.cross),
+                )
+                .is_some()
+            });
 
-        let previous_metric = metrics.iter().find(|m| {
-            metric_matches(
-                m,
-                Some(&run_config.language),
-                Some(&run_config.workload),
-                Some(&run_config.mutations),
-                Some(&run_config.strategy),
-                Some(&run_config.property),
-                Some(run_config.timeout),
-                Some(i),
-                Some(run_config.cross),
-            )
-            .is_some()
-        });
+            if let Some(metric) = previous_metric {
+                // If the metric is a timeout and short-circuit is enabled, break the loop
+                if run_config.short_circuit
+                    && metric
+                        .data
+                        .get("status")
+                        .is_some_and(|v| v.as_str() == Some("timed_out"))
+                {
+                    tracing::info!("Short-circuiting the experiment due to previous timeout");
+                    break;
+                }
 
-        if let Some(metric) = previous_metric {
-            // If the metric is a timeout and short-circuit is enabled, break the loop
-            if run_config.short_circuit
-                && metric
-                    .data
-                    .get("result")
-                    .is_some_and(|v| v.as_str() == Some("timed_out"))
-            {
-                log::info!("Short-circuiting the experiment due to previous timeout");
-                break;
-            }
-
-            // Skip the trial because it has already been run
-            log::info!(
+                // Skip the trial because it has already been run
+                tracing::info!(
                     "Skipping trial {} for language '{}', workload '{}', strategy '{}', property '{}' because it has already been run",
                     i,
                     run_config.language,
@@ -326,50 +320,56 @@ pub(crate) fn run(
                     run_config.strategy,
                     run_config.property
                 );
-            continue;
+                continue;
+            }
         }
+        for step in &test_steps {
+            let old_step = step;
+            let step = old_step.decide(params, tags);
+            tracing::trace!("step '{old_step}' is evaluated to '{step}' with params: {params:?}");
 
-        let old_step = step;
-        let step = old_step.decide(params, tags);
-        log::trace!("step '{old_step}' is evaluated to '{step}' with params: {params:?}");
+            let cmd = std::process::Command::from(&step);
 
-        let cmd = std::process::Command::from(&step);
+            println!("running trial with '{}'", step);
 
-        println!("running trial with '{}'", step);
+            let result = serde_json::json!({
+                "language": run_config.language,
+                "workload": run_config.workload,
+                "experiment": run_config.experiment_id,
+                "strategy": run_config.strategy,
+                "property": run_config.property,
+                "mutations": run_config.mutations,
+                "trial": i,
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "cross": run_config.cross,
+                "timeout": run_config.timeout,
+            });
 
-        let result = serde_json::json!({
-            "language": run_config.language,
-            "workload": run_config.workload,
-            "experiment": run_config.experiment_id,
-            "strategy": run_config.strategy,
-            "property": run_config.property,
-            "mutations": run_config.mutations,
-            "trial": i,
-            "timestamp": chrono::Utc::now().to_rfc3339(),
-            "cross": run_config.cross,
-            "timeout": run_config.timeout,
-        });
-
-        let result = if run_config.cross {
-            log::debug!("Running cross-language command: {}", step);
-            run_cross(result, cmd, &step, run_config)?
-        } else {
-            log::debug!("Running default command: {}", step);
-            run_default(result, cmd, &step, run_config)?
-        };
-
-        store::write::invoke(
-            Some(experiment_config),
-            run_config.experiment_id.clone(),
-            result.to_string(),
-        )?;
-
-        if result.get("result").is_some_and(|v| v == "timed_out") {
-            if run_config.short_circuit {
-                log::info!("Short-circuiting the experiment due to timeout");
-                return Ok(());
+            let result = if run_config.cross {
+                tracing::debug!("Running cross-language command: {}", step);
+                run_cross(mgr.clone(), result, cmd, &step, run_config)?
             } else {
-                log::info!("Process timed out, but short-circuit is not enabled, so continuing with the next trial");
+                tracing::debug!("Running default command: {}", step);
+                run_default(mgr.clone(), result, cmd, &step, run_config)?
+            };
+
+            let metric = Metric {
+                experiment_id: run_config.experiment_id.clone(),
+                data: result.clone(),
+            };
+
+            {
+                let mut mgr = mgr.lock().unwrap();
+                mgr.store.push(metric)?;
+            }
+
+            if result.get("status").is_some_and(|v| v == "timed_out") {
+                if run_config.short_circuit {
+                    tracing::info!("Short-circuiting the experiment due to timeout");
+                    return Ok(());
+                } else {
+                    tracing::info!("Process timed out, but short-circuit is not enabled, so continuing with the next trial");
+                }
             }
         }
     }
@@ -380,21 +380,20 @@ pub(crate) fn run(
 /// Runs the canonical serialized runner (Rust for now) for the given workload, mutation, property, and tests.
 /// Report the index of the failing test if any.
 fn run_canonical_serialized(
+    mgr: Arc<Mutex<Manager>>,
     workload: &str,
     mutations: &[String],
     property: &str,
     tests: &str,
 ) -> anyhow::Result<serde_json::Value> {
     // Change the current working directory to the workload directory
-    let workload_dir = PathBuf::from(
-        std::env::var("ETNA_DIR").context("ETNA_DIR environment variable is not set")?,
-    )
-    .join("workloads")
-    .join("Rust")
-    .join(workload);
+    let workload_dir = {
+        let mgr = mgr.lock().unwrap();
+        mgr.etna_dir().join("workloads").join("Rust").join(workload)
+    };
 
     // Run marauders to mutate the canonical serializer
-    log::trace!(
+    tracing::trace!(
         "Running marauders to mutate the canonical serializer for workload '{}', mutations '{:?}'",
         workload,
         mutations
@@ -404,7 +403,7 @@ fn run_canonical_serialized(
     let glob = format!("*.{}", marauders::Language::Rust.file_extension());
 
     for variant in mutations.iter() {
-        log::trace!(
+        tracing::trace!(
             "Running marauders to mutate the canonical serializer for workload '{}', variant '{}'",
             workload,
             variant
@@ -416,7 +415,7 @@ fn run_canonical_serialized(
     let mut cmd = std::process::Command::new("cargo");
     cmd.current_dir(&workload_dir);
     cmd.args(["build", "--release"]);
-    log::debug!(
+    tracing::debug!(
         "running 'cargo build --release' in '{}'",
         workload_dir.display()
     );
@@ -435,7 +434,7 @@ fn run_canonical_serialized(
     }
 
     // Run the canonical serializer
-    log::debug!(
+    tracing::debug!(
         "Running canonical serializer for workload '{}', mutations '{:?}', property '{}'",
         workload,
         mutations,
@@ -450,14 +449,14 @@ fn run_canonical_serialized(
     cmd.args([tests, property]);
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
-    log::trace!("Running canonical serializer command: {:?}", cmd);
+    tracing::trace!("Running canonical serializer command: {:?}", cmd);
     let output = cmd.output();
     match output {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             // Parse the stdout to find the index of the failing test
             // The JSON output starts at [| and ends at |]
-            log::trace!("Canonical serializer output: {}", stdout);
+            tracing::trace!("Canonical serializer output: {}", stdout);
 
             let json_value: serde_json::Value =
                 serde_json::from_str(&stdout).context("Failed to parse JSON output")?;
@@ -465,7 +464,7 @@ fn run_canonical_serialized(
             Ok(json_value)
         }
         Err(e) => {
-            log::error!("Failed to run canonical serializer: {}", e);
+            tracing::error!("Failed to run canonical serializer: {}", e);
             anyhow::bail!("Failed to run canonical serializer: '{}'", e);
         }
     }
@@ -483,6 +482,7 @@ fn run_canonical_serialized(
 /// The function is designed to run in a loop until the timeout is reached, with batches of 1000 samples
 /// collected in each iteration.
 fn run_cross(
+    mgr: Arc<Mutex<Manager>>,
     mut result: serde_json::Value,
     mut cmd: std::process::Command,
     step: &Command,
@@ -497,32 +497,34 @@ fn run_cross(
 
     while total_time < timeout {
         // sample the command
-        log::debug!("sampling command: {}", step);
+        tracing::debug!("sampling command: {}", step);
         let child = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| {
-                log::error!("Failed to spawn command '{}': {}", step, e);
+                tracing::error!("Failed to spawn command '{}': {}", step, e);
                 e
             })
             .with_context(|| format!("Failed to spawn '{}'", step))?
             .wait_with_output()
             .map_err(|e| {
-                log::error!("Failed to run command '{}': {}", step, e);
+                tracing::error!("Failed to run command '{}': {}", step, e);
                 e
             })
             .with_context(|| format!("Failed to run command '{}'", step));
 
         match child {
             Ok(output) => {
-                let status = output.status;
+                {
+                    let mut mgr = mgr.lock().unwrap();
+                    log_process_output(&output, &mut mgr.store, &run_config.experiment_id)?;
+                }
+
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                log::debug!("stdout: {}", &stdout);
-                log::debug!("stderr: {}", &stderr);
-                if !status.success() {
-                    log::error!("Command '{}' failed with status: {}", step, status);
+
+                if !output.status.success() {
+                    tracing::error!("Command '{}' failed with status: {}", step, output.status);
                     panic!("Command should not have a non-zero exit status when running in cross-language mode");
                 }
 
@@ -538,7 +540,7 @@ fn run_cross(
                     })
                     .unzip::<String, String, Vec<_>, Vec<_>>();
 
-                log::debug!("{} samples collected", samples.len());
+                tracing::debug!("{} samples collected", samples.len());
 
                 // write samples to a temporary file
                 let mut temp_file =
@@ -548,14 +550,15 @@ fn run_cross(
                     .context("Failed to write samples to temporary file")?;
 
                 // Call the Rust serializer for the specific workload
-                log::debug!(
+                tracing::debug!(
                     "Running canonical serializer for workload '{}', mutations '{:?}', property '{}'",
                     run_config.workload,
                     run_config.mutations,
                     run_config.property
                 );
-                log::debug!("Using temporary file: {}", temp_file.path().display());
+                tracing::debug!("Using temporary file: {}", temp_file.path().display());
                 let results = run_canonical_serialized(
+                    mgr.clone(),
                     &run_config.workload,
                     &run_config.mutations,
                     &run_config.property,
@@ -563,8 +566,8 @@ fn run_cross(
                 );
 
                 let Ok(results) = results else {
-                    log::error!("Failed to run canonical serializer");
-                    log::error!("Results: {:?}", results);
+                    tracing::error!("Failed to run canonical serializer");
+                    tracing::error!("Results: {:?}", results);
                     result.as_object_mut().unwrap().insert(
                         "result".to_owned(),
                         serde_json::Value::String("aborted".to_owned()),
@@ -588,7 +591,7 @@ fn run_cross(
                     .and_then(|v| v.as_u64())
                     .unwrap_or(0) as usize;
 
-                let time_cutoff = if status == "FoundBug" {
+                let time_cutoff = if status == "found_bug" {
                     passed + discarded + 1
                 } else {
                     passed + discarded
@@ -605,18 +608,18 @@ fn run_cross(
                         total_passed += passed * i / time_cutoff;
                         total_discards += discarded * i / time_cutoff;
                         total_samples += i;
-                        log::info!("Timeout reached after {:?}, stopping the run", total_time);
+                        tracing::info!("Timeout reached after {:?}, stopping the run", total_time);
                         break;
                     }
                 }
 
-                log::debug!(
+                tracing::debug!(
                     "Total time for this batch: {:?}, total samples: {}",
                     total_time,
                     time_cutoff
                 );
-                if status == "FoundBug" {
-                    log::info!("Found a bug in the canonical serializer, stopping the run");
+                if status == "found_bug" {
+                    tracing::info!("Found a bug in the canonical serializer, stopping the run");
 
                     result.as_object_mut().unwrap().insert(
                         "result".to_owned(),
@@ -647,13 +650,13 @@ fn run_cross(
                     );
                     return Ok(result);
                 } else {
-                    log::info!(
+                    tracing::info!(
                         "No bugs found in this batch, continuing to the next batch if time allows"
                     );
                 }
             }
             Err(err) => {
-                log::error!("Failed to spawn child process: {}", err);
+                tracing::error!("Failed to spawn child process: {}", err);
                 result.as_object_mut().unwrap().insert(
                     "result".to_owned(),
                     serde_json::Value::String("aborted".to_owned()),
@@ -663,7 +666,7 @@ fn run_cross(
         }
     }
 
-    log::info!(
+    tracing::info!(
         "Cross-language run completed in {:?} with {} samples",
         total_time,
         total_samples
@@ -689,12 +692,13 @@ fn run_cross(
 }
 
 fn run_default(
+    mgr: Arc<Mutex<Manager>>,
     mut result: serde_json::Value,
     mut cmd: std::process::Command,
     step: &Command,
     run_config: &RunConfig,
 ) -> anyhow::Result<serde_json::Value> {
-    log::debug!("Running command: {}", step);
+    tracing::debug!("Running command: {}", step);
 
     let output = cmd
         .stdout(Stdio::piped())
@@ -707,11 +711,11 @@ fn run_default(
         .wait()
         .context(format!("Failed to run command '{}'", step));
 
-    log::trace!("metadata: {}", result);
+    tracing::trace!("metadata: {}", result);
 
     match output {
         Ok(None) => {
-            log::warn!("Process timed out after {} seconds", run_config.timeout);
+            tracing::warn!("Process timed out after {} seconds", run_config.timeout);
 
             result
                 .as_object_mut()
@@ -719,46 +723,40 @@ fn run_default(
                 .insert("result".to_owned(), Value::String("timed_out".to_owned()));
         }
         Ok(Some(output)) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            log::debug!("stdout: {}", stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            log::debug!("stderr: {}", stderr);
-
             if !output.status.success() {
-                log::warn!("Command '{}' failed with status: {}", step, output.status);
+                tracing::warn!("Command '{}' failed with status: {}", step, output.status);
             }
+            // Walk through the stdout and stderr line by line and write any records to the store
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            tracing::debug!("stdout: {}", stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            tracing::debug!("stderr: {}", stderr);
 
-            // look for the result between [| and |]
-            let metric = match (stdout.find("[|"), stdout.find("|]")) {
-                (Some(start), Some(end)) => &stdout[start + 2..end],
-                _ => {
-                    log::warn!("No result found in stdout");
-                    match (stderr.find("[|"), stderr.find("|]")) {
-                        (Some(start), Some(end)) => &stderr[start + 2..end],
-                        _ => {
-                            log::warn!("No result found in stderr");
-                            anyhow::bail!("No result found in stdout or stderr");
-                        }
+            for line in stdout.lines().chain(stderr.lines()) {
+                // If line is a valid JSON object, write it to the store
+                if let Ok(json) = serde_json::from_str::<Map<String, Value>>(line) {
+                    tracing::info!("Found JSON object: {}", line);
+                    let mut record = result.as_object().unwrap().clone();
+                    record.extend(json);
+                    let record = Value::Object(record);
+                    let metric = Metric {
+                        experiment_id: run_config.experiment_id.clone(),
+                        data: record.clone(),
+                    };
+                    {
+                        let mut mgr = mgr.lock().unwrap();
+                        mgr.store.push(metric)?;
                     }
                 }
-            };
-            let metric = serde_json::from_str::<serde_json::Value>(metric)
-                .with_context(|| format!("Failed to parse result: '{}'", metric))?;
-
-            log::trace!("result: {}", metric);
-
-            result
-                .as_object_mut()
-                .context("the printed metric is not a valid json object")?
-                .extend(metric.as_object().unwrap().clone());
+            }
         }
         Err(err) => {
-            log::error!("Aborting! Failed to run command '{}': {}", step, err);
+            tracing::error!("Aborting! Failed to run command '{}': {}", step, err);
 
             result
                 .as_object_mut()
                 .unwrap()
-                .insert("result".to_owned(), Value::String("aborted".to_owned()));
+                .insert("status".to_owned(), Value::String("aborted".to_owned()));
         }
     }
 
@@ -772,7 +770,7 @@ pub(crate) fn build(
     params: &HashMap<String, String>,
     tags: &HashMap<String, Vec<String>>,
 ) -> anyhow::Result<()> {
-    log::info!("running check commands...");
+    tracing::info!("running check commands...");
     let check_steps = check_steps
         .iter()
         .map(|step| step.realize(params, tags))
@@ -786,10 +784,10 @@ pub(crate) fn build(
         .collect::<Vec<_>>();
 
     for step in check_steps.iter() {
-        log::debug!("running check step: {}", step);
+        tracing::debug!("running check step: {}", step);
         // Run the check command
         let step = step.decide(params, tags);
-        log::debug!("step is evaluated to '{step}'");
+        tracing::debug!("step is evaluated to '{step}'");
 
         let mut cmd = std::process::Command::from(&step);
         cmd.current_dir(build_dir);
@@ -797,20 +795,20 @@ pub(crate) fn build(
         let output = cmd.output().context("Failed to execute check command")?;
 
         if !output.status.success() {
-            log::info!(
+            tracing::info!(
                 "[✗] '{}' failed",
                 step.command.clone() + " " + &step.args.join(" ")
             );
             anyhow::bail!("check command failed with status: {}", output.status);
         } else {
-            log::info!(
+            tracing::info!(
                 "[✓] '{}' passed",
                 step.command.clone() + " " + &step.args.join(" ")
             );
         }
     }
-    log::info!("check commands are successfull.");
-    log::info!("running build commands...");
+    tracing::info!("check commands are successfull.");
+    tracing::info!("running build commands...");
 
     let build_steps = build_steps
         .iter()
@@ -826,9 +824,9 @@ pub(crate) fn build(
 
     for step in build_steps.iter() {
         // Run the build command
-        log::debug!("running build step: {}", step);
+        tracing::debug!("running build step: {}", step);
         let step = step.decide(params, tags);
-        log::debug!("step is evaluated to '{step}'");
+        tracing::debug!("step is evaluated to '{step}'");
 
         let mut cmd = std::process::Command::from(&step);
         cmd.current_dir(build_dir);
@@ -836,30 +834,30 @@ pub(crate) fn build(
         let output = cmd.output().context("Failed to execute build command")?;
 
         if !output.status.success() {
-            log::info!("[✗] '{}' failed", step);
-            log::debug!("command: {}", step);
-            log::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-            log::debug!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+            tracing::info!("[✗] '{}' failed", step);
+            tracing::debug!("command: {}", step);
+            tracing::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+            tracing::debug!("stderr: {}", String::from_utf8_lossy(&output.stderr));
             anyhow::bail!("build command failed with status: {}", output.status);
         } else {
-            log::info!("[✓] '{}' passed", step);
+            tracing::info!("[✓] '{}' passed", step);
         }
     }
-    log::info!("build commands are successfull.");
+    tracing::info!("build commands are successfull.");
 
     Ok(())
 }
 
 pub(crate) fn run_experiment(
+    mgr: Arc<Mutex<Manager>>,
     test: &Test,
-    experiment_config: &crate::config::ExperimentConfig,
-    snapshot: ExperimentSnapshot,
+    experiment: &ExperimentMetadata,
     short_circuit: bool,
 ) -> anyhow::Result<()> {
     pub(crate) fn aux(
+        mgr: Arc<Mutex<Manager>>,
         test: &Test,
-        experiment_config: &crate::config::ExperimentConfig,
-        snapshot: ExperimentSnapshot,
+        experiment: &ExperimentMetadata,
         short_circuit: bool,
     ) -> anyhow::Result<()> {
         let lang = marauders::Language::name_to_language(&test.language, &vec![])
@@ -867,17 +865,17 @@ pub(crate) fn run_experiment(
         let glob = format!("*.{}", lang.file_extension());
 
         for variant in test.mutations.iter() {
-            marauders::run_set_command(&experiment_config.path, variant, Some(glob.as_str()))?;
+            marauders::run_set_command(&experiment.path, variant, Some(glob.as_str()))?;
         }
 
-        let workload_dir = experiment_config
+        let workload_dir = experiment
             .path
             .join("workloads")
             .join(test.language.as_str())
             .join(test.workload.as_str());
 
         let workload: Workload = load_workload(
-            &experiment_config.path,
+            &experiment.path,
             test.language.as_str(),
             test.workload.as_str(),
         )?;
@@ -890,61 +888,57 @@ pub(crate) fn run_experiment(
 
         if let Some(params_) = &test.params {
             for (key, value) in params_.iter() {
-                log::trace!("Adding parameter: {} = {}", key, value);
+                tracing::trace!("Adding parameter: {} = {}", key, value);
                 params.insert(key.clone(), value.to_string());
             }
         };
 
-        let config_path = workload_dir.join("config").with_extension("json");
-        log::debug!("config path: {}", config_path.display());
-        let cfg: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(&config_path).unwrap()).unwrap();
-        log::debug!("config: {}", cfg);
-        let tags: HashMap<String, Vec<String>> = serde_json::from_value(
-            cfg.get("tags")
-                .unwrap_or(&serde_json::Value::Object(Map::new()))
-                .clone(),
-        )
-        .unwrap();
+        let steps_path = workload_dir.join("steps.json");
+        tracing::debug!("steps path: {}", steps_path.display());
+        let steps: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&steps_path).unwrap()).unwrap();
+        tracing::debug!("steps: {}", steps);
 
-        let store = Store::load(&experiment_config.store)?;
-
-        log::trace!(
+        tracing::trace!(
             "Checking if all tasks for language '{}' and workload '{}' are already completed",
             test.language,
             test.workload
         );
-        let all_tasks_completed = test.tasks.iter().all(|(strategy, property)| {
-            task_completed(
-                &test.language,
-                &test.workload,
-                &test.mutations,
-                strategy,
-                property,
-                test.timeout,
-                test.trials,
-                short_circuit,
-                test.cross,
-                &store.metrics,
-            )
-        });
 
-        if all_tasks_completed {
-            log::info!(
+        {
+            let mgr = mgr.lock().unwrap();
+            let all_tasks_completed = test.tasks.iter().all(|(strategy, property)| {
+                task_completed(
+                    &test.language,
+                    &test.workload,
+                    &test.mutations,
+                    strategy,
+                    property,
+                    test.timeout,
+                    test.trials,
+                    short_circuit,
+                    test.cross,
+                    &mgr.store.metrics,
+                )
+            });
+
+            if all_tasks_completed {
+                tracing::info!(
                     "All tasks for the current test with language '{}', workload '{}' and mutations '{:?}' are already completed, skipping the build and run steps.",
                     test.language,
                     test.workload,
                     test.mutations
                 );
-            return Ok(());
+                return Ok(());
+            }
         }
 
         build(
             &workload_dir,
-            &workload.steps.check,
+            &workload.steps.setup,
             &workload.steps.build,
             &params,
-            &tags,
+            &workload.steps.tags,
         )?;
 
         for (strategy, property) in test.tasks.iter() {
@@ -955,7 +949,7 @@ pub(crate) fn run_experiment(
             let run_config = RunConfig {
                 language: test.language.clone(),
                 workload_dir: workload_dir.clone(),
-                experiment_id: snapshot.experiment.clone(),
+                experiment_id: experiment.hash()?,
                 trials: test.trials,
                 workload: test.workload.clone(),
                 strategy: strategy.to_string(),
@@ -964,33 +958,62 @@ pub(crate) fn run_experiment(
                 timeout: test.timeout,
                 short_circuit,
                 cross: test.cross,
-                seeds: None,
+                seed: None,
             };
+
+            marauders::run_reset_command(&experiment.path)?;
+
             let result = run(
-                experiment_config,
+                mgr.clone(),
                 &run_config,
-                &workload.steps.run,
+                &workload.steps.test,
                 &mut params,
-                &tags,
-                // todo: we already filter the metrics in the task_completed function, so we should not pass the whole metrics here but the filtered ones.
-                &store.metrics,
+                &workload.steps.tags,
             );
 
             if let Err(e) = &result {
-                log::error!("Failed to run experiment: {}", e);
+                tracing::error!("Failed to run experiment: {}", e);
             }
         }
 
         Ok(())
     }
 
-    let result = aux(test, experiment_config, snapshot, short_circuit);
+    let result = aux(mgr, test, experiment, short_circuit);
     if let Err(e) = &result {
-        log::error!("Experiment failed with error: {}", e);
+        tracing::error!("Experiment failed with error: {}", e);
     } else {
-        log::info!("Experiment completed successfully");
+        tracing::info!("Experiment completed successfully");
     }
 
-    marauders::run_reset_command(&experiment_config.path)?;
+    marauders::run_reset_command(&experiment.path)?;
     result
+}
+
+fn log_process_output(
+    output: &std::process::Output,
+    store: &mut Store,
+    experiment_id: &str,
+) -> anyhow::Result<()> {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    tracing::debug!("stdout: {}", stdout);
+    tracing::debug!("stderr: {}", stderr);
+
+    if !output.status.success() {
+        tracing::warn!("Process failed with status: {}", output.status);
+    }
+
+    // Look for JSON objects in the output
+    for line in stdout.lines().chain(stderr.lines()) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+            tracing::info!("Found JSON object: {}", json);
+            store.push(Metric {
+                data: json,
+                experiment_id: experiment_id.to_string(),
+            })?;
+        }
+    }
+
+    Ok(())
 }

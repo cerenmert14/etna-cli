@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Context as _;
 use itertools::Itertools as _;
-use serde::{ser::SerializeStruct as _, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{property::Property, strategy::Strategy};
 use marauders::Variation;
@@ -86,7 +86,7 @@ impl Step {
         params: &HashMap<String, String>,
         tags: &HashMap<String, Vec<String>>,
     ) -> Command {
-        log::debug!("deciding step: {self} with params: {params:?} and tags: {tags:?}");
+        tracing::debug!("deciding step: {self} with params: {params:?} and tags: {tags:?}");
         match self {
             Step::Command {
                 command,
@@ -103,7 +103,7 @@ impl Step {
             },
             Step::Match { value, options } => {
                 let guard = params.get(value).unwrap();
-                log::debug!("obtaining guard '{guard}' for tags_ {tags:?}");
+                tracing::debug!("obtaining guard '{guard}' for tags_ {tags:?}");
 
                 if let Some(step) = options.get(guard) {
                     return step.decide(params, tags);
@@ -129,9 +129,9 @@ impl Step {
             Step::Match { options, .. } => options.values().any(|s| s.contains(k)),
         };
         if result {
-            log::trace!("step '{self}' contains key '{k}'");
+            tracing::trace!("step '{self}' contains key '{k}'");
         } else {
-            log::trace!("step '{self}' does not contain key '{k}'");
+            tracing::trace!("step '{self}' does not contain key '{k}'");
         }
         result
     }
@@ -160,7 +160,7 @@ impl Step {
                 }
             }
         }
-        log::debug!("replaced step: '{}' with '{}'", original_step, self);
+        tracing::debug!("replaced step: '{}' with '{}'", original_step, self);
     }
 
     pub(crate) fn realize(
@@ -231,76 +231,99 @@ impl Display for Step {
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub(crate) struct Steps {
-    pub(crate) check: Vec<Step>,
+    #[serde(rename = "setup_steps")]
+    pub(crate) setup: Vec<Step>,
+    #[serde(rename = "build_steps")]
     pub(crate) build: Vec<Step>,
-    pub(crate) run: Step,
+    #[serde(rename = "test_steps")]
+    pub(crate) test: Vec<Step>,
+    #[serde(default)]
+    pub(crate) tags: HashMap<String, Vec<String>>,
 }
 
 impl Steps {
-    pub(crate) fn get_steps(config: &serde_json::Value, step_index: &str) -> Option<Vec<Step>> {
-        let step = config.get(step_index);
+    pub(crate) fn get_steps(json: &serde_json::Value, step_index: &str) -> Option<Vec<Step>> {
+        let step = json.get(step_index);
 
         if let Some(step) = step {
             let steps = serde_json::from_value::<Vec<Step>>(step.clone());
             if let Ok(steps) = steps {
                 return Some(steps);
             } else {
-                log::debug!("Step: {}", step);
-                log::debug!("Error: {}", steps.unwrap_err());
-                log::error!("Failed to parse step: '{}'", step_index);
+                tracing::debug!("Step: {}", step);
+                tracing::debug!("Error: {}", steps.unwrap_err());
+                tracing::error!("Failed to parse step: '{}'", step_index);
             }
         }
         None
     }
 
-    pub(crate) fn get_step(config: &serde_json::Value, step_index: &str) -> Option<Step> {
-        let step = config.get(step_index);
+    pub(crate) fn get_step(json: &serde_json::Value, step_index: &str) -> Option<Step> {
+        let step = json.get(step_index);
 
         if let Some(step) = step {
             let steps = serde_json::from_value::<Step>(step.clone());
             if let Ok(steps) = steps {
                 return Some(steps);
             } else {
-                log::error!("Failed to parse step: '{}'", step_index);
-                log::debug!("Step: {}", step);
-                log::debug!("Error: {}", steps.unwrap_err());
+                tracing::error!("Failed to parse step: '{}'", step_index);
+                tracing::debug!("Step: {}", step);
+                tracing::debug!("Error: {}", steps.unwrap_err());
             }
         }
 
-        log::debug!("Step '{}' not found, using default step", step_index);
+        tracing::debug!("Step '{}' not found, using default step", step_index);
         None
     }
 
-    pub(crate) fn with_default(workload_config: &serde_json::Value, default: &Steps) -> Self {
-        let check =
-            Self::get_steps(workload_config, "check_steps").unwrap_or(default.check.clone());
-        let build =
-            Self::get_steps(workload_config, "build_steps").unwrap_or(default.build.clone());
-        let run = Self::get_step(workload_config, "run_step").unwrap_or(default.run.clone());
+    pub(crate) fn with_default(json: &serde_json::Value, default: &Steps) -> Self {
+        let setup = Self::get_steps(json, "setup_steps").unwrap_or(default.setup.clone());
+        let build = Self::get_steps(json, "build_steps").unwrap_or(default.build.clone());
+        let test = Self::get_steps(json, "test_steps").unwrap_or(default.test.clone());
 
-        Self { check, build, run }
+        let tags = if let Some(tags) = json.get("tags") {
+            serde_json::from_value(tags.clone()).unwrap_or_else(|_| default.tags.clone())
+        } else {
+            default.tags.clone()
+        };
+
+        Self {
+            setup,
+            build,
+            test,
+            tags,
+        }
     }
 
-    pub(crate) fn from_config(workload_config: &serde_json::Value) -> anyhow::Result<Self> {
-        let check = Self::get_steps(workload_config, "check_steps")
-            .context("could not find check_steps")?;
-        let build = Self::get_steps(workload_config, "build_steps")
-            .context("could not find build_steps")?;
-        let run = Self::get_step(workload_config, "run_step").context("could not find run_step")?;
+    pub(crate) fn from_value(json: &serde_json::Value) -> anyhow::Result<Self> {
+        let setup = Self::get_steps(json, "setup_steps").context("could not find setup_steps")?;
+        let build = Self::get_steps(json, "build_steps").context("could not find build_steps")?;
+        let test = Self::get_steps(json, "test_steps").context("could not find test_steps")?;
 
-        Ok(Self { check, build, run })
+        let tags = if let Some(tags) = json.get("tags") {
+            serde_json::from_value(tags.clone()).context("could not parse tags")?
+        } else {
+            HashMap::new()
+        };
+
+        Ok(Self {
+            setup,
+            build,
+            test,
+            tags,
+        })
     }
 
     pub(crate) fn from_path(path: &Path) -> anyhow::Result<Self> {
-        let config_path = if path.is_dir() {
-            &path.join("config").with_extension("json")
+        let steps_path = if path.is_dir() {
+            &path.join("steps.json")
         } else {
             path
         };
 
-        let config = serde_json::from_str(&std::fs::read_to_string(config_path).unwrap()).unwrap();
+        let steps = serde_json::from_str(&std::fs::read_to_string(steps_path).unwrap()).unwrap();
 
-        Self::from_config(&config)
+        Self::from_value(&steps)
     }
 }
 
@@ -325,43 +348,4 @@ pub struct Workload {
 pub struct Language {
     pub name: String,
     pub(crate) steps: Steps,
-}
-
-impl Serialize for Language {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("Language", 2)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("check_steps", &self.steps.check)?;
-        state.serialize_field("build_steps", &self.steps.build)?;
-        state.serialize_field("run_step", &self.steps.run)?;
-        state.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for Language {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct LanguageHelper {
-            name: String,
-            check_steps: Vec<Step>,
-            build_steps: Vec<Step>,
-            run_step: Step,
-        }
-
-        let helper = LanguageHelper::deserialize(deserializer)?;
-        Ok(Language {
-            name: helper.name,
-            steps: Steps {
-                check: helper.check_steps,
-                build: helper.build_steps,
-                run: helper.run_step,
-            },
-        })
-    }
 }

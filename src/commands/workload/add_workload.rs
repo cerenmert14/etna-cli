@@ -2,52 +2,64 @@ use std::{fs, path::PathBuf, process::Command};
 
 use anyhow::Context;
 
-use crate::{
-    config::{EtnaConfig, ExperimentConfig},
-    experiment, git_driver, store,
-    workload::WorkloadMetadata,
-};
+use crate::{experiment::ExperimentMetadata, git_driver, manager::Manager};
 
 pub fn invoke(
-    experiment_name: Option<String>,
+    mgr: Manager,
+    experiment: ExperimentMetadata,
     language: String,
     workload: String,
 ) -> anyhow::Result<()> {
-    log::debug!(
+    tracing::debug!(
         "adding workload '{}/{}' to {:?}",
         language,
         workload,
-        experiment_name
+        experiment.name
     );
-    // Get etna configuration
-    let etna_config = EtnaConfig::get_etna_config().context("Failed to get etna config")?;
-    // Get the current experiment
-    let mut experiment_config = experiment_name
-        .ok_or(anyhow::anyhow!("No experiment name provided"))
-        .and_then(|n| ExperimentConfig::from_etna_config(&n, &etna_config))
-        .or_else(|_| ExperimentConfig::from_current_dir())
-        .context("No experiment name is provided, and the current directory is not an experiment directory")
-        .context("Try running `etna workload add` in an experiment directory, or explicitly specify the experiment name with `etna workload add --experiment <NAME>`")?;
 
     // Check if the workload already exists
-    if experiment_config.has_workload(&language, &workload) {
+    if experiment.has_workload(&language, &workload) {
         anyhow::bail!("Workload '{}/{}' already exists", language, workload);
     }
 
     // get etna directory
-    let repo_dir = std::env::var("ETNA_DIR").map(PathBuf::from)
-        .context("ETNA_DIR environment variable not set")?;
+    let repo_dir = mgr.etna_dir().join(".etna_cache");
 
     // Get the workload path
     let workload_path = repo_dir.join("workloads").join(&language).join(&workload);
 
     // Check if the workload exists
     if !workload_path.exists() {
-        anyhow::bail!("Workload '{}' not found", workload_path.display());
+        tracing::warn!(
+            "Workload '{}' not found, pulling from remote",
+            workload_path.display()
+        );
+        git_driver::pull_workload(&repo_dir, &language, &workload)
+            .context("Failed to pull from remote")?;
     }
 
-    // Copy the workload to the experiment directory
-    let dest_path = experiment_config
+    // Check if language steps exists
+    let language_steps_path = repo_dir
+        .join("workloads")
+        .join(&language)
+        .join("steps.json");
+
+    if !language_steps_path.exists() {
+        tracing::warn!(
+            "Language steps '{}' not found, pulling from remote",
+            language_steps_path.display()
+        );
+
+        git_driver::pull_path(
+            &repo_dir,
+            &PathBuf::from("workloads")
+                .join(&language)
+                .join("steps.json"),
+        )
+        .context("Failed to pull language steps from remote")?;
+    }
+
+    let dest_path = experiment
         .path
         .join("workloads")
         .join(&language)
@@ -73,71 +85,41 @@ pub fn invoke(
             dest_path.display()
         ))?;
 
-    // if language config exists, copy it
-    let language_config_path = repo_dir
+    // copy language steps exists
+    let experiment_language_steps_path = experiment
+        .path
         .join("workloads")
         .join(&language)
-        .join("config.json");
+        .join("steps.json");
 
-    if language_config_path.exists() {
-        log::debug!(
-            "Copying language config from '{}' to '{}'",
-            language_config_path.display(),
-            dest_path.display()
+    if !experiment_language_steps_path.exists() {
+        tracing::debug!(
+            "Copying language steps from '{}' to '{}'",
+            language_steps_path.display(),
+            experiment_language_steps_path.display()
         );
 
-        let dest_language_config_path = dest_path
-            .canonicalize()?
-            .parent()
-            .context("Parent does not exist")?
-            .join("config.json");
-
-        std::fs::copy(&language_config_path, &dest_language_config_path).context(format!(
-            "Failed to copy language config from '{}' to '{}'",
-            fs::canonicalize(language_config_path)
+        std::fs::copy(&language_steps_path, &experiment_language_steps_path).context(format!(
+            "Failed to copy language steps from '{}' to '{}'",
+            fs::canonicalize(language_steps_path)
                 .context("Failed to get canonical path")?
                 .display(),
-            dest_language_config_path.display()
+            experiment_language_steps_path.display()
         ))?;
     }
-    // Add the workload to the config
-    experiment_config.workloads.push(WorkloadMetadata {
-        language: language.clone(),
-        name: workload.clone(),
-    });
-
-    // Write the updated config file
-    let config_path = experiment_config.path.join("config.toml");
-    std::fs::write(
-        &config_path,
-        toml::to_string(&experiment_config).context("Failed to serialize configuration")?,
-    )
-    .context("Failed to write config file")?;
 
     // Create a commit
-    git_driver::commit_add_workload(&experiment_config.path, &language, &workload)
-        .with_context(|| format!("Failed to commit adding '{language}/{workload}'"))?;
+    git_driver::commit(
+        &experiment.path,
+        format!("add workload '{}/{}'", language, workload).as_str(),
+    )
+    .with_context(|| format!("Failed to commit adding '{language}/{workload}'"))?;
 
-    // Add the snapshot to the store
-    let mut store = store::Store::load(&experiment_config.store).context("Failed to load store")?;
-
-    let snapshot = store.take_snapshot(&experiment_config)?;
-
-    store.experiments.insert(experiment::Experiment {
-        name: experiment_config.name.clone(),
-        id: snapshot.experiment.clone(),
-        description: experiment_config.description,
-        path: experiment_config.path,
-        snapshot,
-    });
-
-    store.save().context("Failed to save store")?;
-
-    log::info!(
+    tracing::info!(
         "Workload '{}/{}' added to experiment '{}'",
         language,
         workload,
-        experiment_config.name
+        experiment.name
     );
 
     Ok(())

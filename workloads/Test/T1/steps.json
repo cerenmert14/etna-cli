@@ -1,0 +1,14 @@
+{
+  "setup_steps": [],
+  "build_steps": [],
+  "test_steps": [
+    {
+      "Command": {
+        "command": "echo",
+        "args": [
+          "\"$workload_path\""
+        ]
+      }
+    }
+  ]
+}

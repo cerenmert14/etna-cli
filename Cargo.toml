@@ -11,7 +11,6 @@ chrono = "0.4.38"
 clap = { version = "4.5.17", features = ["derive"] }
 dirs = "5.0.1"
 env_logger = "0.11.5"
-fern = { version = "0.7.1", features = ["colored"] }
 git2 = { version = "0.19.0", default-features = false }
 image = { version = "0.25.6", default-features = false, features = ["png"] }
 imageproc = { version = "0.25.0", default-features = false }
@@ -20,7 +19,6 @@ jaq-core = { version = "1.5.1" }
 jaq-interpret = { version = "1.5.0", default-features = false }
 jaq-parse = { version = "1.0.3", default-features = false }
 jaq-std = { version = "1.6.0", default-features = false }
-log = { version = "0.4.22", default-features = false }
 marauders = { git = "https://github.com/alpaylan/marauders.git", branch = "main" }
 minijinja = { version = "2.12.0", default-features = false, features = ["loader"] }
 parse_duration = { version = "2.1.1", default-features = false }
@@ -34,6 +32,9 @@ serde_sexpr = { version = "0.1.0", default-features = false }
 tabled = { version = "0.16.0", default-features = false, features = ["std"] }
 tempfile = "3.20.0"
 toml = { version = "0.8.19", default-features = false }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "ansi"] }
+tracing-appender = "0.2"
 
 [[bin]]
 name = "etna"

@@ -2,7 +2,6 @@ use std::{collections::HashMap, os::unix::fs::PermissionsExt as _, path::PathBuf
 
 use crate::workload::{Step, Steps};
 
-use anyhow::Result;
 use minijinja::{path_loader, Environment};
 use regex::Regex;
 use serde::Serialize;
@@ -36,9 +35,9 @@ fn collect_used_from_step<'a>(
             env,
         } => {
             for &v in &CANDIDATE_VARIABLES {
-                log::trace!("Checking command '{}' for var '{}'", command, v);
+                tracing::trace!("Checking command '{}' for var '{}'", command, v);
                 if contains_var_token(command, v, re_cache) {
-                    log::trace!("Found usage of var '{}'", v);
+                    tracing::trace!("Found usage of var '{}'", v);
                     used.insert(v);
                 }
             }
@@ -67,7 +66,7 @@ fn collect_used_from_step<'a>(
                 }
             }
             // env values (keys are literal names; values may reference vars)
-            for (_k, val) in env {
+            for val in env.values() {
                 for &v in &CANDIDATE_VARIABLES {
                     if contains_var_token(val, v, re_cache) {
                         used.insert(v);
@@ -79,7 +78,7 @@ fn collect_used_from_step<'a>(
             // The match "value" is directly a variable name in your to_bash()
             used.insert(value.as_str());
             // Recurse into branches
-            for (_opt, st) in options {
+            for st in options.values() {
                 collect_used_from_step(st, used, re_cache);
             }
         }
@@ -91,14 +90,17 @@ fn collect_used_variables(cfg: &Steps) -> HashSet<&str> {
     let mut used: HashSet<&str> = HashSet::new();
     let mut re_cache: Vec<(String, Regex)> = Vec::new();
 
-    for st in &cfg.check {
+    for st in &cfg.setup {
         collect_used_from_step(st, &mut used, &mut re_cache);
     }
+
     for st in &cfg.build {
         collect_used_from_step(st, &mut used, &mut re_cache);
     }
 
-    collect_used_from_step(&cfg.run, &mut used, &mut re_cache);
+    for st in &cfg.test {
+        collect_used_from_step(st, &mut used, &mut re_cache);
+    }
 
     used
 }
@@ -121,61 +123,55 @@ struct TemplateCtx<'a> {
 pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
     let path = path.unwrap_or_else(|| std::env::current_dir().unwrap().join("config.toml"));
 
-    // Load full JSON config to access tags for !expansion
-    let config_path = if path.is_dir() {
-        path.join("config").with_extension("json")
+    // Load full steps to access tags for !expansion
+    let steps_path = if path.is_dir() {
+        path.join("steps.json")
     } else {
         path.clone()
     };
-    let config_str = std::fs::read_to_string(&config_path)?;
-    let config_json: JsonValue = json::from_str(&config_str)?;
+    let steps_str = std::fs::read_to_string(&steps_path)?;
+    let steps_json: JsonValue = json::from_str(&steps_str)?;
 
     // Build steps from JSON, same as previous behavior
-    let cfg = Steps::from_config(&config_json)?;
-
-    // Extract tags for realization (expansion of !generator style tokens)
-    let tags: HashMap<String, Vec<String>> = json::from_value(
-        config_json
-            .get("tags")
-            .cloned()
-            .unwrap_or(JsonValue::Object(JsonMap::new())),
-    )
-    .unwrap_or_default();
+    let steps: Steps = Steps::from_value(&steps_json)?;
 
     // Use empty params so $vars remain for runtime CLI; only !tags expand here
     let params: HashMap<String, String> = HashMap::new();
 
     // Expand and pre-render the step commands into lines for the template
-    let check_lines: Vec<String> = cfg
-        .check
+    let check_lines: Vec<String> = steps
+        .setup
         .iter()
-        .map(|s| s.realize(&params, &tags))
+        .map(|s| s.realize(&params, &steps.tags))
         .collect::<anyhow::Result<Vec<_>>>()?
         .into_iter()
         .flatten()
         .map(|s| to_bash(&s, 1))
         .collect();
 
-    let build_lines: Vec<String> = cfg
+    let build_lines: Vec<String> = steps
         .build
         .iter()
-        .map(|s| s.realize(&params, &tags))
+        .map(|s| s.realize(&params, &steps.tags))
         .collect::<anyhow::Result<Vec<_>>>()?
         .into_iter()
         .flatten()
         .map(|s| to_bash(&s, 1))
         .collect();
 
-    let run_line: String = cfg
-        .run
-        .realize(&params, &tags)?
+    let run_line: String = steps
+        .test
+        .iter()
+        .map(|s| s.realize(&params, &steps.tags))
+        .collect::<anyhow::Result<Vec<_>>>()?
         .into_iter()
+        .flatten()
         .map(|s| to_bash(&s, 1))
         .collect::<Vec<_>>()
         .join("\n");
 
     // collect used candidate variables across all steps (on original cfg is sufficient)
-    let used = collect_used_variables(&cfg);
+    let used = collect_used_variables(&steps);
 
     // render template
     let vars: Vec<VarCtx> = used.iter().map(|&name| VarCtx { name }).collect();
@@ -204,7 +200,7 @@ pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
         "steps.sh",
         std::fs::Permissions::from_mode(0o755), // -rwxr-xr-x
     )?;
-    log::info!(
+    tracing::info!(
         "Bash script {} generated successfully.",
         PathBuf::from("steps.sh").canonicalize()?.display()
     );
@@ -264,7 +260,7 @@ fn to_bash(s: &Step, depth: usize) -> String {
                 "{}if [[ ${value} == \"{first_option}\" ]]; then\n",
                 " ".repeat(depth * 4)
             ));
-            cmd.push_str(&format!("{}", to_bash(first_step, depth + 1)));
+            cmd.push_str(&to_bash(first_step, depth + 1).to_string());
 
             for (option, step) in options {
                 // Check if option is equal to the value
@@ -272,7 +268,7 @@ fn to_bash(s: &Step, depth: usize) -> String {
                     "{}elif [[ ${value} == \"{option}\" ]]; then\n",
                     " ".repeat(depth * 4)
                 ));
-                cmd.push_str(&format!("{}", to_bash(step, depth + 1)));
+                cmd.push_str(&to_bash(step, depth + 1).to_string());
             }
             cmd.push_str(&format!(
                 "{}else\n{}echo \"Unknown option: ${value}\" >&2; usage; exit 2;\n",
@@ -288,8 +284,6 @@ fn to_bash(s: &Step, depth: usize) -> String {
 #[cfg(test)]
 mod tests {
     use std::fs;
-
-    use tabled::grid::config;
 
     use crate::commands::bash::invoke;
 
@@ -314,7 +308,7 @@ mod tests {
 
     fn test_invoke_creates_script() {
         let temp_dir = tempfile::tempdir().unwrap();
-        let config_path = temp_dir.path().join("config.json");
+        let config_path = temp_dir.path().join("steps.json");
         fs::write(&config_path, CONFIG_CONTENT).unwrap();
 
         let result = invoke(Some(config_path));
@@ -370,7 +364,7 @@ mod tests {
         });
 
         let temp_dir = tempfile::tempdir().unwrap();
-        let config_path = temp_dir.path().join("config.json");
+        let config_path = temp_dir.path().join("steps.json");
         std::fs::write(&config_path, serde_json::to_string_pretty(&cfg).unwrap()).unwrap();
 
         let result = invoke(Some(config_path));
