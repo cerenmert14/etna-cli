@@ -46,7 +46,13 @@ impl Manager {
     }
 
     pub fn get_experiment(&self, name: &str) -> Option<ExperimentMetadata> {
-        self.experiments.get(name).cloned()
+        let experiment = self.experiments.get(name).cloned();
+        if let Some(ref experiment) = experiment {
+            tracing::debug!("experiment '{}' is found: {:?}", name, experiment);
+        } else {
+            tracing::debug!("experiment '{}' is not found in etna", name);
+        }
+        experiment
     }
     pub fn retain_experiments<F>(&mut self, mut f: F) -> anyhow::Result<()>
     where

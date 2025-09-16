@@ -10,6 +10,7 @@ use serde_json::{Map, Value};
 use std::time::Duration;
 
 use crate::{
+    git_driver,
     manager::Manager,
     open_pbt_format::Status,
     store::{Metric, Store},
@@ -900,6 +901,18 @@ pub(crate) fn run_experiment(
     experiment: &ExperimentMetadata,
     short_circuit: bool,
 ) -> anyhow::Result<()> {
+    tracing::info!(
+        "Starting experiment '{}' with test: {:?}",
+        experiment.name,
+        test
+    );
+    // Snapshot the current version of the workload
+    tracing::trace!("snapshotting current version of the workload...");
+    git_driver::commit(
+        &experiment.path,
+        &format!("running experiment {} with test {}", experiment.name, test),
+    )?;
+
     pub(crate) fn aux(
         mgr: Arc<Mutex<Manager>>,
         test: &Test,

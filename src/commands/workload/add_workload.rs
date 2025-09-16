@@ -1,8 +1,88 @@
-use std::{fs, path::PathBuf, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
-use anyhow::Context;
+use anyhow::{Context, Ok};
 
 use crate::{experiment::ExperimentMetadata, git_driver, manager::Manager};
+
+/// etna holds a `workloads` directory that has `workloads/<language>/<workload>` directories
+/// each workload directory has a `steps.json` file and possibly other files
+/// when adding a workload to an experiment, we copy the entire `<workload>` directory,
+/// but we also want to copy any relevant files or folders in the `<language>` directory.
+/// for this purpose, we copy all files, and any directories that are not workloads (i.e., does
+/// not have a `steps.json` file).
+fn copy_language(repo_dir: &Path, workloads_dir: &Path, language: &str) -> anyhow::Result<()> {
+    git_driver::pull_path(repo_dir, &PathBuf::from("workloads").join(language))?;
+
+    for entry in repo_dir.join("workloads").join(language).read_dir()? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            fs::copy(
+                &path,
+                workloads_dir.join(language).join(
+                    path.file_name()
+                        .context("Failed to get file name")?
+                        .to_str()
+                        .context("Failed to convert file name to string")?,
+                ),
+            )
+            .with_context(|| {
+                format!(
+                    "Failed to copy file '{}' to '{}'",
+                    path.display(),
+                    workloads_dir
+                        .join(language)
+                        .join(
+                            path.file_name()
+                                .context("Failed to get file name")
+                                .unwrap_or_default()
+                                .to_str()
+                                .unwrap_or_default()
+                        )
+                        .display()
+                )
+            })?;
+        } else if path.is_dir() {
+            if !path.join("steps.json").exists() {
+                // copy the entire directory
+                Command::new("cp")
+                    .arg("-r")
+                    .arg(&path)
+                    .arg(
+                        &workloads_dir.join(language).join(
+                            path.file_name()
+                                .context("Failed to get directory name")?
+                                .to_str()
+                                .context("Failed to convert directory name to string")?,
+                        ),
+                    )
+                    .status()
+                    .with_context(|| {
+                        format!(
+                            "Failed to copy directory '{}' to '{}'",
+                            path.display(),
+                            workloads_dir
+                                .join(language)
+                                .join(
+                                    path.file_name()
+                                        .context("Failed to get directory name")
+                                        .unwrap_or_default()
+                                        .to_str()
+                                        .unwrap_or_default()
+                                )
+                                .display()
+                        )
+                    })?;
+            }
+        }
+    }
+
+    Ok(())
+}
 
 pub fn invoke(
     mgr: Manager,
@@ -38,27 +118,6 @@ pub fn invoke(
             .context("Failed to pull from remote")?;
     }
 
-    // Check if language steps exists
-    let language_steps_path = repo_dir
-        .join("workloads")
-        .join(&language)
-        .join("steps.json");
-
-    if !language_steps_path.exists() {
-        tracing::warn!(
-            "Language steps '{}' not found, pulling from remote",
-            language_steps_path.display()
-        );
-
-        git_driver::pull_path(
-            &repo_dir,
-            &PathBuf::from("workloads")
-                .join(&language)
-                .join("steps.json"),
-        )
-        .context("Failed to pull language steps from remote")?;
-    }
-
     let dest_path = experiment
         .path
         .join("workloads")
@@ -72,6 +131,9 @@ pub fn invoke(
     )
     .context("Failed to create parent directory")?;
 
+    // Copy the language
+    copy_language(&repo_dir, &experiment.path.join("workloads"), &language)?;
+
     Command::new("cp")
         .arg("-r")
         .arg(&workload_path)
@@ -84,29 +146,6 @@ pub fn invoke(
                 .display(),
             dest_path.display()
         ))?;
-
-    // copy language steps exists
-    let experiment_language_steps_path = experiment
-        .path
-        .join("workloads")
-        .join(&language)
-        .join("steps.json");
-
-    if !experiment_language_steps_path.exists() {
-        tracing::debug!(
-            "Copying language steps from '{}' to '{}'",
-            language_steps_path.display(),
-            experiment_language_steps_path.display()
-        );
-
-        std::fs::copy(&language_steps_path, &experiment_language_steps_path).context(format!(
-            "Failed to copy language steps from '{}' to '{}'",
-            fs::canonicalize(language_steps_path)
-                .context("Failed to get canonical path")?
-                .display(),
-            experiment_language_steps_path.display()
-        ))?;
-    }
 
     // Create a commit
     git_driver::commit(
