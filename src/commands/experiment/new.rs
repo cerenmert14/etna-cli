@@ -59,11 +59,11 @@ pub fn invoke(
             "using a local store for experiment '{name}' at '{}'",
             path.join(&name).join("store.jsonl").display()
         );
-        mgr.store = Store::nkew(store_path)?;
+        mgr.store = Store::new(store_path)?;
     }
 
     let experiment_path = path.join(&name);
-    
+
     let experiment_ = mgr.get_experiment(&name);
 
     tracing::trace!("running the --register and --overwrite logic");
