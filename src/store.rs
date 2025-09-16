@@ -97,6 +97,6 @@ impl Store {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Metric {
-    pub data: serde_json::Value,
-    pub experiment_id: String,
+    pub data: serde_json::Map<String, serde_json::Value>,
+    pub hash: String,
 }

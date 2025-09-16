@@ -17,10 +17,24 @@ pub enum RecordType {
 #[serde(rename_all = "snake_case")]
 pub enum Status {
     Passed,
-    Failed,
+    FoundBug,
     GaveUp,
     TimedOut,
     Aborted,
+    Unknown,
+}
+
+impl ToString for Status {
+    fn to_string(&self) -> String {
+        match self {
+            Status::Passed => "passed".to_owned(),
+            Status::FoundBug => "found_bug".to_owned(),
+            Status::GaveUp => "gave_up".to_owned(),
+            Status::TimedOut => "timed_out".to_owned(),
+            Status::Aborted => "aborted".to_owned(),
+            Status::Unknown => "unknown".to_owned(),
+        }
+    }
 }
 
 fn default_record_type() -> RecordType {

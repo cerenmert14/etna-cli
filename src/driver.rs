@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use crate::{
     manager::Manager,
+    open_pbt_format::Status,
     store::{Metric, Store},
     workload::{Command, Language, Step, Steps, Workload},
 };
@@ -21,11 +22,14 @@ use process_control::{ChildExt, Control};
 
 use crate::experiment::{ExperimentMetadata, Test};
 
+type Object = Map<String, Value>;
+
 #[derive(Debug)]
 pub(crate) struct RunConfig {
     pub(crate) language: String,
     pub(crate) workload_dir: PathBuf,
-    pub(crate) experiment_id: String,
+    pub(crate) experiment_name: String,
+    pub(crate) experiment_hash: String,
     pub(crate) trials: usize,
     pub(crate) workload: String,
     pub(crate) strategy: String,
@@ -257,10 +261,8 @@ pub(crate) fn run(
     params.insert("timeout".to_string(), run_config.timeout.to_string());
     params.insert("mutations".to_string(), run_config.mutations.join(","));
     params.insert("language".to_string(), run_config.language.clone());
-    params.insert(
-        "experiment_id".to_string(),
-        run_config.experiment_id.clone(),
-    );
+    params.insert("experiment".to_string(), run_config.experiment_name.clone());
+    params.insert("hash".to_string(), run_config.experiment_hash.clone());
 
     tracing::trace!("Final params for step: {:?}", params);
 
@@ -305,7 +307,7 @@ pub(crate) fn run(
                     && metric
                         .data
                         .get("status")
-                        .is_some_and(|v| v.as_str() == Some("timed_out"))
+                        .is_some_and(|v| v.as_str() == Some(Status::TimedOut.to_string().as_str()))
                 {
                     tracing::info!("Short-circuiting the experiment due to previous timeout");
                     break;
@@ -335,7 +337,7 @@ pub(crate) fn run(
             let result = serde_json::json!({
                 "language": run_config.language,
                 "workload": run_config.workload,
-                "experiment": run_config.experiment_id,
+                "experiment": run_config.experiment_name,
                 "strategy": run_config.strategy,
                 "property": run_config.property,
                 "mutations": run_config.mutations,
@@ -343,9 +345,12 @@ pub(crate) fn run(
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "cross": run_config.cross,
                 "timeout": run_config.timeout,
-            });
+            })
+            .as_object()
+            .unwrap()
+            .to_owned();
 
-            let result = if run_config.cross {
+            let status = if run_config.cross {
                 tracing::debug!("Running cross-language command: {}", step);
                 run_cross(mgr.clone(), result, cmd, &step, run_config)?
             } else {
@@ -353,17 +358,8 @@ pub(crate) fn run(
                 run_default(mgr.clone(), result, cmd, &step, run_config)?
             };
 
-            let metric = Metric {
-                experiment_id: run_config.experiment_id.clone(),
-                data: result.clone(),
-            };
-
-            {
-                let mut mgr = mgr.lock().unwrap();
-                mgr.store.push(metric)?;
-            }
-
-            if result.get("status").is_some_and(|v| v == "timed_out") {
+            // If the run timed out and short-circuit is enabled, break the loop.
+            if status == Status::TimedOut {
                 if run_config.short_circuit {
                     tracing::info!("Short-circuiting the experiment due to timeout");
                     return Ok(());
@@ -385,7 +381,7 @@ fn run_canonical_serialized(
     mutations: &[String],
     property: &str,
     tests: &str,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Object> {
     // Change the current working directory to the workload directory
     let workload_dir = {
         let mgr = mgr.lock().unwrap();
@@ -458,7 +454,7 @@ fn run_canonical_serialized(
             // The JSON output starts at [| and ends at |]
             tracing::trace!("Canonical serializer output: {}", stdout);
 
-            let json_value: serde_json::Value =
+            let json_value: Object =
                 serde_json::from_str(&stdout).context("Failed to parse JSON output")?;
 
             Ok(json_value)
@@ -483,11 +479,11 @@ fn run_canonical_serialized(
 /// collected in each iteration.
 fn run_cross(
     mgr: Arc<Mutex<Manager>>,
-    mut result: serde_json::Value,
+    mut context: Object,
     mut cmd: std::process::Command,
     step: &Command,
     run_config: &RunConfig,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Status> {
     let timeout = Duration::from_secs_f64(run_config.timeout);
 
     let mut total_time = Duration::default();
@@ -516,9 +512,21 @@ fn run_cross(
 
         match child {
             Ok(output) => {
-                {
+                let logs = {
                     let mut mgr = mgr.lock().unwrap();
-                    log_process_output(&output, &mut mgr.store, &run_config.experiment_id)?;
+                    log_process_output(
+                        &output,
+                        &mut mgr.store,
+                        &run_config.experiment_hash,
+                        &context,
+                    )?
+                };
+
+                if logs.is_empty() {
+                    tracing::warn!("No logs collected from command '{}'", step);
+                }
+                for log in logs {
+                    tracing::debug!("log: {:?}", log);
                 }
 
                 let stdout = String::from_utf8_lossy(&output.stdout);
@@ -568,21 +576,27 @@ fn run_cross(
                 let Ok(results) = results else {
                     tracing::error!("Failed to run canonical serializer");
                     tracing::error!("Results: {:?}", results);
-                    result.as_object_mut().unwrap().insert(
-                        "result".to_owned(),
-                        serde_json::Value::String("aborted".to_owned()),
+                    context.insert(
+                        "status".to_owned(),
+                        Value::String(Status::Aborted.to_string()),
                     );
-                    result.as_object_mut().unwrap().insert(
+
+                    context.insert(
                         "error".to_owned(),
-                        serde_json::Value::String(results.unwrap_err().to_string()),
+                        Value::String(results.unwrap_err().to_string()),
                     );
-                    return Ok(result);
+                    let mut mgr = mgr.lock().unwrap();
+                    mgr.store.push(Metric {
+                        data: context.clone(),
+                        hash: run_config.experiment_hash.clone(),
+                    })?;
+                    return Ok(Status::Aborted);
                 };
 
                 let status = results
                     .get("status")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
+                    .and_then(|v| serde_json::from_value::<Status>(v.clone()).ok())
+                    .context("Failed to get 'status' from canonical serializer output")?;
 
                 let passed = results.get("tests").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
 
@@ -591,7 +605,7 @@ fn run_cross(
                     .and_then(|v| v.as_u64())
                     .unwrap_or(0) as usize;
 
-                let time_cutoff = if status == "found_bug" {
+                let time_cutoff = if status == Status::FoundBug {
                     passed + discarded + 1
                 } else {
                     passed + discarded
@@ -618,37 +632,43 @@ fn run_cross(
                     total_time,
                     time_cutoff
                 );
-                if status == "found_bug" {
+                if status == Status::FoundBug {
                     tracing::info!("Found a bug in the canonical serializer, stopping the run");
 
-                    result.as_object_mut().unwrap().insert(
-                        "result".to_owned(),
-                        serde_json::Value::String("foundbug".to_owned()),
+                    context.insert(
+                        "status".to_owned(),
+                        serde_json::Value::String(Status::FoundBug.to_string()),
                     );
-                    result.as_object_mut().unwrap().insert(
+                    context.insert(
                         "passed".to_owned(),
                         serde_json::Value::Number(total_passed.into()),
                     );
-                    result.as_object_mut().unwrap().insert(
+                    context.insert(
                         "discarded".to_owned(),
                         serde_json::Value::Number(total_discards.into()),
                     );
-                    result.as_object_mut().unwrap().insert(
+                    context.insert(
                         "tests".to_owned(),
                         serde_json::Value::Number((total_discards + total_passed + 1).into()),
                     );
-                    result.as_object_mut().unwrap().insert(
+                    context.insert(
                         "time".to_owned(),
                         serde_json::Value::String(format!("{}ns", total_time.as_nanos())),
                     );
-                    result.as_object_mut().unwrap().insert(
+                    context.insert(
                         "counterexample".to_owned(),
                         results
                             .get("counterexample")
                             .unwrap_or(&serde_json::Value::Null)
                             .clone(),
                     );
-                    return Ok(result);
+                    let mut mgr = mgr.lock().unwrap();
+                    mgr.store.push(Metric {
+                        data: context.clone(),
+                        hash: run_config.experiment_hash.clone(),
+                    })?;
+
+                    return Ok(Status::FoundBug);
                 } else {
                     tracing::info!(
                         "No bugs found in this batch, continuing to the next batch if time allows"
@@ -657,11 +677,18 @@ fn run_cross(
             }
             Err(err) => {
                 tracing::error!("Failed to spawn child process: {}", err);
-                result.as_object_mut().unwrap().insert(
-                    "result".to_owned(),
-                    serde_json::Value::String("aborted".to_owned()),
+                context.insert(
+                    "status".to_owned(),
+                    serde_json::Value::String(Status::Aborted.to_string()),
                 );
-                return Ok(result);
+                context.insert("error".to_owned(), Value::String(err.to_string()));
+                let mut mgr = mgr.lock().unwrap();
+                mgr.store.push(Metric {
+                    data: context.clone(),
+                    hash: run_config.experiment_hash.clone(),
+                })?;
+
+                return Ok(Status::Aborted);
             }
         }
     }
@@ -671,33 +698,35 @@ fn run_cross(
         total_time,
         total_samples
     );
-    result.as_object_mut().unwrap().insert(
-        "result".to_owned(),
-        serde_json::Value::String("timed out".to_owned()),
+    context.insert(
+        "status".to_owned(),
+        serde_json::Value::String(Status::TimedOut.to_string()),
     );
-    result.as_object_mut().unwrap().insert(
+    context.insert(
         "time".to_owned(),
         serde_json::Value::String(format!("{}ns", total_time.as_nanos())),
     );
-    result.as_object_mut().unwrap().insert(
+    context.insert(
         "samples".to_owned(),
         serde_json::Value::Number(total_samples.into()),
     );
-    result
-        .as_object_mut()
-        .unwrap()
-        .insert("counterexample".to_owned(), serde_json::Value::Null);
 
-    Ok(result)
+    let mut mgr = mgr.lock().unwrap();
+    mgr.store.push(Metric {
+        data: context.clone(),
+        hash: run_config.experiment_hash.clone(),
+    })?;
+
+    Ok(Status::TimedOut)
 }
 
 fn run_default(
     mgr: Arc<Mutex<Manager>>,
-    mut result: serde_json::Value,
+    mut context: Object,
     mut cmd: std::process::Command,
     step: &Command,
     run_config: &RunConfig,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Status> {
     tracing::debug!("Running command: {}", step);
 
     let output = cmd
@@ -711,56 +740,65 @@ fn run_default(
         .wait()
         .context(format!("Failed to run command '{}'", step));
 
-    tracing::trace!("metadata: {}", result);
+    tracing::trace!("metadata: {:?}", context);
 
     match output {
         Ok(None) => {
             tracing::warn!("Process timed out after {} seconds", run_config.timeout);
 
-            result
-                .as_object_mut()
-                .unwrap()
-                .insert("result".to_owned(), Value::String("timed_out".to_owned()));
+            context.insert(
+                "status".to_owned(),
+                Value::String(Status::TimedOut.to_string()),
+            );
+            let mut mgr = mgr.lock().unwrap();
+            mgr.store.push(Metric {
+                data: context.clone(),
+                hash: run_config.experiment_hash.clone(),
+            })?;
+
+            Ok(Status::TimedOut)
         }
         Ok(Some(output)) => {
             if !output.status.success() {
                 tracing::warn!("Command '{}' failed with status: {}", step, output.status);
             }
-            // Walk through the stdout and stderr line by line and write any records to the store
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            tracing::debug!("stdout: {}", stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            tracing::debug!("stderr: {}", stderr);
+            let logs = {
+                let mut mgr = mgr.lock().unwrap();
+                log_process_output(
+                    &output.into_std_lossy(),
+                    &mut mgr.store,
+                    &run_config.experiment_hash,
+                    &context,
+                )?
+            };
 
-            for line in stdout.lines().chain(stderr.lines()) {
-                // If line is a valid JSON object, write it to the store
-                if let Ok(json) = serde_json::from_str::<Map<String, Value>>(line) {
-                    tracing::info!("Found JSON object: {}", line);
-                    let mut record = result.as_object().unwrap().clone();
-                    record.extend(json);
-                    let record = Value::Object(record);
-                    let metric = Metric {
-                        experiment_id: run_config.experiment_id.clone(),
-                        data: record.clone(),
-                    };
-                    {
-                        let mut mgr = mgr.lock().unwrap();
-                        mgr.store.push(metric)?;
-                    }
-                }
+            if logs.is_empty() {
+                tracing::warn!("No logs collected from command '{}'", step);
             }
+            for log in logs {
+                tracing::debug!("log: {:?}", log);
+            }
+
+            Ok(Status::Unknown)
         }
         Err(err) => {
             tracing::error!("Aborting! Failed to run command '{}': {}", step, err);
 
-            result
-                .as_object_mut()
-                .unwrap()
-                .insert("status".to_owned(), Value::String("aborted".to_owned()));
+            context.insert(
+                "status".to_owned(),
+                Value::String(Status::Aborted.to_string()),
+            );
+            context.insert("error".to_owned(), Value::String(err.to_string()));
+
+            let mut mgr = mgr.lock().unwrap();
+            mgr.store.push(Metric {
+                data: context.clone(),
+                hash: run_config.experiment_hash.clone(),
+            })?;
+
+            Ok(Status::Aborted)
         }
     }
-
-    Ok(result)
 }
 
 pub(crate) fn build(
@@ -831,14 +869,22 @@ pub(crate) fn build(
         let mut cmd = std::process::Command::from(&step);
         cmd.current_dir(build_dir);
 
-        let output = cmd.output().context("Failed to execute build command")?;
+        let output = cmd
+            .output()
+            .inspect_err(|e| {
+                tracing::error!("Failed to execute build command '{}': {}", step, e);
+            })
+            .with_context(|| format!("Failed to execute build command '{}'", step))?;
 
         if !output.status.success() {
             tracing::info!("[✗] '{}' failed", step);
             tracing::debug!("command: {}", step);
             tracing::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-            tracing::debug!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-            anyhow::bail!("build command failed with status: {}", output.status);
+            anyhow::bail!(
+                "build command failed with status: {}\nstderr: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
         } else {
             tracing::info!("[✓] '{}' passed", step);
         }
@@ -949,7 +995,7 @@ pub(crate) fn run_experiment(
             let run_config = RunConfig {
                 language: test.language.clone(),
                 workload_dir: workload_dir.clone(),
-                experiment_id: experiment.hash()?,
+                experiment_hash: experiment.hash()?,
                 trials: test.trials,
                 workload: test.workload.clone(),
                 strategy: strategy.to_string(),
@@ -959,6 +1005,7 @@ pub(crate) fn run_experiment(
                 short_circuit,
                 cross: test.cross,
                 seed: None,
+                experiment_name: experiment.name.clone(),
             };
 
             marauders::run_reset_command(&experiment.path)?;
@@ -993,8 +1040,9 @@ pub(crate) fn run_experiment(
 fn log_process_output(
     output: &std::process::Output,
     store: &mut Store,
-    experiment_id: &str,
-) -> anyhow::Result<()> {
+    experiment_hash: &str,
+    context: &Object,
+) -> anyhow::Result<Vec<Object>> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     tracing::debug!("stdout: {}", stdout);
@@ -1005,15 +1053,20 @@ fn log_process_output(
     }
 
     // Look for JSON objects in the output
+    let mut logs = Vec::new();
     for line in stdout.lines().chain(stderr.lines()) {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-            tracing::info!("Found JSON object: {}", json);
+        if let Ok(mut json) =
+            serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(line)
+        {
+            tracing::info!("Found JSON object: {:?}", json);
+            json.extend(context.clone());
             store.push(Metric {
-                data: json,
-                experiment_id: experiment_id.to_string(),
+                data: json.clone(),
+                hash: experiment_hash.to_string(),
             })?;
+            logs.push(json);
         }
     }
 
-    Ok(())
+    Ok(logs)
 }

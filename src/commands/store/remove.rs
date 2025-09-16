@@ -8,7 +8,10 @@ pub fn invoke(mut store: Store, filter: String) -> anyhow::Result<()> {
 
     store.retain(|metric| {
         let inputs = RcIter::new(core::iter::empty());
-        let mut out = filter.run((Ctx::new([], &inputs), Val::from(metric.data.clone())));
+        let mut out = filter.run((
+            Ctx::new([], &inputs),
+            Val::from(serde_json::Value::Object(metric.data.clone())),
+        ));
         let result = out.next();
         let Some(Ok(Val::Bool(true))) = result else {
             return true;

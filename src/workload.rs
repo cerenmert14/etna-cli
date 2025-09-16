@@ -108,10 +108,15 @@ impl Step {
                 if let Some(step) = options.get(guard) {
                     return step.decide(params, tags);
                 }
-
-                let tags_ = tags.get(guard).unwrap();
+                println!("Guard '{guard}' not found in options {options:?}, trying tags");
+                println!("Available tags: {tags:?}");
+                let tags_ = tags
+                    .iter()
+                    .filter_map(|(k, v)| if v.contains(guard) { Some(k) } else { None })
+                    .collect::<Vec<_>>();
+                // let tags_ = tags.get(guard).unwrap();
                 for (k, step) in options {
-                    if tags_.contains(k) {
+                    if tags_.contains(&k) {
                         return step.decide(params, tags);
                     }
                 }
@@ -175,12 +180,12 @@ impl Step {
 
         // Find all parameters that need elaboration
         for (param, _) in params.iter().sorted_by(|a, b| b.0.len().cmp(&a.0.len())) {
-            if step.contains(&format!("!{}", param)) {
+            if step.contains(&format!("!{{{}}}", param)) {
                 elaborates.push(param);
             }
         }
         for (tag, _) in tags.iter() {
-            if step.contains(&format!("!{}", tag)) {
+            if step.contains(&format!("!{{{}}}", tag)) {
                 elaborates.push(tag);
             }
         }
@@ -197,7 +202,7 @@ impl Step {
         for elaboration_set in all_elaborations {
             let mut step = step.clone();
             for (i, val) in elaboration_set.iter().enumerate() {
-                step.replace(&format!("!{}", elaborates[i]), val);
+                step.replace(&format!("!{{{}}}", elaborates[i]), val);
             }
             steps.push(step);
         }
@@ -206,7 +211,7 @@ impl Step {
             let params = params.iter().sorted_by(|a, b| b.0.len().cmp(&a.0.len()));
 
             for (key, value) in params {
-                step.replace(&format!("${}", key), value);
+                step.replace(&format!("${{{}}}", key), value);
             }
         }
 

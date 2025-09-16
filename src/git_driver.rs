@@ -202,6 +202,12 @@ pub fn init_metadata_only(repo_path: &Path, branch: &str) -> anyhow::Result<()> 
 
 pub fn materialize_paths(repo_path: &Path, paths: &[&str]) -> anyhow::Result<()> {
     let repo = Repository::open(repo_path)?;
+    let mut remote = repo.find_remote("origin")?;
+    let mut fo = FetchOptions::new();
+    fo.download_tags(AutotagOption::None);
+    fo.depth(1);
+    let refspec = format!("refs/heads/{b}:refs/remotes/origin/{b}", b = "main");
+    remote.fetch(&[&refspec], Some(&mut fo), None)?;
     // Turn on sparse-checkout with an empty pattern file first (matches nothing)
     repo.config()?.set_bool("core.sparseCheckout", true)?;
     let info = repo.path().join("info/sparse-checkout");
@@ -226,6 +232,7 @@ pub fn materialize_paths(repo_path: &Path, paths: &[&str]) -> anyhow::Result<()>
 }
 
 pub(crate) fn pull_path(repo_path: &Path, path: &Path) -> anyhow::Result<()> {
+    tracing::debug!("Pulling path '{}' from remote", path.display());
     materialize_paths(repo_path, &[&path.display().to_string()])
         .context("Failed to materialize paths")
 }
@@ -235,6 +242,7 @@ pub(crate) fn pull_workload(
     language: &str,
     workload: &str,
 ) -> anyhow::Result<()> {
+    tracing::debug!("Pulling workload '{language}/{workload}' from remote");
     let subdir = format!("workloads/{}/{}", language, workload);
 
     materialize_paths(repo_path, &[&subdir]).context("Failed to materialize paths")

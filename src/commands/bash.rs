@@ -5,7 +5,7 @@ use crate::workload::{Step, Steps};
 use minijinja::{path_loader, Environment};
 use regex::Regex;
 use serde::Serialize;
-use serde_json::{self as json, Map as JsonMap, Value as JsonValue};
+use serde_json::{self as json, Value as JsonValue};
 use std::collections::HashSet;
 
 /// Detect occurrences like `$var` or `${var}` in an arbitrary string.

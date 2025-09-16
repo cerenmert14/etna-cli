@@ -193,16 +193,15 @@ fn get_agg_metrics(
         .flat_map(|test| {
             tracing::trace!("Processing test: {}", test);
             store.metrics.iter().filter_map(|m| {
-                let data = m.data.as_object().unwrap();
-
-                let language = data.get("language").and_then(serde_json::Value::as_str)?;
-                let workload = data.get("workload").and_then(serde_json::Value::as_str)?;
-                let mutations = data
+                let language = m.data.get("language").and_then(serde_json::Value::as_str)?;
+                let workload = m.data.get("workload").and_then(serde_json::Value::as_str)?;
+                let mutations = m
+                    .data
                     .get("mutations")
                     .and_then(serde_json::Value::as_array)?;
-                let strategy = data.get("strategy").and_then(serde_json::Value::as_str)?;
-                let property = data.get("property").and_then(serde_json::Value::as_str)?;
-                let cross = data.get("cross").and_then(serde_json::Value::as_bool)?;
+                let strategy = m.data.get("strategy").and_then(serde_json::Value::as_str)?;
+                let property = m.data.get("property").and_then(serde_json::Value::as_str)?;
+                let cross = m.data.get("cross").and_then(serde_json::Value::as_bool)?;
 
                 let result = test.language == language
                     && test.workload == workload
@@ -251,7 +250,7 @@ fn get_agg_metrics(
                 .filter(|m| {
                     aggby.iter().enumerate().all(|(i, g)| {
                         tracing::trace!(
-                            "Checking if metric {} has groupby field {}: {:?} == {:?}",
+                            "Checking if metric {:?} has groupby field {}: {:?} == {:?}",
                             m.data,
                             g,
                             agg[i],

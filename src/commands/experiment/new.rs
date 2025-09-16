@@ -233,6 +233,17 @@ pub fn invoke(
         format!("Automated initialization commit for experiment '{}'", name).as_str(),
     )?;
 
+    if use_local_store {
+        let store_path = experiment_path.join("store.jsonl");
+        tracing::trace!("creating local store file at '{}'", store_path.display());
+        fs::File::create(&store_path).with_context(|| {
+            format!(
+                "Failed to create local store file at '{}'",
+                store_path.display()
+            )
+        })?;
+    }
+
     mgr.add_experiment(
         name.clone(),
         ExperimentMetadata {
