@@ -6,6 +6,7 @@ use tracing::info;
 use crate::{
     driver::run_experiment,
     experiment::{ExperimentMetadata, Test},
+    git_driver,
     manager::Manager,
 };
 
@@ -36,6 +37,7 @@ pub fn invoke(
     experiment: ExperimentMetadata,
     tests: Vec<String>,
     short_circuit: bool,
+    parallel: bool,
 ) -> anyhow::Result<()> {
     tracing::trace!("running experiment with name '{:?}'", experiment.name);
     let tests = get_tests(tests, &experiment).context("Failed to get tests for the experiment")?;
@@ -43,11 +45,13 @@ pub fn invoke(
     // Load metrics from the store
     mgr.store.load_metrics()?;
 
+    git_driver::commit(&experiment.path, "Running experiment")?;
+
     let mgr = Arc::new(Mutex::new(mgr));
 
     for test in &tests {
         info!("Running test: {}", test);
-        run_experiment(mgr.clone(), test, &experiment, short_circuit)?;
+        run_experiment(mgr.clone(), test, &experiment, short_circuit, parallel)?;
     }
 
     Ok(())

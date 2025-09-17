@@ -4,11 +4,13 @@
   "test_steps": [
     {
       "Command": {
-        "command": "echo",
+        "command": "bash",
         "args": [
-          "\"$workload_path\""
+          "-lc",
+          "sleep 5s; echo '{\"name\": \"Test\", \"version\": \"1.0.0\", \"description\": \"A test workload\", \"steps\": [{\"type\": \"test\", \"command\": \"echo\", \"args\": [\"Running test step\"]}]}'"
         ]
       }
     }
-  ]
+  ],
+  "tags": {}
 }

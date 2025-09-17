@@ -156,7 +156,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         register,
                         local_store,
             } => commands::experiment::new::invoke(mgr, name, path, overwrite, register,  local_store),
-            ExperimentCommand::Run { name: _, tests, short_circuit } => commands::experiment::run::invoke(mgr, experiment.unwrap(), tests, short_circuit),
+            ExperimentCommand::Run { name: _, tests, short_circuit, parallel } => commands::experiment::run::invoke(mgr, experiment.unwrap(), tests, short_circuit, parallel),
             ExperimentCommand::Show {
                         hash,
                         name,
@@ -258,6 +258,11 @@ enum ExperimentCommand {
         /// Short circuit the trials if any test fails
         #[clap(short = 's', long, default_value = "false")]
         short_circuit: bool,
+        /// Run the tests in parallel
+        /// [default: false]
+        /// Note: Parallel execution requires the run to be pure, if it's effectful, it may lead to unexpected results.
+        #[clap(short = 'p', long, default_value = "false")]
+        parallel: bool,
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {

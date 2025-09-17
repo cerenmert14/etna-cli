@@ -6,8 +6,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use clap::builder::Str;
 use marauders::CustomLanguage;
+use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator as _};
 use serde_json::{Map, Value};
 use std::time::Duration;
 
@@ -40,6 +40,7 @@ pub(crate) struct RunConfig {
     pub(crate) timeout: f64,
     pub(crate) short_circuit: bool,
     pub(crate) cross: bool,
+    pub(crate) parallel: bool,
     #[allow(dead_code)]
     pub(crate) seed: Option<u64>,
 }
@@ -272,13 +273,13 @@ pub(crate) fn run(
         .collect::<Vec<_>>();
 
     for step in &test_steps {
-        tracing::trace!("Test step: {:?}", step);
+        tracing::trace!("Test step: {}", step);
     }
 
-    for i in 0..run_config.trials {
-        tracing::trace!("running trial {}", i);
-        {
-            let mgr = mgr.lock().unwrap();
+    let mut remaining_trials = vec![];
+    {
+        let mgr = mgr.lock().unwrap();
+        for i in 0..run_config.trials {
             let previous_metric = mgr.store.metrics.iter().find(|m| {
                 metric_matches(
                     m,
@@ -293,29 +294,49 @@ pub(crate) fn run(
                 .is_some()
             });
 
-            if let Some(metric) = previous_metric {
-                // If the metric is a timeout and short-circuit is enabled, break the loop
-                if run_config.short_circuit
-                    && metric
-                        .data
-                        .get("status")
-                        .is_some_and(|v| v.as_str() == Some(Status::TimedOut.to_string().as_str()))
-                {
-                    tracing::info!("Short-circuiting the experiment due to previous timeout");
-                    break;
-                }
-
-                // Skip the trial because it has already been run
-                tracing::info!(
-                    "Skipping trial {} for language '{}', workload '{}', task '{:?}' because it has already been run",
-                    i,
-                    run_config.language,
-                    run_config.workload,
-                    run_config.task
-                );
-                continue;
+            if previous_metric.is_none() {
+                remaining_trials.push(i);
             }
         }
+    }
+    if remaining_trials.is_empty() {
+        tracing::info!(
+            "All trials for the current task with language '{}', workload '{}' and mutations '{:?}', task '{:?}' are already completed, skipping the run steps.",
+            run_config.language,
+            run_config.workload,
+            run_config.mutations,
+            run_config.task
+        );
+        return Ok(());
+    } else {
+        tracing::info!(
+            "{} out of {} trials are remaining for the current task with language '{}', workload '{}', mutations '{:?}', task '{:?}'.",
+            remaining_trials.len(),
+            run_config.trials,
+            run_config.language,
+            run_config.workload,
+            run_config.mutations,
+            run_config.task
+        );
+    }
+    if run_config.parallel {
+        run_remaining_trials_parallel(mgr, run_config, test_steps, remaining_trials, params, tags)
+    } else {
+        run_remaining_trials_sequential(mgr, run_config, test_steps, remaining_trials, params, tags)
+    }
+}
+
+fn run_remaining_trials_sequential(
+    mgr: Arc<Mutex<Manager>>,
+    run_config: &RunConfig,
+    test_steps: Vec<Step>,
+    remaining_trials: Vec<usize>,
+    params: &mut HashMap<String, String>,
+    tags: &HashMap<String, Vec<String>>,
+) -> anyhow::Result<()> {
+    for i in remaining_trials {
+        tracing::trace!("running trial {}", i);
+
         for step in &test_steps {
             let old_step = step;
             let step = old_step.decide(params, tags);
@@ -360,6 +381,101 @@ pub(crate) fn run(
             }
         }
     }
+
+    Ok(())
+}
+
+#[derive(Debug)]
+struct EarlyStop;
+impl std::fmt::Display for EarlyStop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("early stop requested")
+    }
+}
+impl std::error::Error for EarlyStop {}
+
+fn run_remaining_trials_parallel(
+    mgr: Arc<Mutex<Manager>>,
+    run_config: &RunConfig,
+    test_steps: Vec<Step>,
+    remaining_trials: Vec<usize>,
+    params: &mut HashMap<String, String>,
+    tags: &HashMap<String, Vec<String>>,
+) -> anyhow::Result<()> {
+    tracing::trace!(
+        "Running remaining trials in parallel: {:?}",
+        remaining_trials
+    );
+    let short_circuit = run_config.short_circuit;
+
+    // Parallelize the outer loop.
+    remaining_trials
+        .par_iter()
+        .copied()
+        .try_for_each(|i| -> anyhow::Result<()> {
+            tracing::trace!("running trial {}", i);
+
+            // Steps remain sequential inside a trial
+            for step_tmpl in &test_steps {
+                let old_step = step_tmpl;
+                let step = old_step.decide(params, tags);
+                tracing::trace!(
+                    "step '{old_step}' is evaluated to '{step}' with params: {params:?}"
+                );
+
+                let cmd = std::process::Command::from(&step);
+
+                // Build context fresh per step (as in your original code)
+                let mut context = serde_json::json!({
+                    "language": run_config.language,
+                    "workload": run_config.workload,
+                    "experiment": run_config.experiment_name,
+                    "mutations": run_config.mutations,
+                    "trial": i,
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "cross": run_config.cross,
+                    "timeout": run_config.timeout,
+                })
+                .as_object()
+                .unwrap()
+                .to_owned();
+
+                for (k, v) in &run_config.task {
+                    context.insert(k.to_owned(), serde_json::Value::String(v.to_owned()));
+                }
+
+                let status = if run_config.cross {
+                    tracing::debug!("Running cross-language command: {}", step);
+                    run_cross(mgr.clone(), context, cmd, &step, run_config)?
+                } else {
+                    tracing::debug!("Running default command: {}", step);
+                    run_default(mgr.clone(), context, cmd, &step, run_config)?
+                };
+
+                if status == Status::TimedOut {
+                    if short_circuit {
+                        tracing::info!("Short-circuiting the experiment due to timeout");
+                        // Convert to an error so try_for_each stops scheduling new trials.
+                        return Err(anyhow::anyhow!(EarlyStop));
+                    } else {
+                        tracing::info!(
+                            "Process timed out, but short-circuit is not enabled; continuing"
+                        );
+                    }
+                }
+            }
+
+            Ok(())
+        })
+        .map_err(|e| {
+            // Swallow EarlyStop into Ok(()) so the function returns success when short-circuit triggers.
+            if e.downcast_ref::<EarlyStop>().is_some() {
+                // We intentionally stopped early
+                anyhow::anyhow!("aborted remaining trials due to timeout short-circuit")
+            } else {
+                e
+            }
+        })?;
 
     Ok(())
 }
@@ -893,6 +1009,7 @@ pub(crate) fn run_experiment(
     test: &Test,
     experiment: &ExperimentMetadata,
     short_circuit: bool,
+    parallel: bool,
 ) -> anyhow::Result<()> {
     tracing::info!(
         "Starting experiment '{}' with test: {:?}",
@@ -926,6 +1043,7 @@ pub(crate) fn run_experiment(
         test: &Test,
         experiment: &ExperimentMetadata,
         short_circuit: bool,
+        parallel: bool,
         custom_languages: Vec<CustomLanguage>,
     ) -> anyhow::Result<()> {
         let lang = marauders::Language::name_to_language(&test.language, &custom_languages)
@@ -1019,6 +1137,7 @@ pub(crate) fn run_experiment(
                 timeout: test.timeout,
                 short_circuit,
                 cross: test.cross,
+                parallel,
                 seed: None,
                 experiment_name: experiment.name.clone(),
             };
@@ -1039,7 +1158,14 @@ pub(crate) fn run_experiment(
         Ok(())
     }
 
-    let result = aux(mgr, test, experiment, short_circuit, custom_languages);
+    let result = aux(
+        mgr,
+        test,
+        experiment,
+        short_circuit,
+        parallel,
+        custom_languages,
+    );
     if let Err(e) = &result {
         tracing::error!("Experiment failed with error: {}", e);
     } else {
