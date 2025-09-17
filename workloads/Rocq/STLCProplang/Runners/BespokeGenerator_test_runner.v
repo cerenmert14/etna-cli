@@ -8,8 +8,8 @@ From STLCProplang Require Import BespokeGenerator.
 Axiom num_tests : nat. 
 Extract Constant num_tests => "max_int".
 
-Definition qctest_test_prop_SinglePreserve := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (invoke test_prop_SinglePreserve))) ++ "}|]")).
-Definition qctest_test_prop_MultiPreserve := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (invoke test_prop_MultiPreserve))) ++ "}|]")).
+Definition qctest_test_prop_SinglePreserve := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (invoke test_prop_SinglePreserve))) ++ "}")).
+Definition qctest_test_prop_MultiPreserve := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (invoke test_prop_MultiPreserve))) ++ "}")).
 
 Parameter OCamlString : Type.
 Extract Constant OCamlString => "string".

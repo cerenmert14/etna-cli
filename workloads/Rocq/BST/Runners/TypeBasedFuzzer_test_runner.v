@@ -7,23 +7,23 @@ From BST Require Import TypeBasedFuzzer.
 Axiom num_tests : nat. 
 Extract Constant num_tests => "max_int".
 
-Definition qctest_test_prop_InsertValid := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_InsertValid_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_DeleteValid := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_DeleteValid_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_UnionValid := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_UnionValid_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_InsertPost := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_InsertPost_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_DeletePost := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_DeletePost_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_UnionPost := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_UnionPost_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_InsertModel := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_InsertModel_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_DeleteModel := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_DeleteModel_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_UnionModel := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_UnionModel_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_InsertInsert := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_InsertInsert_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_InsertDelete := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_InsertDelete_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_InsertUnion := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_InsertUnion_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_DeleteInsert := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_DeleteInsert_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_DeleteDelete := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_DeleteDelete_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_DeleteUnion := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_DeleteUnion_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_UnionDeleteInsert := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_UnionDeleteInsert_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_UnionUnionIdem := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_UnionUnionIdem_fuzzer tt))) ++ "}|]")).
+Definition qctest_test_prop_InsertValid := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_InsertValid_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_DeleteValid := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_DeleteValid_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_UnionValid := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_UnionValid_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_InsertPost := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_InsertPost_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_DeletePost := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_DeletePost_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_UnionPost := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_UnionPost_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_InsertModel := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_InsertModel_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_DeleteModel := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_DeleteModel_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_UnionModel := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_UnionModel_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_InsertInsert := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_InsertInsert_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_InsertDelete := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_InsertDelete_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_InsertUnion := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_InsertUnion_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_DeleteInsert := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_DeleteInsert_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_DeleteDelete := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_DeleteDelete_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_DeleteUnion := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_DeleteUnion_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_UnionDeleteInsert := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_UnionDeleteInsert_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_UnionUnionIdem := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_UnionUnionIdem_fuzzer tt))) ++ "}")).
 
 Parameter OCamlString : Type.
 Extract Constant OCamlString => "string".

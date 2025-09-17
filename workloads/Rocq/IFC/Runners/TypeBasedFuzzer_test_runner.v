@@ -2,7 +2,7 @@ From IFC Require Import TypeBasedFuzzer.
 From QuickChick Require Import QuickChick.
 Set Warnings "-extraction-opaque-accessed,-extraction".
 Axiom num_tests : nat. Extract Constant num_tests => "max_int".
-Definition qctest_test_propSSNI_smart := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_propSSNI_smart_fuzzer tt))) ++ "}|]")).
+Definition qctest_test_propSSNI_smart := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_propSSNI_smart_fuzzer tt))) ++ "}")).
 
 
 Parameter OCamlString : Type.

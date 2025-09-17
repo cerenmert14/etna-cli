@@ -1,7 +1,6 @@
-use std::{fmt::Display, path::PathBuf};
+use std::{collections::HashMap, fmt::Display, path::PathBuf};
 
 use anyhow::Context as _;
-use serde::{Deserialize as _, Serialize as _};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{git_driver, manager::Manager, workload::WorkloadMetadata};
@@ -71,33 +70,6 @@ pub(crate) struct Experiment {
     pub workloads: Vec<WorkloadMetadata>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct TestWrapper<'a> {
-    strategy: &'a str,
-    property: &'a str,
-}
-
-fn serialize_test<S>(test: &[(String, String)], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    let test_wrapper: Vec<TestWrapper> = test
-        .iter()
-        .map(|(strategy, property)| TestWrapper { strategy, property })
-        .collect();
-    test_wrapper.serialize(serializer)
-}
-fn deserialize_test<'de, D>(deserializer: D) -> Result<Vec<(String, String)>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let test_wrapper: Vec<TestWrapper> = Vec::deserialize(deserializer)?;
-    Ok(test_wrapper
-        .into_iter()
-        .map(|TestWrapper { strategy, property }| (strategy.to_string(), property.to_string()))
-        .collect())
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub(crate) struct Test {
     pub(crate) language: String,
@@ -109,11 +81,8 @@ pub(crate) struct Test {
     pub(crate) cross: bool,
     #[serde(default)]
     pub(crate) params: Option<serde_json::Map<String, serde_json::Value>>,
-    #[serde(
-        serialize_with = "serialize_test",
-        deserialize_with = "deserialize_test"
-    )]
-    pub(crate) tasks: Vec<(String, String)>,
+    #[serde(default)]
+    pub(crate) tasks: Vec<HashMap<String, String>>,
 }
 
 impl Display for Test {

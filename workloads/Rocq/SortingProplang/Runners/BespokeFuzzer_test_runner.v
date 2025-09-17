@@ -3,7 +3,7 @@ From QuickChick Require Import QuickChick.
 From PropLang Require Import PropLang.
 Set Warnings "-extraction-opaque-accessed,-extraction".
 Axiom num_tests : nat. Extract Constant num_tests => "max_int".
-Definition qctest_test_prop_sort := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (sample1 test_prop_sort))) ++ "}|]")).
+Definition qctest_test_prop_sort := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (sample1 test_prop_sort))) ++ "}")).
 
 
 Parameter OCamlString : Type.

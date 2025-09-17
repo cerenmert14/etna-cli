@@ -6,6 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use clap::builder::Str;
 use marauders::CustomLanguage;
 use serde_json::{Map, Value};
 use std::time::Duration;
@@ -28,15 +29,14 @@ type Object = Map<String, Value>;
 
 #[derive(Debug)]
 pub(crate) struct RunConfig {
-    pub(crate) language: String,
-    pub(crate) workload_dir: PathBuf,
     pub(crate) experiment_name: String,
     pub(crate) experiment_hash: String,
-    pub(crate) trials: usize,
+    pub(crate) language: String,
     pub(crate) workload: String,
-    pub(crate) strategy: String,
+    pub(crate) workload_dir: PathBuf,
     pub(crate) mutations: Vec<String>,
-    pub(crate) property: String,
+    pub(crate) task: HashMap<String, String>,
+    pub(crate) trials: usize,
     pub(crate) timeout: f64,
     pub(crate) short_circuit: bool,
     pub(crate) cross: bool,
@@ -80,20 +80,19 @@ pub(crate) fn load_workload(
 
     let steps_path = workload_path.join("steps.json");
 
-    anyhow::ensure!(
-        steps_path.exists(),
-        "Steps file not found at '{}'",
-        steps_path.display()
-    );
-
-    let workload_steps: Option<serde_json::Value> =
-        serde_json::from_str(&std::fs::read_to_string(steps_path).unwrap()).ok();
+    let workload_steps: Option<serde_json::Value> = std::fs::read_to_string(steps_path)
+        .map(|s| serde_json::from_str(&s).unwrap())
+        .ok();
 
     let language = load_language(experiment_path, language)?;
 
     let steps = if let Some(workload_steps) = workload_steps {
         Steps::with_default(&workload_steps, &language.steps)
     } else {
+        tracing::warn!(
+            "No steps.json found for workload '{}', using language default steps",
+            workload
+        );
         language.steps.clone()
     };
 
@@ -114,8 +113,7 @@ fn metric_matches<'a>(
     language: Option<&str>,
     workload: Option<&str>,
     mutations: Option<&Vec<String>>,
-    strategy: Option<&str>,
-    property: Option<&str>,
+    task: &HashMap<String, String>,
     timeout: Option<f64>,
     trial: Option<usize>,
     cross: Option<bool>,
@@ -138,16 +136,13 @@ fn metric_matches<'a>(
             })
         })
     });
-    let strategy_match = strategy.is_none_or(|s| {
+
+    let task_match = task.iter().all(|(k, v)| {
         m.data
-            .get("strategy")
-            .is_some_and(|v| v.as_str() == Some(s))
+            .get(k)
+            .is_some_and(|val| val.as_str() == Some(v.as_str()))
     });
-    let property_match = property.is_none_or(|p| {
-        m.data
-            .get("property")
-            .is_some_and(|v| v.as_str() == Some(p))
-    });
+
     let timeout_match = timeout.is_none_or(|t| {
         m.data
             .get("timeout")
@@ -166,8 +161,7 @@ fn metric_matches<'a>(
     if language_match
         && workload_match
         && mutations_match
-        && strategy_match
-        && property_match
+        && task_match
         && timeout_match
         && trial_match
         && cross_match
@@ -183,8 +177,7 @@ fn task_completed(
     language: &str,
     workload: &str,
     mutations: &Vec<String>,
-    strategy: &str,
-    property: &str,
+    task: &HashMap<String, String>,
     timeout: f64,
     trials: usize,
     short_circuit: bool,
@@ -192,8 +185,8 @@ fn task_completed(
     metrics: &[Metric],
 ) -> bool {
     tracing::trace!(
-        "Checking if task is completed for language '{}', workload '{}', strategy '{}', property '{}', mutations '{:?}'",
-        language, workload, strategy, property, mutations
+        "Checking if task is completed for language '{}', workload '{}', mutations '{:?}', task '{:?}'",
+        language, workload, mutations, task
     );
     let filtered_metrics = metrics
         .iter()
@@ -203,8 +196,7 @@ fn task_completed(
                 Some(language),
                 Some(workload),
                 Some(mutations),
-                Some(strategy),
-                Some(property),
+                task,
                 None,
                 None,
                 Some(cross),
@@ -251,10 +243,9 @@ pub(crate) fn run(
     tracing::trace!("Running with config: {:?}", run_config);
     tracing::trace!("Run step: {:?}", test_steps);
 
+    params.extend(run_config.task.clone());
     params.insert("language".to_string(), run_config.language.clone());
     params.insert("workload".to_string(), run_config.workload.clone());
-    params.insert("strategy".to_string(), run_config.strategy.clone());
-    params.insert("property".to_string(), run_config.property.clone());
     params.insert(
         "workload_path".to_string(),
         run_config.workload_dir.display().to_string(),
@@ -294,8 +285,7 @@ pub(crate) fn run(
                     Some(&run_config.language),
                     Some(&run_config.workload),
                     Some(&run_config.mutations),
-                    Some(&run_config.strategy),
-                    Some(&run_config.property),
+                    &run_config.task,
                     Some(run_config.timeout),
                     Some(i),
                     Some(run_config.cross),
@@ -317,12 +307,11 @@ pub(crate) fn run(
 
                 // Skip the trial because it has already been run
                 tracing::info!(
-                    "Skipping trial {} for language '{}', workload '{}', strategy '{}', property '{}' because it has already been run",
+                    "Skipping trial {} for language '{}', workload '{}', task '{:?}' because it has already been run",
                     i,
                     run_config.language,
                     run_config.workload,
-                    run_config.strategy,
-                    run_config.property
+                    run_config.task
                 );
                 continue;
             }
@@ -334,14 +323,10 @@ pub(crate) fn run(
 
             let cmd = std::process::Command::from(&step);
 
-            println!("running trial with '{}'", step);
-
-            let result = serde_json::json!({
+            let mut context = serde_json::json!({
                 "language": run_config.language,
                 "workload": run_config.workload,
                 "experiment": run_config.experiment_name,
-                "strategy": run_config.strategy,
-                "property": run_config.property,
                 "mutations": run_config.mutations,
                 "trial": i,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
@@ -352,12 +337,16 @@ pub(crate) fn run(
             .unwrap()
             .to_owned();
 
+            for (k, v) in &run_config.task {
+                context.insert(k.to_owned(), Value::String(v.to_owned()));
+            }
+
             let status = if run_config.cross {
                 tracing::debug!("Running cross-language command: {}", step);
-                run_cross(mgr.clone(), result, cmd, &step, run_config)?
+                run_cross(mgr.clone(), context, cmd, &step, run_config)?
             } else {
                 tracing::debug!("Running default command: {}", step);
-                run_default(mgr.clone(), result, cmd, &step, run_config)?
+                run_default(mgr.clone(), context, cmd, &step, run_config)?
             };
 
             // If the run timed out and short-circuit is enabled, break the loop.
@@ -564,14 +553,17 @@ fn run_cross(
                     "Running canonical serializer for workload '{}', mutations '{:?}', property '{}'",
                     run_config.workload,
                     run_config.mutations,
-                    run_config.property
+                    run_config.task.get("property").unwrap_or(&"<unknown>".to_string())
                 );
                 tracing::debug!("Using temporary file: {}", temp_file.path().display());
                 let results = run_canonical_serialized(
                     mgr.clone(),
                     &run_config.workload,
                     &run_config.mutations,
-                    &run_config.property,
+                    run_config
+                        .task
+                        .get("property")
+                        .unwrap_or(&"<unknown>".to_string()),
                     temp_file.path().to_str().unwrap(),
                 );
 
@@ -940,15 +932,17 @@ pub(crate) fn run_experiment(
             .with_context(|| format!("language '{}' is not known or supported", test.language))?;
         let glob = format!("*.{}", lang.file_extension());
 
-        for variant in test.mutations.iter() {
-            marauders::run_set_command(&experiment.path, variant, Some(glob.as_str()))?;
-        }
-
         let workload_dir = experiment
             .path
             .join("workloads")
             .join(test.language.as_str())
             .join(test.workload.as_str());
+
+        marauders::run_reset_command(&workload_dir)?;
+
+        for variant in test.mutations.iter() {
+            marauders::run_set_command(&workload_dir, variant, Some(glob.as_str()))?;
+        }
 
         let workload: Workload = load_workload(
             &experiment.path,
@@ -969,12 +963,6 @@ pub(crate) fn run_experiment(
             }
         };
 
-        let steps_path = workload_dir.join("steps.json");
-        tracing::debug!("steps path: {}", steps_path.display());
-        let steps: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(&steps_path).unwrap()).unwrap();
-        tracing::debug!("steps: {}", steps);
-
         tracing::trace!(
             "Checking if all tasks for language '{}' and workload '{}' are already completed",
             test.language,
@@ -983,13 +971,12 @@ pub(crate) fn run_experiment(
 
         {
             let mgr = mgr.lock().unwrap();
-            let all_tasks_completed = test.tasks.iter().all(|(strategy, property)| {
+            let all_tasks_completed = test.tasks.iter().all(|task| {
                 task_completed(
                     &test.language,
                     &test.workload,
                     &test.mutations,
-                    strategy,
-                    property,
+                    task,
                     test.timeout,
                     test.trials,
                     short_circuit,
@@ -1017,9 +1004,8 @@ pub(crate) fn run_experiment(
             &workload.steps.tags,
         )?;
 
-        for (strategy, property) in test.tasks.iter() {
-            params.insert("strategy".to_string(), strategy.clone());
-            params.insert("property".to_string(), property.clone());
+        for task in test.tasks.iter() {
+            params.extend(task.clone());
 
             // Run the experiment
             let run_config = RunConfig {
@@ -1028,17 +1014,14 @@ pub(crate) fn run_experiment(
                 experiment_hash: experiment.hash()?,
                 trials: test.trials,
                 workload: test.workload.clone(),
-                strategy: strategy.to_string(),
                 mutations: test.mutations.clone(),
-                property: property.to_string(),
+                task: task.clone(),
                 timeout: test.timeout,
                 short_circuit,
                 cross: test.cross,
                 seed: None,
                 experiment_name: experiment.name.clone(),
             };
-
-            marauders::run_reset_command(&experiment.path)?;
 
             let result = run(
                 mgr.clone(),

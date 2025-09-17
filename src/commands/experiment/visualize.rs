@@ -208,7 +208,12 @@ fn get_agg_metrics(
                     && &test.mutations == mutations
                     && test
                         .tasks
-                        .contains(&(strategy.to_string(), property.to_string()))
+                        .iter()
+                        .find(|task| {
+                            task.get("strategy").map(String::as_str) == Some(strategy)
+                                && task.get("property").map(String::as_str) == Some(property)
+                        })
+                        .is_some()
                     && test.cross == cross;
 
                 if result {

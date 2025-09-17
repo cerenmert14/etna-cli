@@ -7,8 +7,8 @@ From STLC Require Import TypeBasedFuzzer.
 Axiom num_tests : nat. 
 Extract Constant num_tests => "max_int".
 
-Definition qctest_test_prop_SinglePreserve := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_SinglePreserve_fuzzer tt))) ++ "}|]")).
-Definition qctest_test_prop_MultiPreserve := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime (fun tt => (test_prop_MultiPreserve_fuzzer tt))) ++ "}|]")).
+Definition qctest_test_prop_SinglePreserve := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_SinglePreserve_fuzzer tt))) ++ "}")).
+Definition qctest_test_prop_MultiPreserve := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime (fun tt => (test_prop_MultiPreserve_fuzzer tt))) ++ "}")).
 
 Parameter OCamlString : Type.
 Extract Constant OCamlString => "string".

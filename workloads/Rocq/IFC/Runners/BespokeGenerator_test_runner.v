@@ -2,7 +2,7 @@ From IFC Require Import BespokeGenerator.
 From QuickChick Require Import QuickChick.
 Set Warnings "-extraction-opaque-accessed,-extraction".
 Axiom num_tests : nat. Extract Constant num_tests => "max_int".
-Definition qctest_test_propSSNI_smart := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_propSSNI_smart))) ++ "}|]")).
+Definition qctest_test_propSSNI_smart := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_propSSNI_smart))) ++ "}")).
 
 
 Parameter OCamlString : Type.

@@ -7,7 +7,7 @@ Set Warnings "-extraction-opaque-accessed,-extraction".
 Axiom num_tests : nat. 
 Extract Constant num_tests => "max_int".
 
-Definition qctest_test_propLLNI := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (sample1 test_propLLNI))) ++ "}|]")).
+Definition qctest_test_propLLNI := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (sample1 test_propLLNI))) ++ "}")).
 
 Parameter OCamlString : Type.
 Extract Constant OCamlString => "string".

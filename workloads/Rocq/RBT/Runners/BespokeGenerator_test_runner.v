@@ -7,16 +7,16 @@ From RBT Require Import BespokeGenerator.
 Axiom num_tests : nat. 
 Extract Constant num_tests => "max_int".
 
-Definition qctest_test_prop_InsertValid := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertValid))) ++ "}|]")).
-Definition qctest_test_prop_DeleteValid := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteValid))) ++ "}|]")).
-Definition qctest_test_prop_InsertPost := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertPost))) ++ "}|]")).
-Definition qctest_test_prop_DeletePost := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeletePost))) ++ "}|]")).
-Definition qctest_test_prop_InsertModel := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertModel))) ++ "}|]")).
-Definition qctest_test_prop_DeleteModel := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteModel))) ++ "}|]")).
-Definition qctest_test_prop_InsertInsert := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertInsert))) ++ "}|]")).
-Definition qctest_test_prop_InsertDelete := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertDelete))) ++ "}|]")).
-Definition qctest_test_prop_DeleteInsert := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteInsert))) ++ "}|]")).
-Definition qctest_test_prop_DeleteDelete := (fun _ : unit => print_extracted_coq_string ("[|{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteDelete))) ++ "}|]")).
+Definition qctest_test_prop_InsertValid := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertValid))) ++ "}")).
+Definition qctest_test_prop_DeleteValid := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteValid))) ++ "}")).
+Definition qctest_test_prop_InsertPost := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertPost))) ++ "}")).
+Definition qctest_test_prop_DeletePost := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeletePost))) ++ "}")).
+Definition qctest_test_prop_InsertModel := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertModel))) ++ "}")).
+Definition qctest_test_prop_DeleteModel := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteModel))) ++ "}")).
+Definition qctest_test_prop_InsertInsert := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertInsert))) ++ "}")).
+Definition qctest_test_prop_InsertDelete := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_InsertDelete))) ++ "}")).
+Definition qctest_test_prop_DeleteInsert := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteInsert))) ++ "}")).
+Definition qctest_test_prop_DeleteDelete := (fun _ : unit => print_extracted_coq_string ("{" ++ show (withTime(fun tt => (quickCheckWith (updMaxDiscard (updMaxSuccess (updAnalysis stdArgs true) num_tests) num_tests) test_prop_DeleteDelete))) ++ "}")).
 
 Parameter OCamlString : Type.
 Extract Constant OCamlString => "string".
