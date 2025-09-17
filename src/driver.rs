@@ -6,6 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use marauders::CustomLanguage;
 use serde_json::{Map, Value};
 use std::time::Duration;
 
@@ -913,13 +914,29 @@ pub(crate) fn run_experiment(
         &format!("running experiment {} with test {}", experiment.name, test),
     )?;
 
+    // If there is a local marauders configuration, use it.
+    let custom_languages = if let Ok(project) = marauders::Project::new(&experiment.path, None) {
+        tracing::trace!(
+            "Using local marauders configuration at '{}'",
+            experiment.path.display()
+        );
+        if let Some(cfg) = project.config {
+            cfg.custom_languages.clone()
+        } else {
+            vec![]
+        }
+    } else {
+        vec![]
+    };
+
     pub(crate) fn aux(
         mgr: Arc<Mutex<Manager>>,
         test: &Test,
         experiment: &ExperimentMetadata,
         short_circuit: bool,
+        custom_languages: Vec<CustomLanguage>,
     ) -> anyhow::Result<()> {
-        let lang = marauders::Language::name_to_language(&test.language, &vec![])
+        let lang = marauders::Language::name_to_language(&test.language, &custom_languages)
             .with_context(|| format!("language '{}' is not known or supported", test.language))?;
         let glob = format!("*.{}", lang.file_extension());
 
@@ -1039,7 +1056,7 @@ pub(crate) fn run_experiment(
         Ok(())
     }
 
-    let result = aux(mgr, test, experiment, short_circuit);
+    let result = aux(mgr, test, experiment, short_circuit, custom_languages);
     if let Err(e) = &result {
         tracing::error!("Experiment failed with error: {}", e);
     } else {
