@@ -214,7 +214,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
     },
         Command::Analyze(_analyze_command) => todo!(),
         Command::Check { restore, remove } => commands::check::integrity::invoke(mgr, restore, remove),
-        Command::Bash { path } => commands::bash::invoke(path),
+        Command::Bash { path } => commands::bash::invoke(mgr, path),
     }
     .context("Aborting run due to an error")
 }

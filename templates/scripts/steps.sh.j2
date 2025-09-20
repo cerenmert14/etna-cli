@@ -93,7 +93,7 @@ echo "  --{{ v.name }}=${{ v.name }}" >&2
 
 # ===== Check Steps =====
 if [ $W_CHECK -eq 1 ]; then
-{%- for line in check %}
+{%- for line in setup %}
 {{ line }}
 {%- endfor %}
   echo 'Check steps are completed.'
@@ -109,6 +109,8 @@ fi
 
 # ===== Run Steps =====
 if [ $W_RUN -eq 1 ]; then
-{{ run -}}
+{%- for line in test %}
+{{ line }}
+{%- endfor %}
     echo 'Run steps are completed.'
 fi

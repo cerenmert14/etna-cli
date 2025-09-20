@@ -13,8 +13,7 @@ use crate::config::{current_version, EtnaConfig};
 pub fn invoke(overwrite: bool) -> anyhow::Result<()> {
     info!("Setting up etna...");
     // Get the home directory
-    let home_dir = dirs::home_dir().context("Failed to get home directory")?;
-    let etna_dir = home_dir.join(".etna");
+    let etna_dir = EtnaConfig::get_etna_dir().context("Failed to get .etna directory")?;
 
     // If `.etna` directory does not exist, create it
     if !etna_dir.exists() {

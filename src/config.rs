@@ -63,7 +63,7 @@ impl EtnaConfig {
 
     pub(crate) fn _save(&self) -> anyhow::Result<()> {
         tracing::trace!("saving etna configuration");
-        let config_path = Self::get_etna_dir()?.join("config.json");
+        let config_path = self.etna_dir.join("config.json");
         let file = std::fs::File::create(&config_path).with_context(|| {
             format!(
                 "Failed to create configuration file at '{}'",
@@ -82,6 +82,10 @@ impl EtnaConfig {
 impl EtnaConfig {
     pub(crate) fn steps_path(&self) -> PathBuf {
         self.etna_dir.join("steps.json")
+    }
+
+    pub(crate) fn repo_dir(&self) -> PathBuf {
+        self.etna_dir.join(".etna_cache")
     }
 
     pub(crate) fn store_path(&self) -> PathBuf {

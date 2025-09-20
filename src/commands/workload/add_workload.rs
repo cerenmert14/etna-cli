@@ -103,7 +103,7 @@ pub fn invoke(
     }
 
     // get etna directory
-    let repo_dir = mgr.etna_dir().join(".etna_cache");
+    let repo_dir = mgr.config.repo_dir();
 
     // Get the workload path
     let workload_path = repo_dir.join("workloads").join(&language).join(&workload);

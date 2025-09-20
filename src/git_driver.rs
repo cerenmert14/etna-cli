@@ -201,33 +201,70 @@ pub fn init_metadata_only(repo_path: &Path, branch: &str) -> anyhow::Result<()> 
 }
 
 pub fn materialize_paths(repo_path: &Path, paths: &[&str]) -> anyhow::Result<()> {
+    tracing::debug!(
+        "Materializing paths '{:?}' from remote in repo at '{}'",
+        paths,
+        repo_path.display()
+    );
     let repo = Repository::open(repo_path)?;
+    anyhow::ensure!(!repo.is_bare(), "cannot sparse-checkout in a bare repo");
+
+    // 1) Fetch the BRANCH (not paths)
     let mut remote = repo.find_remote("origin")?;
     let mut fo = FetchOptions::new();
     fo.download_tags(AutotagOption::None);
-    fo.depth(1);
-    let refspec = format!("refs/heads/{b}:refs/remotes/origin/{b}", b = "main");
+    // fo.depth(1);
+    let branch = "main";
+    let refspec = format!("refs/heads/{b}:refs/remotes/origin/{b}", b = branch);
+    tracing::trace!("Fetching branch '{}'", branch);
     remote.fetch(&[&refspec], Some(&mut fo), None)?;
-    // Turn on sparse-checkout with an empty pattern file first (matches nothing)
-    repo.config()?.set_bool("core.sparseCheckout", true)?;
-    let info = repo.path().join("info/sparse-checkout");
-    fs::create_dir_all(info.parent().unwrap())?;
-    fs::write(&info, String::new())?;
 
-    // Now write the paths you want (cone-style)
+    // 2) Create/fast-forward local branch and set HEAD to it
+    let remote_ref = format!("refs/remotes/origin/{branch}");
+    let tip = repo.refname_to_id(&remote_ref)?;
+    let commit = repo.find_commit(tip)?;
+    let local_ref = format!("refs/heads/{branch}");
+    if repo.find_reference(&local_ref).is_err() {
+        repo.branch(branch, &commit, true)?; // create local branch at tip
+    } else {
+        let mut lr = repo.find_reference(&local_ref)?;
+        lr.set_target(commit.id(), "fast-forward")?; // move it to tip
+    }
+    repo.set_head(&local_ref)?; // <-- HEAD now points at a present commit
+
+    // 3) Enable sparse-checkout and write patterns
+    tracing::trace!("Setting up sparse checkout for paths '{:?}'", paths);
+    repo.config()?.set_bool("core.sparseCheckout", true)?;
+    // (Optional, best-effort) cone mode if supported:
+    let _ = repo.config()?.set_bool("core.sparseCheckoutCone", true);
+
+    let info = repo.path().join("info/sparse-checkout");
+    tracing::trace!("Writing sparse-checkout info to '{}'", info.display());
+    std::fs::create_dir_all(info.parent().unwrap())?;
     let content = paths
         .iter()
         .map(|p| format!("/{}\n", p))
         .collect::<String>();
-    fs::write(&info, content)?;
+    std::fs::write(&info, content)?;
 
-    // Checkout only those paths
+    // 4) Sanity: ensure each path exists in the tip tree
+    let tree = commit.tree()?;
+    for p in paths {
+        tree.get_path(Path::new(p))
+            .with_context(|| format!("path not found in {branch}: {p}"))?;
+    }
+
+    // 5) Checkout only those paths
     let mut co = CheckoutBuilder::new();
     co.force().remove_untracked(true).remove_ignored(true);
     for p in paths {
+        tracing::trace!("Checking out path '{}'", p);
         co.path(p);
     }
-    repo.checkout_head(Some(&mut co))?;
+    tracing::debug!("Checking out paths '{:?}'", paths);
+
+    // Use the fetched tree explicitly (avoids HEAD resolution quirks)
+    repo.checkout_tree(tree.as_object(), Some(&mut co))?;
     Ok(())
 }
 

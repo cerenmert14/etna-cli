@@ -1,6 +1,10 @@
 use std::{collections::HashMap, os::unix::fs::PermissionsExt as _, path::PathBuf};
 
-use crate::workload::{Step, Steps};
+use crate::{
+    git_driver,
+    manager::Manager,
+    workload::{Step, Steps},
+};
 
 use minijinja::{path_loader, Environment};
 use regex::Regex;
@@ -113,15 +117,16 @@ struct VarCtx<'a> {
 #[derive(Serialize)]
 struct TemplateCtx<'a> {
     vars: Vec<VarCtx<'a>>,
-    check: Vec<String>,
+    setup: Vec<String>,
     build: Vec<String>,
-    run: String,
+    test: Vec<String>,
 }
 
 /// The path should point to a valid run configuration
 /// This command produces a bash script `steps.sh` that executes the steps defined in the configuration
-pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
-    let path = path.unwrap_or_else(|| std::env::current_dir().unwrap().join("config.toml"));
+pub fn invoke(mgr: Manager, path: Option<PathBuf>) -> anyhow::Result<()> {
+    tracing::info!("Generating bash script from configuration...");
+    let path = path.unwrap_or_else(|| std::env::current_dir().unwrap().join("steps.json"));
 
     // Load full steps to access tags for !expansion
     let steps_path = if path.is_dir() {
@@ -139,7 +144,12 @@ pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
     let params: HashMap<String, String> = HashMap::new();
 
     // Expand and pre-render the step commands into lines for the template
-    let check_lines: Vec<String> = steps
+    tracing::trace!(
+        "Expanding setup steps with params: {:?} tags: {:?}",
+        params,
+        steps.tags
+    );
+    let setup_lines: Vec<String> = steps
         .setup
         .iter()
         .map(|s| s.realize(&params, &steps.tags))
@@ -149,6 +159,11 @@ pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
         .map(|s| to_bash(&s, 1))
         .collect();
 
+    tracing::trace!(
+        "Expanding build steps with params: {:?} tags: {:?}",
+        params,
+        steps.tags
+    );
     let build_lines: Vec<String> = steps
         .build
         .iter()
@@ -159,7 +174,12 @@ pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
         .map(|s| to_bash(&s, 1))
         .collect();
 
-    let run_line: String = steps
+    tracing::trace!(
+        "Expanding test steps with params: {:?} tags: {:?}",
+        params,
+        steps.tags
+    );
+    let test_lines: Vec<String> = steps
         .test
         .iter()
         .map(|s| s.realize(&params, &steps.tags))
@@ -167,8 +187,7 @@ pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
         .into_iter()
         .flatten()
         .map(|s| to_bash(&s, 1))
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect::<Vec<_>>();
 
     // collect used candidate variables across all steps (on original cfg is sufficient)
     let used = collect_used_variables(&steps);
@@ -178,18 +197,19 @@ pub fn invoke(path: Option<PathBuf>) -> anyhow::Result<()> {
 
     let ctx = TemplateCtx {
         vars,
-        check: check_lines,
+        setup: setup_lines,
         build: build_lines,
-        run: run_line,
+        test: test_lines,
     };
 
     // 4) minijinja env + render
     let mut env = Environment::empty();
     // Load templates/… from disk
-    env.set_loader(path_loader(format!(
-        "{}/templates/scripts",
-        std::env::var("ETNA_DIR")?
-    )));
+    git_driver::pull_path(&mgr.config.repo_dir(), &PathBuf::from("templates"))?;
+
+    env.set_loader(path_loader(
+        &mgr.config.repo_dir().join("templates").join("scripts"),
+    ));
     // Disable autoescaping for shell (minijinja auto-escapes only when configured;
     // with path_loader it defaults to no autoescape, so nothing else needed here.)
     let tmpl = env.get_template("steps.sh.j2")?;
@@ -220,6 +240,7 @@ const CANDIDATE_VARIABLES: [&str; 9] = [
 ];
 
 fn to_bash(s: &Step, depth: usize) -> String {
+    tracing::trace!("Rendering step at depth {}: {:?}", depth, s);
     match s {
         Step::Command {
             command,
@@ -249,6 +270,7 @@ fn to_bash(s: &Step, depth: usize) -> String {
                 );
             }
             cmd.push('\n');
+            tracing::trace!("Rendered command: {}", cmd);
             cmd
         }
         Step::Match { value, options } => {
@@ -276,6 +298,7 @@ fn to_bash(s: &Step, depth: usize) -> String {
                 " ".repeat((depth + 1) * 4)
             ));
             cmd.push_str(&format!("{}fi\n", " ".repeat(depth * 4)));
+            tracing::trace!("Rendered match: {}", cmd);
             cmd
         }
     }
@@ -285,7 +308,7 @@ fn to_bash(s: &Step, depth: usize) -> String {
 mod tests {
     use std::fs;
 
-    use crate::commands::bash::invoke;
+    use crate::{commands::bash::invoke, manager::Manager};
 
     const CONFIG_CONTENT: &str = r#"
 {
@@ -310,8 +333,8 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let config_path = temp_dir.path().join("steps.json");
         fs::write(&config_path, CONFIG_CONTENT).unwrap();
-
-        let result = invoke(Some(config_path));
+        let mgr = Manager::load().unwrap();
+        let result = invoke(mgr, Some(config_path));
         assert!(result.is_ok(), "{result:?}");
 
         let script = fs::read_to_string("steps.sh").unwrap();
@@ -330,12 +353,15 @@ mod tests {
     }
 
     fn test_invoke_example_script() {
-        let config_path = format!(
-            "{}/templates/configs/example.json",
-            std::env::var("ETNA_DIR").unwrap()
-        );
+        let mgr = Manager::load().unwrap();
+        let config_path = mgr
+            .config
+            .repo_dir()
+            .join("templates")
+            .join("configs")
+            .join("example.json");
         let config_path = std::path::PathBuf::from(config_path);
-        let result = invoke(Some(config_path));
+        let result = invoke(mgr, Some(config_path));
         assert!(result.is_ok(), "{result:?}");
         let output = std::process::Command::new("bash")
             .arg("steps.sh")
@@ -366,8 +392,8 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let config_path = temp_dir.path().join("steps.json");
         std::fs::write(&config_path, serde_json::to_string_pretty(&cfg).unwrap()).unwrap();
-
-        let result = invoke(Some(config_path));
+        let mgr = Manager::load().unwrap();
+        let result = invoke(mgr, Some(config_path));
         assert!(result.is_ok(), "{result:?}");
 
         let script = std::fs::read_to_string("steps.sh").unwrap();

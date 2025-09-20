@@ -62,10 +62,6 @@ impl Manager {
         self.save_experiments()
     }
 
-    pub fn etna_dir(&self) -> &std::path::Path {
-        &self.config.etna_dir
-    }
-
     pub fn add_experiment(
         &mut self,
         name: String,

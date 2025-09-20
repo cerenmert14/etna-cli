@@ -492,7 +492,11 @@ fn run_canonical_serialized(
     // Change the current working directory to the workload directory
     let workload_dir = {
         let mgr = mgr.lock().unwrap();
-        mgr.etna_dir().join("workloads").join("Rust").join(workload)
+        mgr.config
+            .repo_dir()
+            .join("workloads")
+            .join("Rust")
+            .join(workload)
     };
 
     // Run marauders to mutate the canonical serializer
