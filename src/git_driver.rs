@@ -148,6 +148,7 @@ pub(crate) fn _head_hash(repo_path: &Path) -> anyhow::Result<String> {
 }
 
 /// Create a repo with only `.git/` populated—no files checked out.
+#[allow(dead_code)]
 pub fn init_metadata_only(repo_path: &Path, branch: &str) -> anyhow::Result<()> {
     let url = std::env::var("ETNA_REMOTE")
         .unwrap_or_else(|_| "https://github.com/alpaylan/etna-cli.git".to_string());
@@ -200,61 +201,42 @@ pub fn init_metadata_only(repo_path: &Path, branch: &str) -> anyhow::Result<()> 
     Ok(())
 }
 
-pub fn materialize_paths(repo_path: &Path, paths: &[&str]) -> anyhow::Result<()> {
+#[allow(dead_code)]
+fn materialize_paths(repo_path: &Path, paths: &[&str]) -> anyhow::Result<()> {
     tracing::debug!(
         "Materializing paths '{:?}' from remote in repo at '{}'",
         paths,
         repo_path.display()
     );
     let repo = Repository::open(repo_path)?;
-    anyhow::ensure!(!repo.is_bare(), "cannot sparse-checkout in a bare repo");
-
-    // 1) Fetch the BRANCH (not paths)
     let mut remote = repo.find_remote("origin")?;
     let mut fo = FetchOptions::new();
     fo.download_tags(AutotagOption::None);
-    // fo.depth(1);
-    let branch = "main";
-    let refspec = format!("refs/heads/{b}:refs/remotes/origin/{b}", b = branch);
-    tracing::trace!("Fetching branch '{}'", branch);
+    fo.depth(1);
+    let refspec = format!("+refs/heads/{b}:refs/remotes/origin/{b}", b = "main");
+    tracing::trace!("Fetching paths '{:?}'", paths);
     remote.fetch(&[&refspec], Some(&mut fo), None)?;
-
-    // 2) Create/fast-forward local branch and set HEAD to it
-    let remote_ref = format!("refs/remotes/origin/{branch}");
-    let tip = repo.refname_to_id(&remote_ref)?;
-    let commit = repo.find_commit(tip)?;
-    let local_ref = format!("refs/heads/{branch}");
-    if repo.find_reference(&local_ref).is_err() {
-        repo.branch(branch, &commit, true)?; // create local branch at tip
-    } else {
-        let mut lr = repo.find_reference(&local_ref)?;
-        lr.set_target(commit.id(), "fast-forward")?; // move it to tip
-    }
-    repo.set_head(&local_ref)?; // <-- HEAD now points at a present commit
-
-    // 3) Enable sparse-checkout and write patterns
+    // Turn on sparse-checkout with an empty pattern file first (matches nothing)
     tracing::trace!("Setting up sparse checkout for paths '{:?}'", paths);
     repo.config()?.set_bool("core.sparseCheckout", true)?;
-    // (Optional, best-effort) cone mode if supported:
-    let _ = repo.config()?.set_bool("core.sparseCheckoutCone", true);
-
     let info = repo.path().join("info/sparse-checkout");
     tracing::trace!("Writing sparse-checkout info to '{}'", info.display());
-    std::fs::create_dir_all(info.parent().unwrap())?;
+    fs::create_dir_all(info.parent().unwrap())?;
+    fs::write(&info, String::new())?;
+
+    // Now write the paths you want (cone-style)
     let content = paths
         .iter()
         .map(|p| format!("/{}\n", p))
         .collect::<String>();
-    std::fs::write(&info, content)?;
+    tracing::trace!(
+        "Writing sparse-checkout paths to '{}':\n{}",
+        info.display(),
+        content
+    );
+    fs::write(&info, content)?;
 
-    // 4) Sanity: ensure each path exists in the tip tree
-    let tree = commit.tree()?;
-    for p in paths {
-        tree.get_path(Path::new(p))
-            .with_context(|| format!("path not found in {branch}: {p}"))?;
-    }
-
-    // 5) Checkout only those paths
+    // Checkout only those paths
     let mut co = CheckoutBuilder::new();
     co.force().remove_untracked(true).remove_ignored(true);
     for p in paths {
@@ -262,18 +244,52 @@ pub fn materialize_paths(repo_path: &Path, paths: &[&str]) -> anyhow::Result<()>
         co.path(p);
     }
     tracing::debug!("Checking out paths '{:?}'", paths);
-
-    // Use the fetched tree explicitly (avoids HEAD resolution quirks)
-    repo.checkout_tree(tree.as_object(), Some(&mut co))?;
+    repo.checkout_head(Some(&mut co))?;
     Ok(())
 }
 
-pub(crate) fn pull_path(repo_path: &Path, path: &Path) -> anyhow::Result<()> {
+pub(crate) fn init_repo_via_cli(repo_path: &Path) -> anyhow::Result<()> {
+    let url = std::env::var("ETNA_REMOTE")
+        .unwrap_or_else(|_| "https://github.com/alpaylan/etna-cli.git".into());
+    let status = std::process::Command::new("git")
+        .arg("clone")
+        .arg("--branch")
+        .arg("main")
+        .arg(&url)
+        .arg(repo_path)
+        .status()
+        .context("Failed to execute git clone")?;
+    if !status.success() {
+        anyhow::bail!("git clone failed with status: {}", status);
+    }
+    Ok(())
+}
+
+pub(crate) fn pull_via_cli(repo_path: &Path) -> anyhow::Result<()> {
+    tracing::debug!("Pulling path from remote");
+    tracing::debug!("run: 'git -C {} pull'", repo_path.display(),);
+    let status = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo_path)
+        .arg("pull")
+        .status()
+        .context("Failed to execute git pull")?;
+
+    if !status.success() {
+        anyhow::bail!("git pull failed with status: {}", status);
+    }
+    tracing::debug!("Pulled path from remote");
+    Ok(())
+}
+
+#[allow(dead_code)]
+fn pull_path(repo_path: &Path, path: &Path) -> anyhow::Result<()> {
     tracing::debug!("Pulling path '{}' from remote", path.display());
     materialize_paths(repo_path, &[&path.display().to_string()])
         .context("Failed to materialize paths")
 }
 
+#[allow(dead_code)]
 pub(crate) fn pull_workload(
     repo_path: &Path,
     language: &str,

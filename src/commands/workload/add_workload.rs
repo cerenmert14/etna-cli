@@ -1,8 +1,4 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fs, path::Path, process::Command};
 
 use anyhow::{Context, Ok};
 
@@ -15,7 +11,8 @@ use crate::{experiment::ExperimentMetadata, git_driver, manager::Manager};
 /// for this purpose, we copy all files, and any directories that are not workloads (i.e., does
 /// not have a `steps.json` file).
 fn copy_language(repo_dir: &Path, workloads_dir: &Path, language: &str) -> anyhow::Result<()> {
-    git_driver::pull_path(repo_dir, &PathBuf::from("workloads").join(language))?;
+    // git_driver::pull_workload(repo_dir, &PathBuf::from("workloads").join(language))?;
+    git_driver::pull_via_cli(repo_dir)?;
 
     for entry in repo_dir.join("workloads").join(language).read_dir()? {
         let entry = entry?;
@@ -46,38 +43,36 @@ fn copy_language(repo_dir: &Path, workloads_dir: &Path, language: &str) -> anyho
                         .display()
                 )
             })?;
-        } else if path.is_dir() {
-            if !path.join("steps.json").exists() {
-                // copy the entire directory
-                Command::new("cp")
-                    .arg("-r")
-                    .arg(&path)
-                    .arg(
-                        &workloads_dir.join(language).join(
-                            path.file_name()
-                                .context("Failed to get directory name")?
-                                .to_str()
-                                .context("Failed to convert directory name to string")?,
-                        ),
+        } else if path.is_dir() && !path.join("steps.json").exists() {
+            // copy the entire directory
+            Command::new("cp")
+                .arg("-r")
+                .arg(&path)
+                .arg(
+                    workloads_dir.join(language).join(
+                        path.file_name()
+                            .context("Failed to get directory name")?
+                            .to_str()
+                            .context("Failed to convert directory name to string")?,
+                    ),
+                )
+                .status()
+                .with_context(|| {
+                    format!(
+                        "Failed to copy directory '{}' to '{}'",
+                        path.display(),
+                        workloads_dir
+                            .join(language)
+                            .join(
+                                path.file_name()
+                                    .context("Failed to get directory name")
+                                    .unwrap_or_default()
+                                    .to_str()
+                                    .unwrap_or_default()
+                            )
+                            .display()
                     )
-                    .status()
-                    .with_context(|| {
-                        format!(
-                            "Failed to copy directory '{}' to '{}'",
-                            path.display(),
-                            workloads_dir
-                                .join(language)
-                                .join(
-                                    path.file_name()
-                                        .context("Failed to get directory name")
-                                        .unwrap_or_default()
-                                        .to_str()
-                                        .unwrap_or_default()
-                                )
-                                .display()
-                        )
-                    })?;
-            }
+                })?;
         }
     }
 
@@ -114,8 +109,9 @@ pub fn invoke(
             "Workload '{}' not found, pulling from remote",
             workload_path.display()
         );
-        git_driver::pull_workload(&repo_dir, &language, &workload)
-            .context("Failed to pull from remote")?;
+        git_driver::pull_via_cli(&repo_dir)?;
+        // git_driver::pull_workload(&repo_dir, &language, &workload)
+        //     .context("Failed to pull from remote")?;
     }
 
     let dest_path = experiment

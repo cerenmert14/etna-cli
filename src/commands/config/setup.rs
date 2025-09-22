@@ -1,7 +1,10 @@
 use anyhow::Context;
 use tracing::info;
 
-use crate::config::{current_version, EtnaConfig};
+use crate::{
+    config::{current_version, EtnaConfig},
+    git_driver,
+};
 
 /// Handles the setup for etna-cli
 /// 1. Create ~/.etna directory if it does not exist
@@ -47,8 +50,9 @@ pub fn invoke(overwrite: bool) -> anyhow::Result<()> {
     // Initialize a git repository in the `.etna_cache` directory if it is not already a git repository
     if !cache_dir.join(".git").exists() {
         info!("Initializing git repository in .etna_cache");
-        crate::git_driver::init_metadata_only(&cache_dir, "main")
-            .context("Failed to initialize git repository in .etna_cache")?;
+        git_driver::init_repo_via_cli(&cache_dir)?;
+        // crate::git_driver::init_metadata_only(&cache_dir, "main")
+        //     .context("Failed to initialize git repository in .etna_cache")?;
     }
 
     // Create the `experiments.json` file

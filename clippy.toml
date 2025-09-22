@@ -1,0 +1,6 @@
+disallowed-methods = [
+  { path = "etna::git_driver::init_metadata_only", reason = "Do not use; call etna::git_driver::init_repo_via_cli()" },
+  { path = "etna::git_driver::materialize_paths", reason = "Do not use; call etna::git_driver::pull_via_cli()" },
+  { path = "etna::git_driver::pull_path", reason = "Do not use; call etna::git_driver::pull_via_cli()" },
+  { path = "etna::git_driver::pull_workload", reason = "Do not use; call etna::git_driver::pull_via_cli()" },
+]

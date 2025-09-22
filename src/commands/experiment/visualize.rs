@@ -206,14 +206,10 @@ fn get_agg_metrics(
                 let result = test.language == language
                     && test.workload == workload
                     && &test.mutations == mutations
-                    && test
-                        .tasks
-                        .iter()
-                        .find(|task| {
-                            task.get("strategy").map(String::as_str) == Some(strategy)
-                                && task.get("property").map(String::as_str) == Some(property)
-                        })
-                        .is_some()
+                    && test.tasks.iter().any(|task| {
+                        task.get("strategy").map(String::as_str) == Some(strategy)
+                            && task.get("property").map(String::as_str) == Some(property)
+                    })
                     && test.cross == cross;
 
                 if result {

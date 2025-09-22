@@ -24,6 +24,16 @@ fn contains_var_token(s: &str, var: &str, re_cache: &mut Vec<(String, Regex)>) -
     re_cache.last().unwrap().1.is_match(s)
 }
 
+/// Detect occurences of `${var}` for an arbitrary unknown `var`.
+fn contains_unknown_variable(s: &str) -> Option<&str> {
+    let re = Regex::new(r"\$\{(\w+)\}").unwrap();
+    if let Some(caps) = re.captures(s) {
+        if let Some(m) = caps.get(1) {
+            return Some(m.as_str());
+        }
+    }
+    None
+}
 /// Recursively walk a Step to collect used variable names (from CANDIDATE_VARIABLES).
 fn collect_used_from_step<'a>(
     step: &'a Step,
@@ -45,6 +55,15 @@ fn collect_used_from_step<'a>(
                     used.insert(v);
                 }
             }
+            // Also check for any unknown variable usage
+            if let Some(unknown) = contains_unknown_variable(command) {
+                tracing::debug!(
+                    "command '{}' contains unknown variable '${{{}}}'",
+                    command,
+                    unknown
+                );
+                used.insert(unknown);
+            }
             // args
             for a in args {
                 for &v in &CANDIDATE_VARIABLES {
@@ -52,13 +71,26 @@ fn collect_used_from_step<'a>(
                         used.insert(v);
                     }
                 }
+                if let Some(unknown) = contains_unknown_variable(a) {
+                    tracing::debug!("arg '{}' contains unknown variable '${{{}}}'", a, unknown);
+                    used.insert(unknown);
+                }
             }
+
             // run_at
             if let Some(dir) = run_at {
                 for &v in &CANDIDATE_VARIABLES {
                     if contains_var_token(dir, v, re_cache) {
                         used.insert(v);
                     }
+                }
+                if let Some(unknown) = contains_unknown_variable(dir) {
+                    tracing::debug!(
+                        "run_at '{}' contains unknown variable '${{{}}}'",
+                        dir,
+                        unknown
+                    );
+                    used.insert(unknown);
                 }
             }
             // mitigation text (might reference vars)
@@ -68,6 +100,14 @@ fn collect_used_from_step<'a>(
                         used.insert(v);
                     }
                 }
+                if let Some(unknown) = contains_unknown_variable(m) {
+                    tracing::debug!(
+                        "mitigation '{}' contains unknown variable '${{{}}}'",
+                        m,
+                        unknown
+                    );
+                    used.insert(unknown);
+                }
             }
             // env values (keys are literal names; values may reference vars)
             for val in env.values() {
@@ -75,6 +115,14 @@ fn collect_used_from_step<'a>(
                     if contains_var_token(val, v, re_cache) {
                         used.insert(v);
                     }
+                }
+                if let Some(unknown) = contains_unknown_variable(val) {
+                    tracing::debug!(
+                        "env value '{}' contains unknown variable '${{{}}}'",
+                        val,
+                        unknown
+                    );
+                    used.insert(unknown);
                 }
             }
         }
@@ -205,7 +253,7 @@ pub fn invoke(mgr: Manager, path: Option<PathBuf>) -> anyhow::Result<()> {
     // 4) minijinja env + render
     let mut env = Environment::empty();
     // Load templates/… from disk
-    git_driver::pull_path(&mgr.config.repo_dir(), &PathBuf::from("templates"))?;
+    git_driver::pull_via_cli(&mgr.config.repo_dir())?;
 
     env.set_loader(path_loader(
         &mgr.config.repo_dir().join("templates").join("scripts"),
@@ -360,7 +408,6 @@ mod tests {
             .join("templates")
             .join("configs")
             .join("example.json");
-        let config_path = std::path::PathBuf::from(config_path);
         let result = invoke(mgr, Some(config_path));
         assert!(result.is_ok(), "{result:?}");
         let output = std::process::Command::new("bash")

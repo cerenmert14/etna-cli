@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue};
-use std::collections::{BTreeSet, HashMap};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt::Display,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -24,15 +27,15 @@ pub enum Status {
     Unknown,
 }
 
-impl ToString for Status {
-    fn to_string(&self) -> String {
+impl Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Status::Passed => "passed".to_owned(),
-            Status::FoundBug => "found_bug".to_owned(),
-            Status::GaveUp => "gave_up".to_owned(),
-            Status::TimedOut => "timed_out".to_owned(),
-            Status::Aborted => "aborted".to_owned(),
-            Status::Unknown => "unknown".to_owned(),
+            Status::Passed => write!(f, "passed"),
+            Status::FoundBug => write!(f, "found_bug"),
+            Status::GaveUp => write!(f, "gave_up"),
+            Status::TimedOut => write!(f, "timed_out"),
+            Status::Aborted => write!(f, "aborted"),
+            Status::Unknown => write!(f, "unknown"),
         }
     }
 }
