@@ -124,7 +124,12 @@ pub(crate) fn run() -> anyhow::Result<()> {
     let cli = Args::parse();
 
     // Load the manager
-    let mut mgr = Manager::load()?;
+    if let Command::Setup { .. } = &cli.command {
+        // Skip loading the manager for setup command
+        return commands::config::setup::invoke(matches!(cli.command, Command::Setup { overwrite } if overwrite));
+    }
+
+    let mut mgr = Manager::load().context("All commands other than `etna setup` require a valid configuration, please make sure you ran `etna setup` first")?;
 
     let experiment = if let Some(experiment) = cli.command.experiment_name() {
         if let Some(experiment) = mgr.experiments.get(experiment) {
@@ -185,7 +190,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
         Command::Config(cl) => match cl {
             ConfigCommand::Show => commands::config::show::invoke(),
         },
-        Command::Setup { overwrite } => commands::config::setup::invoke(overwrite),
+        Command::Setup { .. } => unreachable!("Setup command is handled earlier"),
         Command::Store(store_command) => {
             let experiment = match &store_command {
                 StoreCommand::Write { experiment, ..} => experiment,
