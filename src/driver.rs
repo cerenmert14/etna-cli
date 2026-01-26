@@ -1014,6 +1014,7 @@ pub(crate) fn run_experiment(
     experiment: &ExperimentMetadata,
     short_circuit: bool,
     parallel: bool,
+    cli_params: &HashMap<String, String>,
 ) -> anyhow::Result<()> {
     tracing::info!(
         "Starting experiment '{}' with test: {:?}",
@@ -1049,6 +1050,7 @@ pub(crate) fn run_experiment(
         short_circuit: bool,
         parallel: bool,
         custom_languages: Vec<CustomLanguage>,
+        cli_params: &HashMap<String, String>,
     ) -> anyhow::Result<()> {
         let lang = marauders::Language::name_to_language(&test.language, &custom_languages)
             .with_context(|| format!("language '{}' is not known or supported", test.language))?;
@@ -1080,10 +1082,16 @@ pub(crate) fn run_experiment(
 
         if let Some(params_) = &test.params {
             for (key, value) in params_.iter() {
-                tracing::trace!("Adding parameter: {} = {}", key, value);
+                tracing::trace!("Adding test parameter: {} = {}", key, value);
                 params.insert(key.clone(), value.to_string());
             }
         };
+
+        // CLI params override test.params (highest precedence)
+        for (key, value) in cli_params.iter() {
+            tracing::trace!("Applying CLI param: {} = {}", key, value);
+            params.insert(key.clone(), value.clone());
+        }
 
         tracing::trace!(
             "Checking if all tasks for language '{}' and workload '{}' are already completed",
@@ -1169,6 +1177,7 @@ pub(crate) fn run_experiment(
         short_circuit,
         parallel,
         custom_languages,
+        cli_params,
     );
     if let Err(e) = &result {
         tracing::error!("Experiment failed with error: {}", e);

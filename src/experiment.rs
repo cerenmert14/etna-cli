@@ -24,7 +24,41 @@ impl ExperimentMetadata {
             .exists()
     }
     pub(crate) fn workloads(&self) -> Vec<WorkloadMetadata> {
-        todo!()
+        let workloads_path = self.path.join("workloads");
+        let mut workloads = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir(&workloads_path) {
+            for entry in entries.flatten() {
+                let lang_path = entry.path();
+                if lang_path.is_dir() {
+                    if let Ok(lang_entries) = std::fs::read_dir(&lang_path) {
+                        for lang_entry in lang_entries.flatten() {
+                            let workload_path = lang_entry.path();
+                            if workload_path.is_dir() {
+                                // It is onl;y a workload if it has a `steps.json` file
+                                if !workload_path.join("steps.json").exists() {
+                                    continue;
+                                }
+                                if let Some(workload_name) =
+                                    workload_path.file_name().and_then(|n| n.to_str())
+                                {
+                                    if let Some(language_name) =
+                                        lang_path.file_name().and_then(|n| n.to_str())
+                                    {
+                                        workloads.push(WorkloadMetadata {
+                                            name: workload_name.to_string(),
+                                            language: language_name.to_string(),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        workloads
     }
 
     pub(crate) fn hash(&self) -> anyhow::Result<String> {

@@ -3,6 +3,14 @@ use std::{env, path::PathBuf};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 
+/// Parse a key=value pair for CLI parameters
+fn parse_key_value(s: &str) -> Result<(String, String), String> {
+    let pos = s
+        .find('=')
+        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
+    Ok((s[..pos].to_string(), s[pos + 1..].to_string()))
+}
+
 use etna::{
     commands::{
         self,
@@ -13,15 +21,10 @@ use etna::{
     store::Store,
 };
 
-
 use tracing::Level;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
-    filter,
-    fmt,
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    EnvFilter, Layer as _,
+    filter, fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer as _,
 };
 
 /// Call this early in `main`. Keep the returned `WorkerGuard` alive
@@ -31,8 +34,7 @@ pub fn init_tracing() -> anyhow::Result<WorkerGuard> {
     // - If RUST_LOG exists, use it.
     // - Else default to `info` and clamp some noisy modules.
     let mut base_filter = if env::var_os("RUST_LOG").is_some() {
-        EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new("info"))
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
     } else {
         // You can add more directives here if you like.
         EnvFilter::new("info,marauders=error,ignore=error")
@@ -73,16 +75,15 @@ pub fn init_tracing() -> anyhow::Result<WorkerGuard> {
     let info_only_filter = filter::filter_fn(|meta| meta.level() == &Level::INFO);
     let stdout_info_plain = fmt::layer()
         .with_writer(std::io::stdout)
-        .with_ansi(false)      // plain
-        .with_target(false)    // just the message
+        .with_ansi(false) // plain
+        .with_target(false) // just the message
         .with_level(false)
         .without_time()
         .with_filter(info_only_filter);
 
     //  (b) WARN/ERROR with small colored headers so they’re visible
-    let warn_error_filter = filter::filter_fn(|meta| {
-        matches!(*meta.level(), Level::WARN | Level::ERROR)
-    });
+    let warn_error_filter =
+        filter::filter_fn(|meta| matches!(*meta.level(), Level::WARN | Level::ERROR));
     let stdout_warn_err = fmt::layer()
         .with_writer(std::io::stdout)
         .with_ansi(true)
@@ -112,8 +113,6 @@ pub fn init_tracing() -> anyhow::Result<WorkerGuard> {
     Ok(guard)
 }
 
-
-
 fn main() -> anyhow::Result<()> {
     let _guard = init_tracing()?;
     // Invoke the CLI
@@ -126,7 +125,9 @@ pub(crate) fn run() -> anyhow::Result<()> {
     // Load the manager
     if let Command::Setup { .. } = &cli.command {
         // Skip loading the manager for setup command
-        return commands::config::setup::invoke(matches!(cli.command, Command::Setup { overwrite } if overwrite));
+        return commands::config::setup::invoke(
+            matches!(cli.command, Command::Setup { overwrite } if overwrite),
+        );
     }
 
     let mut mgr = Manager::load().context("All commands other than `etna setup` require a valid configuration, please make sure you ran `etna setup` first")?;
@@ -161,13 +162,14 @@ pub(crate) fn run() -> anyhow::Result<()> {
                         register,
                         local_store,
             } => commands::experiment::new::invoke(mgr, name, path, overwrite, register,  local_store),
-            ExperimentCommand::Run { name: _, tests, short_circuit, parallel } => commands::experiment::run::invoke(mgr, experiment.unwrap(), tests, short_circuit, parallel),
+            ExperimentCommand::Run { name: _, tests, short_circuit, parallel, params } => commands::experiment::run::invoke(mgr, experiment.unwrap(), tests, short_circuit, parallel, params),
             ExperimentCommand::Show {
                         hash,
                         name,
                         show_all,
                     } => commands::experiment::show::invoke(hash, name, show_all),
-            ExperimentCommand::Visualize { name: _, figure, tests, groupby, aggby, metric, buckets, max, visualization_type } => commands::experiment::visualize::invoke(mgr, experiment.unwrap(), figure, tests, groupby, aggby, metric, buckets, max, visualization_type),
+            ExperimentCommand::Visualize { name: _, figure, tests, groupby, aggby, metric, buckets, max, visualization_type, hatched } => commands::experiment::visualize::invoke(mgr, experiment.unwrap(), figure, tests, groupby, aggby, metric, buckets, max, visualization_type, hatched),
+            ExperimentCommand::VisualizeJson { input, output } => commands::experiment::visualize::draw_bucket_chart_from_json(&input, &output),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -206,7 +208,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             } else {
                 mgr.store
             };
-            
+
             match store_command {
             StoreCommand::Write {
                 experiment: _,
@@ -268,6 +270,10 @@ enum ExperimentCommand {
         /// Note: Parallel execution requires the run to be pure, if it's effectful, it may lead to unexpected results.
         #[clap(short = 'p', long, default_value = "false")]
         parallel: bool,
+        /// Additional parameters in key=value format
+        /// These override parameters defined in test JSON files
+        #[clap(long, value_parser = parse_key_value)]
+        params: Vec<(String, String)>,
     },
     #[clap(name = "show", about = "Show the details of an experiment")]
     Show {
@@ -315,6 +321,19 @@ enum ExperimentCommand {
         /// [possible_values(line, bar, bucket)]
         #[clap(short, long, default_value = "VisualizationType::Bucket")]
         visualization_type: VisualizationType,
+        /// Indices of groups to render with hatched pattern (0-indexed, comma-separated)
+        /// e.g., --hatched 1,3 for every other group starting from index 1
+        #[clap(long, value_parser, num_args = 0.., value_delimiter = ',')]
+        hatched: Vec<usize>,
+    },
+    #[clap(name = "visualize-json", about = "Render bucket chart from a pre-computed JSON file")]
+    VisualizeJson {
+        /// Input JSON file path
+        #[clap(short, long)]
+        input: PathBuf,
+        /// Output PNG file path
+        #[clap(short, long)]
+        output: PathBuf,
     },
 }
 #[derive(Debug, Subcommand)]
@@ -468,6 +487,7 @@ impl Command {
                 ExperimentCommand::Run { name, .. } => name.as_ref(),
                 ExperimentCommand::Show { name, .. } => name.as_ref(),
                 ExperimentCommand::Visualize { name, .. } => name.as_ref(),
+                ExperimentCommand::VisualizeJson { .. } => None,
             },
             Command::Workload(wl) => match wl {
                 WorkloadCommand::AddWorkload { experiment, .. } => experiment.as_ref(),
@@ -490,6 +510,7 @@ impl Command {
                 ExperimentCommand::Run { .. } => true,
                 ExperimentCommand::Show { .. } => true,
                 ExperimentCommand::Visualize { .. } => true,
+                ExperimentCommand::VisualizeJson { .. } => false,
             },
             Command::Workload(wl) => match wl {
                 WorkloadCommand::AddWorkload { .. } => true,

@@ -1,6 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::Context;
+use serde_json::Value;
 use tracing::info;
 
 use crate::{
@@ -38,9 +42,14 @@ pub fn invoke(
     tests: Vec<String>,
     short_circuit: bool,
     parallel: bool,
+    cli_params: Vec<(String, String)>,
 ) -> anyhow::Result<()> {
     tracing::trace!("running experiment with name '{:?}'", experiment.name);
-    let tests = get_tests(tests, &experiment).context("Failed to get tests for the experiment")?;
+    let mut tests =
+        get_tests(tests, &experiment).context("Failed to get tests for the experiment")?;
+
+    // Convert CLI params to HashMap
+    let cli_params: HashMap<String, String> = cli_params.into_iter().collect();
 
     // Load metrics from the store
     mgr.store.load_metrics()?;
@@ -49,9 +58,21 @@ pub fn invoke(
 
     let mgr = Arc::new(Mutex::new(mgr));
 
-    for test in &tests {
+    for test in &mut tests {
         info!("Running test: {}", test);
-        run_experiment(mgr.clone(), test, &experiment, short_circuit, parallel)?;
+        for p in cli_params.iter() {
+            test.params
+                .as_mut()
+                .and_then(|params| params.insert(p.0.clone(), Value::String(p.1.clone())));
+        }
+        run_experiment(
+            mgr.clone(),
+            test,
+            &experiment,
+            short_circuit,
+            parallel,
+            &cli_params,
+        )?;
     }
 
     Ok(())
