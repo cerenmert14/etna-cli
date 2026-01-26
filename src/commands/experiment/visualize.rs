@@ -936,9 +936,9 @@ pub fn draw_bar_chart(
 
     // The following code creates the sizes of the image;
     // Image width is fixed at 4000px.
-    let height = 4000.0;
+    let height = 2000.0;
     // The ratio of the height is calculated based on the number of groups.
-    let ratio = 2.0 * (0.99_f64.powi(groups.len() as i32));
+    let ratio = 1.0 * (0.99_f64.powi(groups.len() as i32));
     let width = (height / ratio).round();
     // The width of each bar is calculated based on the number of groups.
     // The margins between the bars are 10% of the bar width.
@@ -1050,10 +1050,10 @@ pub fn draw_bar_chart(
             "../../../assets/SourceCodePro-Medium.ttf"
         ))
         .expect("Failed to load font");
-        let scale = bar_width * 0.1;
+        let scale = bar_width * 0.15;
         let (text_width, text_height) = rendered_text_width_and_height(&label, &font, scale);
         let text_x = vmargin * 0.75 - text_width - 5.0; // 5px padding
-        let text_y = tick_y + (2.0 - text_height) / 2.0; // Center the text vertically
+        let text_y = tick_y - text_height / 3.0; // Center the text vertically
         tracing::trace!(
             "Drawing tick label '{}' at ({}, {}) with color {:?}",
             label,
