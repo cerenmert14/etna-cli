@@ -1,10 +1,11 @@
-use std::{fmt::Display, io::Write};
+use std::{fmt::Display, io::Write, path::Path};
 
 use ab_glyph::{Font, FontRef, ScaleFont as _};
 use anyhow::Context as _;
 use image::{Rgb, RgbImage};
 use imageproc::{drawing::draw_filled_rect_mut, rect::Rect};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::{
@@ -99,6 +100,7 @@ pub fn invoke(
     buckets: Vec<f64>,
     max: Option<f64>,
     typ_: VisualizationType,
+    hatched: Vec<usize>,
 ) -> anyhow::Result<()> {
     tracing::trace!("visualizing experiment with name '{:?}'", experiment.name);
 
@@ -123,6 +125,7 @@ pub fn invoke(
             aggby,
             metric,
             buckets,
+            hatched,
         ),
         VisualizationType::Bar => {
             draw_bar_chart(
@@ -431,6 +434,7 @@ fn draw_bucket_chart(
     _aggby: Vec<String>,
     metric: MetricType,
     mut buckets: Vec<f64>,
+    hatched_indices: Vec<usize>,
 ) -> anyhow::Result<()> {
     let mut groups = groupby
         .iter()
@@ -583,6 +587,7 @@ fn draw_bucket_chart(
             bucket_index: i,
             fill_color: colors[i % colors.len()],
             legend: false,
+            hatched: hatched_indices.contains(&i),
         };
         let group = group
             .iter()
@@ -632,6 +637,7 @@ fn draw_bucket_chart(
             bucket_index: i,
             legend: true,
             fill_color: colors[i % colors.len()],
+            hatched: hatched_indices.contains(&i),
         };
         let group = group
             .iter()
@@ -658,6 +664,7 @@ pub struct BucketDrawConfig {
     pub bucket_index: usize,
     pub legend: bool,
     pub fill_color: Rgb<u8>,
+    pub hatched: bool,
 }
 
 fn luma(r: u8, g: u8, b: u8) -> f64 {
@@ -688,6 +695,44 @@ fn rendered_text_width_and_height(text: &str, font: &FontRef, font_size: f64) ->
     let height = scaled_font.height() as f64;
 
     (width as f64, height)
+}
+
+/// Draw diagonal hatch lines over a rectangular region
+fn draw_hatch_lines(
+    image: &mut RgbImage,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    line_color: Rgb<u8>,
+    spacing: i32,
+    line_width: i32,
+) {
+    // Draw diagonal lines from bottom-left to top-right
+    let x_end = x + width as i32;
+    let y_end = y + height as i32;
+
+    // Start from the left side and bottom side
+    let mut start_x = x - height as i32;
+    while start_x < x_end {
+        // Calculate line endpoints clipped to the rectangle
+        let x1 = start_x.max(x);
+        let y1 = (y_end - (x1 - start_x)).min(y_end).max(y);
+        let x2 = (start_x + height as i32).min(x_end);
+        let y2 = (y_end - (x2 - start_x)).min(y_end).max(y);
+
+        // Draw the line with thickness
+        for offset in 0..line_width {
+            imageproc::drawing::draw_line_segment_mut(
+                image,
+                ((x1 + offset) as f32, y1 as f32),
+                ((x2 + offset) as f32, y2 as f32),
+                line_color,
+            );
+        }
+
+        start_x += spacing;
+    }
 }
 
 fn draw_buckets_line(
@@ -773,6 +818,23 @@ fn draw_buckets_line(
 
         draw_filled_rect_mut(image, rect, cfg.fill_color);
 
+        // Draw hatch lines if enabled
+        if cfg.hatched {
+            let hatch_color = Rgb([255u8, 255u8, 255u8]); // White hatching
+            let spacing = (cfg.bucket_height * 0.15).max(8.0) as i32;
+            let line_width = (cfg.bucket_height * 0.04).max(2.0) as i32;
+            draw_hatch_lines(
+                image,
+                x as i32,
+                y as i32,
+                bucket_width as u32,
+                cfg.bucket_height as u32,
+                hatch_color,
+                spacing,
+                line_width,
+            );
+        }
+
         // Write the bucket label
         let label = if cfg.legend {
             format!("{} - {}", begin, end)
@@ -797,6 +859,22 @@ fn draw_buckets_line(
                 text_y,
                 text_color
             );
+
+            // Draw solid background behind text for readability on hatched bars
+            if cfg.hatched {
+                let padding = scale * 0.2;
+                let bg_x = text_x - padding;
+                let bg_y = text_y - padding;
+                let bg_width = text_width + 2.0 * padding;
+                let bg_height = text_height + 2.0 * padding;
+
+                draw_filled_rect_mut(
+                    image,
+                    Rect::at(bg_x as i32, bg_y as i32).of_size(bg_width as u32, bg_height as u32),
+                    cfg.fill_color,
+                );
+            }
+
             imageproc::drawing::draw_text_mut(
                 image,
                 text_color,
@@ -1061,6 +1139,113 @@ pub fn draw_bar_chart(
     let path = experiment.path.join("figures").join(name);
     tracing::info!("Saving image to: {}", path.display());
     image.save(path).expect("Failed to save image");
+
+    Ok(())
+}
+
+/// JSON format for pre-computed bucket chart data
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BucketChartJson {
+    pub num_buckets: usize,
+    pub chart_names: Vec<String>,
+    pub chart_colors: Vec<String>,
+    pub bar_styles: Vec<String>,
+    pub bucket_values: Vec<Vec<String>>,
+}
+
+/// Parse a hex color string (e.g., "#6d0e56") to Rgb<u8>
+fn parse_hex_color(hex: &str) -> Rgb<u8> {
+    let hex = hex.trim_start_matches('#');
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+    Rgb([r, g, b])
+}
+
+/// Draw a bucket chart from a pre-computed JSON file
+pub fn draw_bucket_chart_from_json(input_path: &Path, output_path: &Path) -> anyhow::Result<()> {
+    // Read and parse JSON file
+    let json_content = std::fs::read_to_string(input_path)
+        .with_context(|| format!("Failed to read JSON file at {}", input_path.display()))?;
+    let chart_data: BucketChartJson = serde_json::from_str(&json_content)
+        .with_context(|| format!("Failed to parse JSON file at {}", input_path.display()))?;
+
+    let num_rows = chart_data.bucket_values.len();
+
+    // Calculate image dimensions based on number of rows
+    let width = 4000.0;
+    let ratio = 0.2 + 0.1 * (num_rows as f64);
+    let height = (width * ratio).round();
+    let bucket_height = height / (num_rows as f64 * 1.1 + 0.1);
+    let margin = bucket_height * 0.1;
+
+    let mut image = RgbImage::new(width as u32, height as u32);
+
+    // Fill with white background
+    draw_filled_rect_mut(
+        &mut image,
+        Rect::at(0, 0).of_size(width as u32, height as u32),
+        Rgb([255, 255, 255]),
+    );
+
+    // Draw each row
+    for (i, bucket_values) in chart_data.bucket_values.iter().enumerate() {
+        // Parse the color for this row
+        let base_color = if i < chart_data.chart_colors.len() {
+            parse_hex_color(&chart_data.chart_colors[i])
+        } else {
+            Rgb([0x00, 0x00, 0x00]) // Default to black
+        };
+
+        // Check if this row should be hatched
+        let hatched = if i < chart_data.bar_styles.len() {
+            chart_data.bar_styles[i] == "hatched"
+        } else {
+            false
+        };
+
+        // Convert bucket values to the format expected by draw_buckets_line
+        // Each bucket count becomes a vec with that many dummy elements
+        let buckets: Vec<((f64, f64), Vec<f64>)> = bucket_values
+            .iter()
+            .enumerate()
+            .map(|(bucket_idx, count_str)| {
+                let count: usize = count_str.parse().unwrap_or(0);
+                // Create dummy bucket bounds
+                let start = bucket_idx as f64;
+                let end = (bucket_idx + 1) as f64;
+                // Create a vec with `count` elements (the actual values don't matter,
+                // only the length is used for bucket width calculation)
+                ((start, end), vec![1.0; count])
+            })
+            .collect();
+
+        let cfg = BucketDrawConfig {
+            width,
+            height,
+            margin,
+            bucket_height,
+            bucket_index: i,
+            fill_color: base_color,
+            legend: false,
+            hatched,
+        };
+
+        let label = if i < chart_data.chart_names.len() {
+            &chart_data.chart_names[i]
+        } else {
+            ""
+        };
+
+        draw_buckets_line(&mut image, label, buckets, cfg);
+    }
+
+    // Save the image
+    tracing::info!("Saving image to: {}", output_path.display());
+    image
+        .save(output_path)
+        .with_context(|| format!("Failed to save image to {}", output_path.display()))?;
 
     Ok(())
 }
