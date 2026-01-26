@@ -81,6 +81,7 @@ pub(crate) fn write_row<W: std::io::Write>(
             .map_or("NaN".to_string(), |t| format!("{:.4}", t))
     }));
 
+    tracing::debug!("Writing row: {:?}", row);
     writer
         .write_all(row.join(",").as_bytes())
         .context("Failed to write row")?;
@@ -108,13 +109,17 @@ pub fn invoke(
         anyhow::bail!("No tests provided. Please specify at least one test to run.");
     }
 
-    let agg_metrics = get_agg_metrics(&experiment, &mgr.store, &figure_name, &tests, &aggby)?;
+    let mut store = Store::new(experiment.store.clone())
+        .context("Failed to load the store for visualization")?;
+    store.load_metrics()?;
+
+    let agg_metrics = get_agg_metrics(&experiment, &store, &figure_name, &tests, &aggby)?;
 
     tracing::trace!("Aggregated metrics: {:#?}", agg_metrics);
 
-    tracing::trace!("Number of aggregated metrics: {}", agg_metrics.len());
+    tracing::debug!("Number of aggregated metrics: {}", agg_metrics.len());
 
-    tracing::trace!("Groupby fields: {:#?}", groupby);
+    tracing::debug!("Groupby fields: {:#?}", groupby);
 
     match typ_ {
         VisualizationType::Bucket => draw_bucket_chart(
@@ -122,20 +127,17 @@ pub fn invoke(
             &figure_name,
             agg_metrics,
             groupby,
-            aggby,
             metric,
             buckets,
             hatched,
         ),
         VisualizationType::Bar => {
             draw_bar_chart(
-                mgr,
                 &experiment,
                 figure_name,
-                tests,
+                agg_metrics,
                 groupby,
                 AggregationType::Sum, // Assuming sum for bar chart
-                aggby,
                 AggregationType::Avg, // Assuming avg for bar chart
                 metric,
                 max,
@@ -194,7 +196,6 @@ fn get_agg_metrics(
     let metrics = tests
         .iter()
         .flat_map(|test| {
-            tracing::trace!("Processing test: {}", test);
             store.metrics.iter().filter_map(|m| {
                 let language = m.data.get("language").and_then(serde_json::Value::as_str)?;
                 let workload = m.data.get("workload").and_then(serde_json::Value::as_str)?;
@@ -224,7 +225,7 @@ fn get_agg_metrics(
         })
         .collect::<Vec<_>>();
 
-    tracing::trace!("Aggregated metrics by: {:#?}", aggby);
+    tracing::debug!("Aggregated metrics by: {:#?}", aggby);
 
     tracing::trace!("metrics: {:#?}", &metrics[..]);
 
@@ -415,6 +416,7 @@ fn get_agg_metrics(
                 "shrinks": avgs.2,
                 "time": avgs.3,
             });
+            tracing::debug!("Writing to {}: {:#?}", raw_data_path.display(), data);
             let _ = write_row(&mut raw_data_file, &data, aggby);
 
             data.as_object().cloned()
@@ -431,7 +433,6 @@ fn draw_bucket_chart(
     figure_name: &str,
     agg_metrics: Vec<Map<String, Value>>,
     groupby: Vec<String>,
-    _aggby: Vec<String>,
     metric: MetricType,
     mut buckets: Vec<f64>,
     hatched_indices: Vec<usize>,
@@ -897,24 +898,16 @@ fn draw_buckets_line(
 /// The bars will show the total of a metric, aggregated
 #[allow(clippy::too_many_arguments)]
 pub fn draw_bar_chart(
-    mgr: Manager,
     experiment: &ExperimentMetadata,
     figure_name: String,
-    tests: Vec<String>,
+    agg_metrics: Vec<Map<String, Value>>,
     groupby: Vec<String>,
     _group: AggregationType,
-    aggby: Vec<String>,
     _agg: AggregationType,
     metric: MetricType,
     max: Option<f64>,
 ) -> anyhow::Result<()> {
     tracing::trace!("Drawing bar chart for experiment '{:?}'", experiment.name);
-
-    if tests.is_empty() {
-        anyhow::bail!("No tests provided. Please specify at least one test to run.");
-    }
-
-    let agg_metrics = get_agg_metrics(experiment, &mgr.store, &figure_name, &tests, &aggby)?;
 
     let mut groups = groupby
         .iter()
