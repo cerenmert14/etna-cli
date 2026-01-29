@@ -7,6 +7,9 @@ use anyhow::Context;
 use git2::{build::CheckoutBuilder, AutotagOption, FetchOptions, Repository};
 use tracing::debug;
 
+const ETNA_COMMITTER_NAME: &str = "ETNA Commit Bot";
+const ETNA_COMMITTER_EMAIL: &str = "etna-bot@users.noreply.github.com";
+
 pub(crate) fn initialize_git_repo(path: &PathBuf, msg: &str) -> anyhow::Result<()> {
     // Initialize a git repository
     let git_repo = git2::Repository::init(path).context("Failed to initialize git repository")?;
@@ -18,7 +21,16 @@ pub(crate) fn initialize_git_repo(path: &PathBuf, msg: &str) -> anyhow::Result<(
     let tree_id = index.write_tree().context("Failed to write tree")?;
     let tree = git_repo.find_tree(tree_id).context("Failed to find tree")?;
 
-    let signature = git2::Signature::now("Alperen Keles", "akeles@umd.edu")
+    if let Ok(head) = git_repo.head() {
+        if let Ok(head_commit) = head.peel_to_commit() {
+            if head_commit.tree_id() == tree_id {
+                debug!("No changes detected; skipping commit");
+                return Ok(());
+            }
+        }
+    }
+
+    let signature = git2::Signature::now(ETNA_COMMITTER_NAME, ETNA_COMMITTER_EMAIL)
         .context("Failed to create signature")?;
     git_repo
         .commit(Some("HEAD"), &signature, &signature, msg, &tree, &[])
@@ -86,7 +98,7 @@ pub(crate) fn commit(repo_path: &Path, message: &str) -> anyhow::Result<String> 
     let tree_id = index.write_tree().context("Failed to write tree")?;
     let tree = git_repo.find_tree(tree_id).context("Failed to find tree")?;
 
-    let signature = git2::Signature::now("ETNA Commit Bot", "akeles@umd.edu")
+    let signature = git2::Signature::now(ETNA_COMMITTER_NAME, ETNA_COMMITTER_EMAIL)
         .context("Failed to create signature")?;
 
     git_repo

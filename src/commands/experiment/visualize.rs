@@ -1,7 +1,7 @@
 use std::{fmt::Display, io::Write, path::Path};
 
 use ab_glyph::{Font, FontRef, ScaleFont as _};
-use anyhow::Context as _;
+use anyhow::Context;
 use image::{Rgb, RgbImage};
 use imageproc::{drawing::draw_filled_rect_mut, rect::Rect};
 use itertools::Itertools;
@@ -176,20 +176,34 @@ fn get_agg_metrics(
 
     let tests = tests
         .iter()
-        .flat_map(|test| {
+        .map(|test| {
             let test_path = experiment
                 .path
                 .join("tests")
                 .join(test)
                 .with_extension("json");
             let test: Vec<Test> =
-                serde_json::from_str(&std::fs::read_to_string(&test_path).unwrap_or_else(|_| {
-                    panic!("Failed to read test file at {}", test_path.display())
-                }))
-                .unwrap();
-            test
+                serde_json::from_str(&std::fs::read_to_string(&test_path).with_context(|| {
+                    format!(
+                        "Could not read test at {}, available tests are:\n{}",
+                        test_path.display(),
+                        std::fs::read_dir(experiment.path.join("tests"))
+                            .unwrap()
+                            .filter_map(|e| e.ok())
+                            .map(|e| e.file_name().to_string_lossy().to_string())
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    )
+                })?)?;
+            Result::<Vec<Test>, anyhow::Error>::Ok(test)
         })
-        .collect::<Vec<Test>>();
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let tests: Vec<Test> = tests.into_iter().flatten().collect();
+
+    if tests.is_empty() {
+        anyhow::bail!("No tests loaded for visualization");
+    }
 
     tracing::trace!("Loaded {} tests for visualization", tests.len());
 

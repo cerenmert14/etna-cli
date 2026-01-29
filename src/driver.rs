@@ -1201,7 +1201,8 @@ fn log_process_output(
     tracing::debug!("stderr: {}", stderr);
 
     if !output.status.success() {
-        tracing::warn!("Process failed with status: {}", output.status);
+        tracing::error!("Process failed with status: {}", output.status);
+        tracing::error!("stderr: {}", stderr);
     }
 
     // Look for JSON objects in the output
