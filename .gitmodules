@@ -1,0 +1,3 @@
+[submodule "workloads/Rust/etna-rs-utils"]
+	path = workloads/Rust/etna-rs-utils
+	url = https://github.com/alpaylan/etna-rs-utils.git
