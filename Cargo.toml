@@ -3,6 +3,7 @@ name = "etna"
 version = "0.1.0"
 edition = "2021"
 default-run = "etna"
+repository = "https://github.com/alpaylan/etna-cli"
 
 [dependencies]
 ab_glyph = "0.2.30"
@@ -45,3 +46,8 @@ path = "src/cli.rs"
 [[bin]]
 name = "etna-server"
 path = "src/server.rs"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
