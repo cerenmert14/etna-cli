@@ -1,3 +1,4 @@
+#[cfg(unix)]
 pub mod bash;
 pub mod check;
 pub mod config;

@@ -221,6 +221,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
     },
         Command::Analyze(_analyze_command) => todo!(),
         Command::Check { restore, remove } => commands::check::integrity::invoke(mgr, restore, remove),
+        #[cfg(unix)]
         Command::Bash { path } => commands::bash::invoke(mgr, path),
     }
     .context("Aborting run due to an error")
@@ -467,6 +468,7 @@ enum Command {
         about = "Run analysis on results of the experiments"
     )]
     Analyze(AnalyzeCommand),
+    #[cfg(unix)]
     #[command(
         name = "bash",
         about = "Generate a bash script from a workload configuration"

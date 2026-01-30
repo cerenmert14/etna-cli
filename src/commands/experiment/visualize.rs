@@ -91,7 +91,7 @@ pub(crate) fn write_row<W: std::io::Write>(
 
 #[allow(clippy::too_many_arguments)]
 pub fn invoke(
-    mgr: Manager,
+    _mgr: Manager,
     experiment: ExperimentMetadata,
     figure_name: String,
     tests: Vec<String>,
