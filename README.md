@@ -9,7 +9,7 @@ This repository hosts a command line interface (CLI) for ETNA, which allows user
 You can easly install the ETNA CLI, you can use the following CURL command:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/alpaylan/etna-cli/releases/download/v0.1.0/etna-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/alpaylan/etna-cli/releases/latest/download/etna-installer.sh | sh             
 ```
 
 ## Coverage
