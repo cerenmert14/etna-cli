@@ -1,23 +1,20 @@
-use anyhow::Context;
-use jaq_interpret::{Ctx, FilterT as _, RcIter, Val};
+use crate::{
+    service::{store::remove_metrics, types::RemoveMetricsOptions},
+    store::Store,
+};
 
-use crate::{commands::store::lib::jaq_compile, store::Store};
-
+/// Remove metrics from the store using the service layer.
+///
+/// The CLI handles argument parsing and delegates to the service layer
+/// for the actual removal logic.
 pub fn invoke(mut store: Store, filter: String) -> anyhow::Result<()> {
-    let filter = jaq_compile(&filter).context("Failed to compile jq query")?;
+    // Convert CLI args to service options
+    let options = RemoveMetricsOptions { filter };
 
-    store.retain(|metric| {
-        let inputs = RcIter::new(core::iter::empty());
-        let mut out = filter.run((
-            Ctx::new([], &inputs),
-            Val::from(serde_json::Value::Object(metric.data.clone())),
-        ));
-        let result = out.next();
-        let Some(Ok(Val::Bool(true))) = result else {
-            return true;
-        };
-        false
-    });
+    // Call service layer
+    let removed_count = remove_metrics(&mut store, options)?;
+
+    tracing::info!("Removed {} metrics from the store", removed_count);
 
     Ok(())
 }

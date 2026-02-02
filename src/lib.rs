@@ -7,6 +7,8 @@ pub mod manager;
 // pub mod process;
 pub mod open_pbt_format;
 pub mod property;
+pub mod server;
+pub mod service;
 pub mod store;
 pub mod strategy;
 pub mod workload;

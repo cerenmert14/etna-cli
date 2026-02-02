@@ -1,7 +1,6 @@
-use anyhow::Context;
 use clap::Subcommand;
 
-use crate::{commands::store::lib::handle_jq_query, store::Store};
+use crate::{service::store::query_metrics, store::Store};
 
 #[derive(Debug, Subcommand)]
 pub enum QueryOption {
@@ -50,6 +49,16 @@ pub enum QueryOption {
     },
 }
 
+/// Query metrics from the store using the service layer.
+///
+/// The CLI handles argument parsing and delegates to the service layer
+/// for the actual query logic.
 pub fn invoke(store: Store, filter: String) -> anyhow::Result<()> {
-    handle_jq_query(store, filter).context("Failed to handle jq query")
+    // Call service layer
+    let result = query_metrics(&store, &filter)?;
+
+    // Format and display output
+    println!("{}", serde_json::to_string_pretty(&result.metrics)?);
+
+    Ok(())
 }

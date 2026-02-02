@@ -11,6 +11,7 @@ use serde_json::{Map, Value};
 use crate::{
     experiment::{ExperimentMetadata, Test},
     manager::Manager,
+    open_pbt_format::Status,
     store::Store,
 };
 
@@ -288,10 +289,10 @@ fn get_agg_metrics(
             // if it timed out, finished, gave up, or aborted, we want to return NaN.
             let timed_out = agg_metrics.iter().find_map(|m| {
                 m.data
-                    .get("result")
+                    .get("status")
                     .and_then(serde_json::Value::as_str)
                     .and_then(|t| {
-                        if t == "timed_out" {
+                        if t == Status::TimedOut.to_string().as_str() {
                             m.data.get("timeout").and_then(serde_json::Value::as_f64)
                         } else {
                             None
@@ -320,7 +321,7 @@ fn get_agg_metrics(
 
             // let aborted = agg_metrics.iter().any(|m| {
             //     m.data
-            //         .get("result")
+            //         .get("status")
             //         .map(serde_json::Value::as_str)
             //         .unwrap()
             //         .map(|t| t == "aborted")
@@ -347,7 +348,7 @@ fn get_agg_metrics(
 
             // let finished_or_gave_up = agg_metrics.iter().any(|m| {
             //     m.data
-            //         .get("result")
+            //         .get("status")
             //         .map(serde_json::Value::as_str)
             //         .unwrap()
             //         .map(|t| t == "finished" || t == "gave_up")
@@ -713,6 +714,7 @@ fn rendered_text_width_and_height(text: &str, font: &FontRef, font_size: f64) ->
 }
 
 /// Draw diagonal hatch lines over a rectangular region
+#[allow(clippy::too_many_arguments)]
 fn draw_hatch_lines(
     image: &mut RgbImage,
     x: i32,

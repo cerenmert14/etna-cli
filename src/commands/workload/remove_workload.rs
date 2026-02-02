@@ -1,36 +1,23 @@
-use std::fs;
+use crate::{experiment::ExperimentMetadata, service::workload::remove_workload};
 
-use anyhow::Context;
-
-use crate::{experiment::ExperimentMetadata, git_driver};
-
+/// Remove a workload from an experiment using the service layer.
+///
+/// The CLI handles argument parsing and delegates to the service layer
+/// for the actual workload removal logic.
 pub fn invoke(
     experiment: ExperimentMetadata,
     language: String,
     workload: String,
 ) -> anyhow::Result<()> {
-    // Check if the workload already exists
-    if !experiment.has_workload(&language, &workload) {
-        anyhow::bail!("Workload '{}/{}' does not exist", language, workload);
-    }
+    // Call service layer
+    remove_workload(&experiment, &language, &workload)?;
 
-    // Remove the workload from the experiment directory
-    let dest_path = experiment
-        .path
-        .join("workloads")
-        .join(&language)
-        .join(&workload);
-
-    fs::remove_dir_all(&dest_path).context(format!(
-        "Failed to remove workload at '{}'",
-        dest_path.display()
-    ))?;
-
-    // Create a commit
-    git_driver::commit(
-        &experiment.path,
-        format!("remove '{language}/{workload}'").as_str(),
-    )?;
+    tracing::info!(
+        "Workload '{}/{}' removed from experiment '{}'",
+        language,
+        workload,
+        experiment.name
+    );
 
     Ok(())
 }

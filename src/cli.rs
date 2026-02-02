@@ -220,6 +220,13 @@ pub(crate) fn run() -> anyhow::Result<()> {
         }
     },
         Command::Analyze(_analyze_command) => todo!(),
+        Command::Mutation(mutation_command) => match mutation_command {
+            MutationCommand::List { path } => commands::mutation::list::invoke(path),
+            MutationCommand::Set { variant, path, glob } => {
+                commands::mutation::set::invoke(path, variant, glob)
+            }
+            MutationCommand::Reset { path } => commands::mutation::reset::invoke(path),
+        },
         Command::Check { restore, remove } => commands::check::integrity::invoke(mgr, restore, remove),
         #[cfg(unix)]
         Command::Bash { path } => commands::bash::invoke(mgr, path),
@@ -327,7 +334,10 @@ enum ExperimentCommand {
         #[clap(long, value_parser, num_args = 0.., value_delimiter = ',')]
         hatched: Vec<usize>,
     },
-    #[clap(name = "visualize-json", about = "Render bucket chart from a pre-computed JSON file")]
+    #[clap(
+        name = "visualize-json",
+        about = "Render bucket chart from a pre-computed JSON file"
+    )]
     VisualizeJson {
         /// Input JSON file path
         #[clap(short, long)]
@@ -438,6 +448,33 @@ enum AnalyzeCommand {
 }
 
 #[derive(Debug, Subcommand)]
+enum MutationCommand {
+    #[clap(name = "list", about = "List all mutations in a directory")]
+    List {
+        /// Path to the directory to scan for mutations
+        #[clap(short, long, default_value = ".")]
+        path: PathBuf,
+    },
+    #[clap(name = "set", about = "Activate a mutation variant")]
+    Set {
+        /// The variant name to activate
+        variant: String,
+        /// Path to the directory containing mutation files
+        #[clap(short, long, default_value = ".")]
+        path: PathBuf,
+        /// Optional glob pattern to filter files
+        #[clap(short, long)]
+        glob: Option<String>,
+    },
+    #[clap(name = "reset", about = "Reset all mutations to default")]
+    Reset {
+        /// Path to the directory to reset mutations in
+        #[clap(short, long, default_value = ".")]
+        path: PathBuf,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 enum Command {
     #[command(subcommand, name = "experiment", about = "Manage experiments")]
     Experiment(ExperimentCommand),
@@ -468,6 +505,8 @@ enum Command {
         about = "Run analysis on results of the experiments"
     )]
     Analyze(AnalyzeCommand),
+    #[command(subcommand, name = "mutation", about = "Manage mutations")]
+    Mutation(MutationCommand),
     #[cfg(unix)]
     #[command(
         name = "bash",

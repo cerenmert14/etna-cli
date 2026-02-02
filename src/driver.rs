@@ -218,8 +218,8 @@ fn task_completed(
                         return Some(true);
                     }
                     if m.data
-                        .get("result")
-                        .is_some_and(|v| v.as_str() == Some("timed_out"))
+                        .get("status")
+                        .is_some_and(|v| v.as_str() == Some(Status::TimedOut.to_string().as_str()))
                     {
                         timed_out = true;
                     }
@@ -505,9 +505,9 @@ fn run_canonical_serialized(
         workload,
         mutations
     );
-    marauders::run_reset_command(&workload_dir)?;
-
     let glob = format!("*.{}", marauders::Language::Rust.file_extension());
+    let mut project = marauders::Project::new(&workload_dir, Some(&glob))?;
+    marauders::reset_all(&mut project)?;
 
     for variant in mutations.iter() {
         tracing::trace!(
@@ -515,7 +515,7 @@ fn run_canonical_serialized(
             workload,
             variant
         );
-        marauders::run_set_command(&workload_dir, variant, Some(glob.as_str()))?;
+        marauders::set_variant(&mut project, variant)?;
     }
 
     // Run the build command for the canonical serializer
@@ -1062,10 +1062,11 @@ pub(crate) fn run_experiment(
             .join(test.language.as_str())
             .join(test.workload.as_str());
 
-        marauders::run_reset_command(&workload_dir)?;
+        let mut project = marauders::Project::new(&workload_dir, Some(&glob))?;
+        marauders::reset_all(&mut project)?;
 
         for variant in test.mutations.iter() {
-            marauders::run_set_command(&workload_dir, variant, Some(glob.as_str()))?;
+            marauders::set_variant(&mut project, variant)?;
         }
 
         let workload: Workload = load_workload(
@@ -1185,7 +1186,8 @@ pub(crate) fn run_experiment(
         tracing::info!("Experiment completed successfully");
     }
 
-    marauders::run_reset_command(&experiment.path)?;
+    let mut project = marauders::Project::new(&experiment.path, None)?;
+    marauders::reset_all(&mut project)?;
     result
 }
 
@@ -1203,6 +1205,24 @@ fn log_process_output(
     if !output.status.success() {
         tracing::error!("Process failed with status: {}", output.status);
         tracing::error!("stderr: {}", stderr);
+        store.push(Metric {
+            data: {
+                let mut error_context = context.clone();
+                error_context.insert(
+                    "status".to_owned(),
+                    Value::String(Status::Aborted.to_string()),
+                );
+                error_context.insert(
+                    "error".to_owned(),
+                    Value::String(format!(
+                        "Process failed with status: {}\nstderr: {}",
+                        output.status, stderr
+                    )),
+                );
+                error_context
+            },
+            hash: experiment_hash.to_string(),
+        })?;
     }
 
     // Look for JSON objects in the output
