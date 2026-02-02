@@ -27,7 +27,11 @@ pub fn invoke(path: PathBuf) -> Result<()> {
         info!("File: {}", relative_path.display());
 
         for mutation in &file_info.mutations {
-            let status = if mutation.active { "active" } else { "inactive" };
+            let status = if mutation.active {
+                "active"
+            } else {
+                "inactive"
+            };
             info!(
                 "  {} ({}) - lines {}-{}",
                 mutation.name, status, mutation.line, mutation.end_line

@@ -1,6 +1,4 @@
-use crate::{
-    experiment::ExperimentMetadata, manager::Manager, service::workload::add_workload,
-};
+use crate::{experiment::ExperimentMetadata, manager::Manager, service::workload::add_workload};
 
 /// Add a workload to an experiment using the service layer.
 ///
