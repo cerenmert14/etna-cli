@@ -19,7 +19,7 @@
       "Command": {
         "command": "${workload_path}/build_generator",
         "args": [
-          "!generator"
+          "!{generator}"
         ]
       }
     },

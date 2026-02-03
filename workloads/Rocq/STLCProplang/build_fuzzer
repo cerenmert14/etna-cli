@@ -24,7 +24,7 @@ fi
 fuzzer=$1
 
 # Validate the fuzzer name by looking up `*Fuzzer.v` in `Strategies` directory
-if [ ! -f "Strategies/$fuzzer"".v" ]; then
+if [ ! -f "Strategies/${fuzzer}"".v" ]; then
     echo "Error: The fuzzer name is invalid."
     # Provide a list of valid fuzzers
     echo "Valid fuzzers are:"
@@ -40,9 +40,9 @@ qc_path=$OPAM_SWITCH_PREFIX"/lib/coq/user-contrib/QuickChick"
 
 
 # 1. Generate extended version of the fuzzer
-fuzzer_path=$fuzzer"_test_runner.ml"
-extended_fuzzer_path=$fuzzer"_test_runner_ext.ml"
-extended_mli_path=$fuzzer"_test_runner_ext.mli"
+fuzzer_path=${fuzzer}"_test_runner.ml"
+extended_fuzzer_path=${fuzzer}"_test_runner_ext.ml"
+extended_mli_path=${fuzzer}"_test_runner_ext.mli"
 stub_path=$qc_path"/Stub.ml"
 
 
@@ -51,16 +51,16 @@ if [ ! $just_compile ]; then
     cp $stub_path $extended_fuzzer_path &&
     echo $'\n\n(* -----(Stub Ends)----- *)\n\n' >> $extended_fuzzer_path &&
     ## 1.2. Add the fuzzer to the extended fuzzer
-    cat $fuzzer_path >> $extended_fuzzer_path &&
+    cat ${fuzzer}_path >> $extended_fuzzer_path &&
     ## 1.3. Create the extended mli file
     touch $extended_mli_path &&
     ocamlc -c $extended_mli_path
 
     # 2. Build the fuzzer
     ## 2.1. Make it tail recursive
-    $qc_path"/cmdprefix.pl" $fuzzer"_test_runner_ext.ml" &&
-    $qc_path"/cmdsuffix.pl" $fuzzer"_test_runner_ext.ml"
+    $qc_path"/cmdprefix.pl" ${fuzzer}"_test_runner_ext.ml" &&
+    $qc_path"/cmdsuffix.pl" ${fuzzer}"_test_runner_ext.ml"
 fi
 ## 2.2. Run ocaml compiler
-ocamlfind ocamlopt -ccopt -Wno-error=implicit-function-declaration -afl-instrument -linkpkg -package unix -package str -package coq-core.plugins.extraction -thread -rectypes -w a -o $fuzzer"_exec" $fuzzer"_test_runner_ext.ml" $qc_path"/SHM.c" &&
+ocamlfind ocamlopt -ccopt -Wno-error=implicit-function-declaration -afl-instrument -linkpkg -package unix -package str -package coq-core.plugins.extraction -thread -rectypes -w a -o ${fuzzer}"_exec" ${fuzzer}"_test_runner_ext.ml" $qc_path"/SHM.c" &&
 ocamlfind ocamlopt -ccopt -Wno-error=implicit-function-declaration -linkpkg -package unix -package str -rectypes -w a -I . -o main_exec $qc_path"/Main.ml" $qc_path"/SHM.c"

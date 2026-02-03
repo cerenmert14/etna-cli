@@ -18,9 +18,9 @@
         "options": {
           "true": {
             "Command": {
-              "command": "$workload_path/target/release/$workload-sampler",
+              "command": "${workload_path}/target/release/$workload-sampler",
               "args": [
-                "$strategy",
+                "${strategy}",
                 "$property",
                 "$tests"
               ],
@@ -33,9 +33,9 @@
           },
           "false": {
             "Command": {
-              "command": "$workload_path/target/release/$workload",
+              "command": "${workload_path}/target/release/$workload",
               "args": [
-                "$strategy",
+                "${strategy}",
                 "$property"
               ],
               "params": [

@@ -11,7 +11,7 @@ fi
 strategy=$1
 
 # Validate the generator name by looking up `*Generator.v` in `Strategies` directory
-if [ ! -f "Strategies/$strategy"".v" ]; then
+if [ ! -f "Strategies/${strategy}"".v" ]; then
     echo "Error: The generator name is invalid."
     # Provide a list of valid fuzzers
     echo "Valid generators are:"
@@ -21,4 +21,4 @@ if [ ! -f "Strategies/$strategy"".v" ]; then
     exit 1
 fi
 
-ocamlfind ocamlopt -linkpkg -package zarith -package unix -thread -rectypes $strategy"_test_runner.mli" $strategy"_test_runner.ml" -o $strategy"_test_runner.native"
+ocamlfind ocamlopt -linkpkg -package zarith -package unix -thread -rectypes ${strategy}"_test_runner.mli" ${strategy}"_test_runner.ml" -o ${strategy}"_test_runner.native"

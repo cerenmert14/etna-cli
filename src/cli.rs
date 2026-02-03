@@ -164,12 +164,11 @@ pub(crate) fn run() -> anyhow::Result<()> {
             } => commands::experiment::new::invoke(mgr, name, path, overwrite, register,  local_store),
             ExperimentCommand::Run { name: _, tests, short_circuit, parallel, params } => commands::experiment::run::invoke(mgr, experiment.unwrap(), tests, short_circuit, parallel, params),
             ExperimentCommand::Show {
-                        hash,
                         name,
-                        show_all,
-                    } => commands::experiment::show::invoke(hash, name, show_all),
+                    } => commands::experiment::show::invoke(mgr, name),
             ExperimentCommand::Visualize { name: _, figure, tests, groupby, aggby, metric, buckets, max, visualization_type, hatched } => commands::experiment::visualize::invoke(mgr, experiment.unwrap(), figure, tests, groupby, aggby, metric, buckets, max, visualization_type, hatched),
             ExperimentCommand::VisualizeJson { input, output } => commands::experiment::visualize::draw_bucket_chart_from_json(&input, &output),
+            ExperimentCommand::List {} => commands::experiment::list::invoke(mgr),
         },
         Command::Workload(wl) => match wl {
             WorkloadCommand::AddWorkload {
@@ -287,13 +286,7 @@ enum ExperimentCommand {
     Show {
         /// Name
         #[clap(long)]
-        name: Option<String>,
-        /// Hash
-        #[clap(long)]
-        hash: Option<String>,
-        /// Show all the experiments
-        #[clap(short = 'a', long, default_value = "false")]
-        show_all: bool,
+        name: String,
     },
     #[clap(name = "visualize", about = "Visualize the results of the experiment")]
     Visualize {
@@ -346,6 +339,8 @@ enum ExperimentCommand {
         #[clap(short, long)]
         output: PathBuf,
     },
+    #[clap(name = "list", about = "List all experiments")]
+    List {},
 }
 #[derive(Debug, Subcommand)]
 enum WorkloadCommand {
@@ -526,9 +521,10 @@ impl Command {
             Command::Experiment(exp) => match exp {
                 ExperimentCommand::New { .. } => None,
                 ExperimentCommand::Run { name, .. } => name.as_ref(),
-                ExperimentCommand::Show { name, .. } => name.as_ref(),
+                ExperimentCommand::Show { name, .. } => Some(name),
                 ExperimentCommand::Visualize { name, .. } => name.as_ref(),
                 ExperimentCommand::VisualizeJson { .. } => None,
+                ExperimentCommand::List { .. } => None,
             },
             Command::Workload(wl) => match wl {
                 WorkloadCommand::AddWorkload { experiment, .. } => experiment.as_ref(),
@@ -552,6 +548,7 @@ impl Command {
                 ExperimentCommand::Show { .. } => true,
                 ExperimentCommand::Visualize { .. } => true,
                 ExperimentCommand::VisualizeJson { .. } => false,
+                ExperimentCommand::List { .. } => false,
             },
             Command::Workload(wl) => match wl {
                 WorkloadCommand::AddWorkload { .. } => true,

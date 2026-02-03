@@ -18,9 +18,9 @@
         "options": {
           "true": {
             "Command": {
-              "command": "$workload_path/target/release/bst-sampler",
+              "command": "${workload_path}/target/release/bst-sampler",
               "args": [
-                "$strategy",
+                "${strategy}",
                 "$property",
                 "$tests"
               ],
@@ -33,9 +33,9 @@
           },
           "false": {
             "Command": {
-              "command": "$workload_path/target/release/bst",
+              "command": "${workload_path}/target/release/bst",
               "args": [
-                "$strategy",
+                "${strategy}",
                 "$property"
               ],
               "params": [

@@ -27,7 +27,7 @@
         "options": {
           "true": {
             "Command": {
-              "command": "$workload_path/main-sampler",
+              "command": "${workload_path}/main-sampler",
               "args": [
                 "$property",
                 "$tests"
@@ -41,10 +41,10 @@
           },
           "false": {
             "Command": {
-              "command": "$workload_path/main",
+              "command": "${workload_path}/main",
               "args": [
                 "$property",
-                "$strategy"
+                "${strategy}"
               ],
               "params": [
                 "workload_path",

@@ -53,16 +53,16 @@ The `invoke` object follows the following structure, `schemas/invoke.json` conta
     ],
     "build_steps": [
         {
-            "Command": { "command": "$workload_path/build" }
+            "Command": { "command": "${workload_path}/build" }
         },
         {
-            "Command": { "command": "$workload_path/build_generator", "args": [ "!generator" ] }
+            "Command": { "command": "${workload_path}/build_generator", "args": [ "!{generator}" ] }
         },
         {
-            "Command": { "command": "$workload_path/build_fuzzer", "args": [ "!fuzzer" ] }
+            "Command": { "command": "${workload_path}/build_fuzzer", "args": [ "!fuzzer" ] }
         },
         {
-            "Command": { "command": "$workload_path/build_sampler", "args": [ "!sampler" ] }
+            "Command": { "command": "${workload_path}/build_sampler", "args": [ "!sampler" ] }
         }
     ],
     "run_step": {
@@ -70,17 +70,17 @@ The `invoke` object follows the following structure, `schemas/invoke.json` conta
             "value": "strategy",
             "options": {
                 "fuzzer": {
-                    "Command": { "command": "$workload_path/main_exec", "args": [ "\"$strategy_exec $property\""] }
+                    "Command": { "command": "${workload_path}/main_exec", "args": [ "\"${strategy}_exec $property\""] }
                 },
                 "generator": {
                     "Match": {
                         "value": "cross",
                         "options": {
                             "false": {
-                                "Command": { "command": "$workload_path/$strategy_test_runner.native", "args": [ "$property" ] }
+                                "Command": { "command": "${workload_path}/${strategy}_test_runner.native", "args": [ "$property" ] }
                             },
                             "true": {
-                                "Command": { "command": "$workload_path/$strategy_sampler.native", "args": [ "$property", "$tests" ] }
+                                "Command": { "command": "${workload_path}/${strategy}_sampler.native", "args": [ "$property", "$tests" ] }
                             }
                         }
                     }

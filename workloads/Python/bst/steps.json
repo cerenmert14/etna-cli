@@ -15,7 +15,7 @@
                 "quickcheck",
                 "$property"
               ],
-              "run_at": "$workload_path"
+              "run_at": "${workload_path}"
             }
           },
           "true": {
@@ -27,7 +27,7 @@
                 "$property",
                 "$tests"
               ],
-              "run_at": "$workload_path"
+              "run_at": "${workload_path}"
             }
           }
         }

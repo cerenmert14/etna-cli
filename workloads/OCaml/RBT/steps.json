@@ -45,7 +45,7 @@
         "options": {
           "true": {
             "Command": {
-              "run_at": "$workload_path",
+              "run_at": "${workload_path}",
               "command": "opam",
               "args": [
                 "exec",
@@ -55,14 +55,14 @@
                 "rbt-sampler",
                 "--",
                 "--property=$property",
-                "--strategy=$strategy",
+                "--strategy=${strategy}",
                 "--count=$tests"
               ]
             }
           },
           "false": {
             "Command": {
-              "run_at": "$workload_path",
+              "run_at": "${workload_path}",
               "command": "opam",
               "args": [
                 "exec",
@@ -72,7 +72,7 @@
                 "rbt",
                 "--",
                 "--property=$property",
-                "--strategy=$strategy"
+                "--strategy=${strategy}"
               ]
             }
           }

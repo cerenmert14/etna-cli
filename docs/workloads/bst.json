@@ -1,250 +1,265 @@
-
 [
     {
-        "mutations": ["insert_1"],
+        "mutations": [
+            "insert_1"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "InsertPost"
+                "property": "InsertPost",
+                "counterexample": "((T E 2 1 E) 0 2 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertModel"
+                "property": "InsertModel",
+                "counterexample": "((T E 1 0 E) 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteInsert"
+                "property": "DeleteInsert",
+                "counterexample": "((T E 1 0 E) 0 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertInsert"
+                "property": "InsertInsert",
+                "counterexample": "(E 1 0 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertUnion"
+                "property": "InsertUnion",
+                "counterexample": "(E (T E 1 1 E) 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T E 2 0 E) E 0 0)"
             }
         ]
     },
     {
-        "mutations": ["insert_2"],
+        "mutations": [
+            "insert_2"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "InsertPost"
+                "property": "InsertPost",
+                "counterexample": "((T E 0 1 E) 1 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertModel"
+                "property": "InsertModel",
+                "counterexample": "((T E -2 0 E) 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertDelete"
+                "property": "InsertDelete",
+                "counterexample": "((T E 0 2 (T E 1 0 E)) 0 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteInsert"
+                "property": "DeleteInsert",
+                "counterexample": "((T E 0 0 E) 0 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertInsert"
+                "property": "InsertInsert",
+                "counterexample": "(E 0 1 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertUnion"
+                "property": "InsertUnion",
+                "counterexample": "(E (T E 0 0 E) 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T E -2 0 E) E 0 0)"
             }
         ]
     },
     {
-        "mutations": ["insert_3"],
+        "mutations": [
+            "insert_3"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "InsertPost"
+                "property": "InsertPost",
+                "counterexample": "((T E 3 0 E) 3 3 1)"
             },
             {
-                "counterexample": "",
-                "property": "InsertModel"
+                "property": "InsertModel",
+                "counterexample": "((T E 0 1 E) 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertDelete"
+                "property": "InsertDelete",
+                "counterexample": "((T (T E 0 0 E) 2 0 E) 2 2 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertInsert"
+                "property": "InsertInsert",
+                "counterexample": "(E 0 0 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "InsertUnion"
+                "property": "InsertUnion",
+                "counterexample": "(E (T E 0 0 E) 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T E -2 2 E) E -2 0)"
             }
         ]
     },
     {
-        "mutations": ["delete_4"],
+        "mutations": [
+            "delete_4"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "DeleteModel"
+                "property": "DeleteModel",
+                "counterexample": "((T E 0 0 E) 1)"
             },
             {
-                "counterexample": "",
-                "property": "DeletePost"
+                "property": "DeletePost",
+                "counterexample": "((T E 0 0 E) 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteDelete"
+                "property": "DeleteDelete",
+                "counterexample": "((T (T (T E 0 0 E) 3 5 E) 5 0 E) 5 3)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteInsert"
+                "property": "DeleteInsert",
+                "counterexample": "(E 0 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteUnion"
+                "property": "DeleteUnion",
+                "counterexample": "((T E -1 0 E) (T E 0 1 E) -1)"
             },
             {
-                "counterexample": "",
-                "property": "InsertDelete"
+                "property": "InsertDelete",
+                "counterexample": "(E 0 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T E 0 1 E) (T E 1 0 E) 0 0)"
             }
         ]
     },
     {
-        "mutations": ["delete_5"],
+        "mutations": [
+            "delete_5"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "DeleteModel"
+                "property": "DeleteModel",
+                "counterexample": "((T (T E 1 0 E) 3 0 E) 1)"
             },
             {
-                "counterexample": "",
-                "property": "DeletePost"
+                "property": "DeletePost",
+                "counterexample": "((T (T E 2 0 E) 4 1 E) 2 2)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteDelete"
+                "property": "DeleteDelete",
+                "counterexample": "((T E -4 0 (T E 4 4 E)) 4 -4)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteInsert"
+                "property": "DeleteInsert",
+                "counterexample": "((T E 2 0 E) -2 -2 0)"
             },
             {
-                "counterexample": "",
-                "property": "DeleteUnion"
+                "property": "DeleteUnion",
+                "counterexample": "((T E -1 0 (T E 0 0 E)) (T E -2 2 E) -1)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T (T E -1 0 E) 0 0 E) E 0 0)"
             }
         ]
     },
     {
-        "mutations": ["union_6"],
+        "mutations": [
+            "union_6"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "UnionValid"
+                "property": "UnionValid",
+                "counterexample": "((T E 0 0 E) (T E 0 0 E))"
             },
             {
-                "counterexample": "",
-                "property": "UnionPost"
+                "property": "UnionPost",
+                "counterexample": "((T E 0 0 (T E 1 1 E)) (T E 0 0 E) 1)"
             },
             {
-                "counterexample": "",
-                "property": "UnionModel"
+                "property": "UnionModel",
+                "counterexample": "((T E 0 0 E) (T E 0 0 E))"
             },
             {
-                "counterexample": "",
-                "property": "DeleteUnion"
+                "property": "DeleteUnion",
+                "counterexample": "((T E 2 2 E) (T E -1 0 E) -1)"
             },
             {
-                "counterexample": "",
-                "property": "InsertUnion"
+                "property": "InsertUnion",
+                "counterexample": "(E (T E 0 0 E) 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T E 0 0 E) (T E 0 0 E) 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionUnionAssoc"
+                "property": "UnionUnionAssoc",
+                "counterexample": "((T E 0 1 E) (T E 0 1 E) (T E 0 0 E))"
             }
         ]
     },
     {
-        "mutations": ["union_7"],
+        "mutations": [
+            "union_7"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "UnionValid"
+                "property": "UnionValid",
+                "counterexample": "(E (T E 0 2 (T E 0 0 E)))"
             },
             {
-                "counterexample": "",
-                "property": "UnionPost"
+                "property": "UnionPost",
+                "counterexample": "((T (T E -2 0 E) 2 0 E) (T E 0 0 E) -2)"
             },
             {
-                "counterexample": "",
-                "property": "UnionModel"
+                "property": "UnionModel",
+                "counterexample": "((T E -1 0 E) (T (T E -2 1 E) 0 0 E))"
             },
             {
-                "counterexample": "",
-                "property": "DeleteUnion"
+                "property": "DeleteUnion",
+                "counterexample": "((T E 0 0 E) (T (T E 0 0 E) 2 0 E) 2)"
             },
             {
-                "counterexample": "",
-                "property": "InsertUnion"
+                "property": "InsertUnion",
+                "counterexample": "((T E 0 0 E) (T E 1 1 E) 1 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T (T E -1 0 E) 0 0 E) E 0 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionUnionAssoc"
+                "property": "UnionUnionAssoc",
+                "counterexample": "((T E 0 0 E) (T E 1 0 E) (T E 1 1 E))"
             }
         ]
     },
     {
-        "mutations": ["union_8"],
+        "mutations": [
+            "union_8"
+        ],
         "tasks": [
             {
-                "counterexample": "",
-                "property": "UnionPost"
+                "property": "UnionPost",
+                "counterexample": "((T (T E 4 4 E) 2147483647 0 E) (T E 4 0 E) 4)"
             },
             {
-                "counterexample": "",
-                "property": "UnionModel"
+                "property": "UnionModel",
+                "counterexample": "((T (T E -2 0 E) 2 0 E) (T E -2 1 E))"
             },
             {
-                "counterexample": "",
-                "property": "DeleteUnion"
+                "property": "DeleteUnion",
+                "counterexample": "((T (T E -2 0 E) 1 0 E) (T E 0 0 E) 1)"
             },
             {
-                "counterexample": "",
-                "property": "InsertUnion"
+                "property": "InsertUnion",
+                "counterexample": "((T E 2 2 E) (T E -1 1 E) -1 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionDeleteInsert"
+                "property": "UnionDeleteInsert",
+                "counterexample": "((T E -1 3 E) (T E 3 1 E) -1 0)"
             },
             {
-                "counterexample": "",
-                "property": "UnionUnionAssoc"
+                "property": "UnionUnionAssoc",
+                "counterexample": "((T E 2 1 E) (T E 2 0 E) (T E 0 0 E))"
             }
         ]
     }

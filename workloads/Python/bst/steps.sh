@@ -38,7 +38,7 @@ done
 
 # Enforce required vars
 [ -n "$cross" ] || { echo "Missing required option: --cross" >&2; usage; exit 2; }
-[ -n "$workload_path" ] || { echo "Missing required option: --workload_path" >&2; usage; exit 2; }
+[ -n "${workload_path}" ] || { echo "Missing required option: --workload_path" >&2; usage; exit 2; }
 [ -n "$property" ] || { echo "Missing required option: --property" >&2; usage; exit 2; }
 
 # Compute requested stages (default: all)
@@ -103,9 +103,9 @@ fi
 # ===== Run Steps =====
 if [ $W_RUN -eq 1 ]; then
     if [[ $cross == "true" ]]; then
-(cd $workload_path &&         uv run main-sampler.py $property $tests)
+(cd ${workload_path} &&         uv run main-sampler.py $property $tests)
     elif [[ $cross == "false" ]]; then
-(cd $workload_path &&         uv run main.py quickcheck $property)
+(cd ${workload_path} &&         uv run main.py quickcheck $property)
     else
         echo "Unknown option: $cross" >&2; usage; exit 2;
     fi

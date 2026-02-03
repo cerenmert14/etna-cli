@@ -14,10 +14,10 @@
     ],
     "run_step": {
         "Command": {
-            "command": "$workload_path/main",
+            "command": "${workload_path}/main",
             "args": [
                 "$property",
-                "$strategy"
+                "${strategy}"
             ],
             "params": [
                 "workload_path",

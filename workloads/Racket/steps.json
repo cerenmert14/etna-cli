@@ -34,7 +34,7 @@
             "Command": {
               "command": "workload_path/main",
               "args": [
-                "$strategy",
+                "${strategy}",
                 "$property"
               ],
               "params": [

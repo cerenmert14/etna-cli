@@ -1,3 +1,14 @@
-pub fn invoke(_hash: Option<String>, _name: Option<String>, _show_all: bool) -> anyhow::Result<()> {
-    todo!()
+use crate::{manager::Manager, service};
+
+pub fn invoke(mgr: Manager, name: String) -> anyhow::Result<()> {
+    let experiment = service::experiment::get_experiment(&mgr, &name)?;
+
+    println!("Experiment: {}", experiment.name);
+    println!("Path: {}", experiment.path.display());
+    println!("Workloads:");
+    for wl in experiment.workloads {
+        println!("- {} ({})", wl.name, wl.language);
+    }
+
+    Ok(())
 }

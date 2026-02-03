@@ -424,11 +424,11 @@ mod tests {
     }
 
     fn test_invoke_expands_generator_tags() {
-        // Config with a build step that uses !generator and tags supplying two variants
+        // Config with a build step that uses !{generator} and tags supplying two variants
         let cfg = serde_json::json!({
             "check_steps": [],
             "build_steps": [
-                { "Command": { "command": "$workload_path/build_generator", "args": ["!generator"] } }
+                { "Command": { "command": "${workload_path}/build_generator", "args": ["!{generator}"] } }
             ],
             "run_step": { "Command": { "command": "echo", "args": ["done"] } },
             "tags": {
@@ -444,9 +444,9 @@ mod tests {
         assert!(result.is_ok(), "{result:?}");
 
         let script = std::fs::read_to_string("steps.sh").unwrap();
-        // Expect expansions for both tag values and no literal !generator
-        assert!(script.contains("$workload_path/build_generator Alpha"));
-        assert!(script.contains("$workload_path/build_generator Beta"));
-        assert!(!script.contains("!generator"));
+        // Expect expansions for both tag values and no literal !{generator}
+        assert!(script.contains("${workload_path}/build_generator Alpha"));
+        assert!(script.contains("${workload_path}/build_generator Beta"));
+        assert!(!script.contains("!{generator}"));
     }
 }
