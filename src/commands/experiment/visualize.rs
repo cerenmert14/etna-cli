@@ -280,19 +280,22 @@ fn get_agg_metrics(
                     })
                 })
                 .collect::<Vec<_>>();
+
             if agg_metrics.is_empty() {
                 tracing::trace!("No metrics found for group: {:?}", agg);
                 return None;
             }
             tracing::trace!("Group: {:#?}", agg);
             tracing::trace!("Number of metrics in agg: {}", agg_metrics.len());
-            // if it timed out, finished, gave up, or aborted, we want to return NaN.
+            // if it timed out or aborted, we want to return NaN.
+
             let timed_out = agg_metrics.iter().find_map(|m| {
                 m.data
                     .get("status")
                     .and_then(serde_json::Value::as_str)
                     .and_then(|t| {
                         if t == Status::TimedOut.to_string().as_str() {
+                            tracing::debug!("Metric {:?} has timed out", m.data);
                             m.data.get("timeout").and_then(serde_json::Value::as_f64)
                         } else {
                             None
@@ -316,6 +319,39 @@ fn get_agg_metrics(
                 });
                 tracing::trace!("Returning timeout data: {:#?}", data);
                 let _ = write_row(&mut raw_data_file, &data, aggby);
+                return data.as_object().cloned();
+            }
+
+            let aborted = agg_metrics.iter().find_map(|m| {
+                m.data
+                    .get("status")
+                    .and_then(serde_json::Value::as_str)
+                    .and_then(|t| {
+                        if t == Status::Aborted.to_string().as_str() {
+                            tracing::debug!("Metric {:?} has aborted", m.data);
+                            Some(true)
+                        } else {
+                            None
+                        }
+                    })
+            });
+
+            if let Some(true) = aborted {
+                tracing::error!("Some metrics in group {:?} were aborted", agg);
+                let data = serde_json::json!({
+                    "language": agg[0],
+                    "workload": agg[1],
+                    "strategy": agg[2],
+                    "property": agg[3],
+                    "mutations": agg[4],
+                    "cross": agg[5],
+                    "discards": f64::NAN,
+                    "tests": f64::NAN,
+                    "shrinks": f64::NAN,
+                    "time": f64::NAN,
+                });
+                tracing::trace!("Returning aborted data: {:#?}", data);
+                let _ = write_row(&mut raw_data_file, &data, &aggby);
                 return data.as_object().cloned();
             }
 

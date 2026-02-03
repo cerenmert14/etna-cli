@@ -72,6 +72,7 @@ pub fn invoke(
             short_circuit,
             parallel,
             &cli_params,
+            None, // No cancel flag for CLI
         )?;
     }
 

@@ -157,3 +157,9 @@ pub struct MutationOperationResponse {
     pub success: bool,
     pub message: String,
 }
+
+/// Information about a test file
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestInfo {
+    pub name: String,
+}

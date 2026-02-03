@@ -1,5 +1,5 @@
 use axum::{
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 
@@ -33,6 +33,22 @@ pub fn api_routes() -> Router<AppState> {
             post(handlers::experiments::run_experiment),
         )
         .route(
+            "/api/v1/experiments/{name}/tests",
+            get(handlers::experiments::list_tests),
+        )
+        .route(
+            "/api/v1/experiments/{name}/tests/{test_name}",
+            get(handlers::experiments::get_test),
+        )
+        .route(
+            "/api/v1/experiments/{name}/tests/{test_name}",
+            put(handlers::experiments::save_test),
+        )
+        .route(
+            "/api/v1/experiments/{name}/tests/{test_name}",
+            delete(handlers::experiments::delete_test),
+        )
+        .route(
             "/api/v1/experiments/{name}/visualize",
             post(handlers::experiments::visualize),
         )
@@ -61,6 +77,11 @@ pub fn api_routes() -> Router<AppState> {
         .route("/api/v1/jobs", get(handlers::jobs::list_jobs))
         .route("/api/v1/jobs/{id}", get(handlers::jobs::get_job))
         .route("/api/v1/jobs/{id}/cancel", post(handlers::jobs::cancel_job))
+        .route("/api/v1/jobs/{id}/logs", get(handlers::jobs::get_job_logs))
+        .route(
+            "/api/v1/jobs/{id}/metrics",
+            get(handlers::jobs::get_job_metrics),
+        )
         // Mutations
         .route(
             "/api/v1/mutations",

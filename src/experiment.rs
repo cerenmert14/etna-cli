@@ -105,18 +105,18 @@ pub(crate) struct Experiment {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub(crate) struct Test {
-    pub(crate) language: String,
-    pub(crate) workload: String,
-    pub(crate) trials: usize,
-    pub(crate) timeout: f64,
-    pub(crate) mutations: Vec<String>,
+pub struct Test {
+    pub language: String,
+    pub workload: String,
+    pub trials: usize,
+    pub timeout: f64,
+    pub mutations: Vec<String>,
     #[serde(default)]
-    pub(crate) cross: bool,
+    pub cross: bool,
     #[serde(default)]
-    pub(crate) params: Option<serde_json::Map<String, serde_json::Value>>,
+    pub params: Option<serde_json::Map<String, serde_json::Value>>,
     #[serde(default)]
-    pub(crate) tasks: Vec<HashMap<String, String>>,
+    pub tasks: Vec<HashMap<String, String>>,
 }
 
 impl Display for Test {

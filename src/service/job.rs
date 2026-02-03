@@ -53,6 +53,7 @@ pub struct JobProgress {
 struct Job {
     info: JobInfo,
     cancel_flag: Arc<RwLock<bool>>,
+    logs: Arc<RwLock<Vec<String>>>,
 }
 
 /// Job manager for tracking async jobs
@@ -98,6 +99,7 @@ impl JobManager {
                 }),
             },
             cancel_flag: Arc::new(RwLock::new(false)),
+            logs: Arc::new(RwLock::new(Vec::new())),
         };
 
         let mut jobs = self.jobs.write().unwrap();
@@ -225,6 +227,30 @@ impl JobManager {
             .ok_or_else(|| anyhow::anyhow!("Job not found: {}", id))?;
 
         Ok(Arc::clone(&job.cancel_flag))
+    }
+
+    /// Append a log line to a job
+    pub fn append_log(&self, id: &str, line: String) -> ServiceResult<()> {
+        let jobs = self.jobs.read().unwrap();
+        let job = jobs
+            .get(id)
+            .ok_or_else(|| anyhow::anyhow!("Job not found: {}", id))?;
+
+        let mut logs = job.logs.write().unwrap();
+        logs.push(line);
+
+        Ok(())
+    }
+
+    /// Get all logs for a job
+    pub fn get_logs(&self, id: &str) -> ServiceResult<Vec<String>> {
+        let jobs = self.jobs.read().unwrap();
+        let job = jobs
+            .get(id)
+            .ok_or_else(|| anyhow::anyhow!("Job not found: {}", id))?;
+
+        let logs = job.logs.read().unwrap();
+        Ok(logs.clone())
     }
 
     /// Delete completed/failed/cancelled jobs older than the specified duration

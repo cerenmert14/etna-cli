@@ -3,7 +3,7 @@ use std::{
     io::Write as _,
     path::{Path, PathBuf},
     process::Stdio,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use marauders::CustomLanguage;
@@ -240,6 +240,7 @@ pub(crate) fn run(
     test_steps: &[Step],
     params: &mut HashMap<String, String>,
     tags: &HashMap<String, Vec<String>>,
+    cancel_flag: Option<Arc<RwLock<bool>>>,
 ) -> anyhow::Result<()> {
     tracing::trace!("Running with config: {:?}", run_config);
     tracing::trace!("Run step: {:?}", test_steps);
@@ -320,9 +321,9 @@ pub(crate) fn run(
         );
     }
     if run_config.parallel {
-        run_remaining_trials_parallel(mgr, run_config, test_steps, remaining_trials, params, tags)
+        run_remaining_trials_parallel(mgr, run_config, test_steps, remaining_trials, params, tags, cancel_flag)
     } else {
-        run_remaining_trials_sequential(mgr, run_config, test_steps, remaining_trials, params, tags)
+        run_remaining_trials_sequential(mgr, run_config, test_steps, remaining_trials, params, tags, cancel_flag)
     }
 }
 
@@ -333,8 +334,17 @@ fn run_remaining_trials_sequential(
     remaining_trials: Vec<usize>,
     params: &mut HashMap<String, String>,
     tags: &HashMap<String, Vec<String>>,
+    cancel_flag: Option<Arc<RwLock<bool>>>,
 ) -> anyhow::Result<()> {
     for i in remaining_trials {
+        // Check cancellation before each trial
+        if let Some(ref flag) = cancel_flag {
+            if *flag.read().unwrap() {
+                tracing::info!("Job cancelled, stopping experiment");
+                anyhow::bail!("Job cancelled");
+            }
+        }
+
         tracing::trace!("running trial {}", i);
 
         for step in &test_steps {
@@ -401,6 +411,7 @@ fn run_remaining_trials_parallel(
     remaining_trials: Vec<usize>,
     params: &mut HashMap<String, String>,
     tags: &HashMap<String, Vec<String>>,
+    cancel_flag: Option<Arc<RwLock<bool>>>,
 ) -> anyhow::Result<()> {
     tracing::trace!(
         "Running remaining trials in parallel: {:?}",
@@ -413,6 +424,14 @@ fn run_remaining_trials_parallel(
         .par_iter()
         .copied()
         .try_for_each(|i| -> anyhow::Result<()> {
+            // Check cancellation before each trial
+            if let Some(ref flag) = cancel_flag {
+                if *flag.read().unwrap() {
+                    tracing::info!("Job cancelled, stopping experiment");
+                    anyhow::bail!("Job cancelled");
+                }
+            }
+
             tracing::trace!("running trial {}", i);
 
             // Steps remain sequential inside a trial
@@ -1015,6 +1034,7 @@ pub(crate) fn run_experiment(
     short_circuit: bool,
     parallel: bool,
     cli_params: &HashMap<String, String>,
+    cancel_flag: Option<Arc<RwLock<bool>>>,
 ) -> anyhow::Result<()> {
     tracing::info!(
         "Starting experiment '{}' with test: {:?}",
@@ -1051,6 +1071,7 @@ pub(crate) fn run_experiment(
         parallel: bool,
         custom_languages: Vec<CustomLanguage>,
         cli_params: &HashMap<String, String>,
+        cancel_flag: Option<Arc<RwLock<bool>>>,
     ) -> anyhow::Result<()> {
         let lang = marauders::Language::name_to_language(&test.language, &custom_languages)
             .with_context(|| format!("language '{}' is not known or supported", test.language))?;
@@ -1136,6 +1157,14 @@ pub(crate) fn run_experiment(
         )?;
 
         for task in test.tasks.iter() {
+            // Check cancellation before each task
+            if let Some(ref flag) = cancel_flag {
+                if *flag.read().unwrap() {
+                    tracing::info!("Job cancelled, stopping experiment");
+                    anyhow::bail!("Job cancelled");
+                }
+            }
+
             params.extend(task.clone());
 
             // Run the experiment
@@ -1161,6 +1190,7 @@ pub(crate) fn run_experiment(
                 &workload.steps.test,
                 &mut params,
                 &workload.steps.tags,
+                cancel_flag.clone(),
             );
 
             if let Err(e) = &result {
@@ -1179,6 +1209,7 @@ pub(crate) fn run_experiment(
         parallel,
         custom_languages,
         cli_params,
+        cancel_flag,
     );
     if let Err(e) = &result {
         tracing::error!("Experiment failed with error: {}", e);

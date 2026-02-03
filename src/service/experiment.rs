@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use anyhow::{bail, Context};
@@ -14,7 +14,9 @@ use crate::{
     store::Store,
 };
 
-use super::types::{CreateExperimentOptions, ExperimentInfo, RunExperimentOptions, ServiceResult};
+use super::types::{
+    CreateExperimentOptions, ExperimentInfo, RunExperimentOptions, ServiceResult, TestInfo,
+};
 
 /// Create a new experiment
 pub fn create_experiment(
@@ -321,7 +323,11 @@ fn get_tests(tests: &[String], experiment: &ExperimentMetadata) -> anyhow::Resul
 }
 
 /// Run an experiment (synchronously - for async use job service)
-pub fn run_experiment(mgr: Manager, options: RunExperimentOptions) -> ServiceResult<()> {
+pub fn run_experiment(
+    mgr: Manager,
+    options: RunExperimentOptions,
+    cancel_flag: Option<Arc<RwLock<bool>>>,
+) -> ServiceResult<()> {
     let RunExperimentOptions {
         experiment_name,
         tests,
@@ -349,6 +355,13 @@ pub fn run_experiment(mgr: Manager, options: RunExperimentOptions) -> ServiceRes
     let mgr = Arc::new(Mutex::new(mgr));
 
     for test in &mut all_tests {
+        // Check cancellation before each test
+        if let Some(ref flag) = cancel_flag {
+            if *flag.read().unwrap() {
+                bail!("Job cancelled");
+            }
+        }
+
         tracing::info!("Running test: {}", test);
         for p in cli_params.iter() {
             test.params.as_mut().and_then(|params| {
@@ -362,9 +375,117 @@ pub fn run_experiment(mgr: Manager, options: RunExperimentOptions) -> ServiceRes
             short_circuit,
             parallel,
             &cli_params,
+            cancel_flag.clone(),
         )?;
     }
 
+    Ok(())
+}
+
+/// List available tests for an experiment
+pub fn list_tests(experiment_path: &std::path::Path) -> ServiceResult<Vec<TestInfo>> {
+    let tests_dir = experiment_path.join("tests");
+
+    if !tests_dir.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut tests = Vec::new();
+
+    let entries = fs::read_dir(&tests_dir).with_context(|| {
+        format!(
+            "Failed to read tests directory at '{}'",
+            tests_dir.display()
+        )
+    })?;
+
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.extension().map(|e| e == "json").unwrap_or(false) {
+            if let Some(stem) = path.file_stem() {
+                tests.push(TestInfo {
+                    name: stem.to_string_lossy().to_string(),
+                });
+            }
+        }
+    }
+
+    tests.sort_by(|a, b| a.name.cmp(&b.name));
+
+    Ok(tests)
+}
+
+/// Get the content of a specific test file
+pub fn get_test_content(
+    experiment_path: &std::path::Path,
+    test_name: &str,
+) -> ServiceResult<Vec<crate::experiment::Test>> {
+    let test_path = experiment_path
+        .join("tests")
+        .join(test_name)
+        .with_extension("json");
+
+    if !test_path.exists() {
+        bail!("Test not found: {}", test_name);
+    }
+
+    let content = fs::read_to_string(&test_path).with_context(|| {
+        format!("Failed to read test file at '{}'", test_path.display())
+    })?;
+
+    let tests: Vec<crate::experiment::Test> = serde_json::from_str(&content).with_context(|| {
+        format!("Failed to parse test file at '{}'", test_path.display())
+    })?;
+
+    Ok(tests)
+}
+
+/// Save a test file
+pub fn save_test(
+    experiment_path: &std::path::Path,
+    test_name: &str,
+    tests: &[crate::experiment::Test],
+) -> ServiceResult<()> {
+    let test_path = experiment_path
+        .join("tests")
+        .join(test_name)
+        .with_extension("json");
+
+    // Ensure tests directory exists
+    if let Some(parent) = test_path.parent() {
+        fs::create_dir_all(parent).with_context(|| {
+            format!("Failed to create tests directory at '{}'", parent.display())
+        })?;
+    }
+
+    let content = serde_json::to_string_pretty(tests).context("Failed to serialize tests")?;
+
+    fs::write(&test_path, content).with_context(|| {
+        format!("Failed to write test file at '{}'", test_path.display())
+    })?;
+
+    tracing::info!("Saved test '{}' at '{}'", test_name, test_path.display());
+    Ok(())
+}
+
+/// Delete a test file
+pub fn delete_test(experiment_path: &std::path::Path, test_name: &str) -> ServiceResult<()> {
+    let test_path = experiment_path
+        .join("tests")
+        .join(test_name)
+        .with_extension("json");
+
+    if !test_path.exists() {
+        bail!("Test not found: {}", test_name);
+    }
+
+    fs::remove_file(&test_path).with_context(|| {
+        format!("Failed to delete test file at '{}'", test_path.display())
+    })?;
+
+    tracing::info!("Deleted test '{}' at '{}'", test_name, test_path.display());
     Ok(())
 }
 

@@ -6,6 +6,8 @@ use axum::{
 use crate::server::error::ServerError;
 use crate::server::state::AppState;
 use crate::service::job::JobInfo;
+use crate::service::store as store_service;
+use crate::service::types::QueryResult;
 
 /// List all jobs
 pub async fn list_jobs(State(state): State<AppState>) -> Result<Json<Vec<JobInfo>>, ServerError> {
@@ -33,4 +35,43 @@ pub async fn cancel_job(
         "success": true,
         "message": format!("Job '{}' cancelled", id)
     })))
+}
+
+/// Get job logs
+pub async fn get_job_logs(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<String>>, ServerError> {
+    let logs = state.job_manager.get_logs(&id)?;
+    Ok(Json(logs))
+}
+
+/// Get metrics for a specific job
+pub async fn get_job_metrics(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<QueryResult>, ServerError> {
+    // Get job info to extract experiment name
+    let job = state.job_manager.get_job(&id)?;
+
+    let experiment_name = job
+        .metadata
+        .get("experiment_name")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            crate::server::error::ServerError::not_found("Job has no experiment_name in metadata")
+        })?;
+
+    // Build a JQ filter to get metrics for this experiment
+    // Filter by experiment name
+    let filter = format!(
+        r#".[] | select(.experiment == "{}")"#,
+        experiment_name
+    );
+
+    let mut manager = state.manager.write().unwrap();
+    store_service::load_metrics(&mut manager.store)?;
+    let result = store_service::query_metrics(&manager.store, &filter)?;
+
+    Ok(Json(result))
 }
