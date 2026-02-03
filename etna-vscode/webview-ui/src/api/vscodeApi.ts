@@ -1,0 +1,113 @@
+// Type declarations for VSCode webview API
+declare function acquireVsCodeApi(): VsCodeApi;
+
+interface VsCodeApi {
+  postMessage(message: unknown): void;
+  getState(): unknown;
+  setState(state: unknown): void;
+}
+
+// Singleton pattern for VSCode API
+class VSCodeAPIWrapper {
+  private readonly vsCodeApi: VsCodeApi | undefined;
+
+  constructor() {
+    if (typeof acquireVsCodeApi === 'function') {
+      this.vsCodeApi = acquireVsCodeApi();
+    }
+  }
+
+  public postMessage(message: unknown): void {
+    if (this.vsCodeApi) {
+      this.vsCodeApi.postMessage(message);
+    } else {
+      console.log('VSCode API not available, message:', message);
+    }
+  }
+
+  public getState<T>(): T | undefined {
+    if (this.vsCodeApi) {
+      return this.vsCodeApi.getState() as T | undefined;
+    }
+    return undefined;
+  }
+
+  public setState<T>(state: T): void {
+    if (this.vsCodeApi) {
+      this.vsCodeApi.setState(state);
+    }
+  }
+}
+
+// Export singleton instance
+export const vscode = new VSCodeAPIWrapper();
+
+// Message types
+export interface WebviewMessage {
+  type: string;
+  data?: unknown;
+  message?: string;
+}
+
+export type MessageHandler = (message: WebviewMessage) => void;
+
+// Subscribe to messages from extension
+export function onMessage(handler: MessageHandler): () => void {
+  const listener = (event: MessageEvent<WebviewMessage>) => {
+    handler(event.data);
+  };
+  window.addEventListener('message', listener);
+  return () => window.removeEventListener('message', listener);
+}
+
+// API types (matching server types)
+export interface ExperimentInfo {
+  name: string;
+  path: string;
+  store: string;
+  workloads: WorkloadMetadata[];
+}
+
+export interface WorkloadMetadata {
+  name: string;
+  language: string;
+}
+
+export interface JobInfo {
+  id: string;
+  job_type: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  error?: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface QueryResult {
+  metrics: unknown[];
+}
+
+export interface ConfigInfo {
+  etna_dir: string;
+  store_path: string;
+  experiments_path: string;
+  repo_dir: string;
+  configured: boolean;
+  version: number;
+}
+
+export interface TestInfo {
+  name: string;
+}
+
+export interface TestDefinition {
+  language: string;
+  workload: string;
+  trials: number;
+  timeout: number;
+  mutations: string[];
+  cross?: boolean;
+  params?: Record<string, unknown>;
+  tasks?: { strategy?: string; property?: string; [key: string]: string | undefined }[];
+}

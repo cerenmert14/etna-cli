@@ -1,0 +1,106 @@
+{
+  "name": "etna-vscode",
+  "displayName": "Etna",
+  "description": "VSCode extension for Etna experiment management, mutation testing, and metrics visualization",
+  "version": "0.1.0",
+  "publisher": "etna",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "etna.openDashboard",
+        "title": "Etna: Open Dashboard",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "etna.activateMutation",
+        "title": "Etna: Activate Mutation"
+      },
+      {
+        "command": "etna.deactivateMutation",
+        "title": "Etna: Deactivate Mutation"
+      },
+      {
+        "command": "etna.resetMutations",
+        "title": "Etna: Reset All Mutations"
+      },
+      {
+        "command": "etna.refreshMutations",
+        "title": "Etna: Refresh Mutations",
+        "icon": "$(refresh)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "etna.openDashboard",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e"
+      }
+    ],
+    "configuration": {
+      "title": "Etna",
+      "properties": {
+        "etna.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "URL of the Etna server"
+        },
+        "etna.autoRefreshInterval": {
+          "type": "number",
+          "default": 5000,
+          "description": "Auto-refresh interval for jobs in milliseconds (0 to disable)"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "etna",
+          "title": "Etna",
+          "icon": "$(beaker)"
+        }
+      ]
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "etna.refreshMutations",
+          "when": "resourceExtname =~ /\\.(rs|py|js|ts|v|ml|hs)$/",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "lint": "eslint src --ext ts",
+    "build:webview": "cd webview-ui && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.2",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}
