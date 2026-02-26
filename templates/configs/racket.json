@@ -16,7 +16,7 @@
         "Command": {
             "command": "${workload_path}/main",
             "args": [
-                "$property",
+                "${property}",
                 "${strategy}"
             ],
             "params": [

@@ -65,11 +65,11 @@ pub(crate) fn write_row<W: std::io::Write>(
     for a in aggby {
         row.push(metric.get(a).map_or("".to_string(), |v| v.to_string()));
     }
-    row.push(metric.get("tests").map_or("NaN".to_string(), |v| {
+    row.push(metric.get("discards").map_or("NaN".to_string(), |v| {
         v.as_f64()
             .map_or("NaN".to_string(), |t| format!("{:.2}", t))
     }));
-    row.push(metric.get("discards").map_or("NaN".to_string(), |v| {
+    row.push(metric.get("tests").map_or("NaN".to_string(), |v| {
         v.as_f64()
             .map_or("NaN".to_string(), |t| format!("{:.2}", t))
     }));
@@ -79,7 +79,7 @@ pub(crate) fn write_row<W: std::io::Write>(
     }));
     row.push(metric.get("time").map_or("NaN".to_string(), |v| {
         v.as_f64()
-            .map_or("NaN".to_string(), |t| format!("{:.4}", t))
+            .map_or("NaN".to_string(), |t| format!("{:.7}", t))
     }));
 
     tracing::debug!("Writing row: {:?}", row);
