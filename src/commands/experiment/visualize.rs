@@ -69,7 +69,7 @@ pub(crate) fn write_row<W: std::io::Write>(
         v.as_f64()
             .map_or("NaN".to_string(), |t| format!("{:.2}", t))
     }));
-    row.push(metric.get("tests").map_or("NaN".to_string(), |v| {
+     row.push(metric.get("tests").map_or("NaN".to_string(), |v| {
         v.as_f64()
             .map_or("NaN".to_string(), |t| format!("{:.2}", t))
     }));
@@ -419,7 +419,7 @@ fn get_agg_metrics(
                         .unwrap_or(0.0);
                     acc.1 += m
                         .data
-                        .get("tests")
+                        .get("passed")
                         .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0);
                     acc.2 += m
@@ -429,7 +429,7 @@ fn get_agg_metrics(
                         .unwrap_or(0.0);
                     acc.3 += m
                         .data
-                        .get("time")
+                        .get("search-time")
                         .and_then(serde_json::Value::as_str)
                         .into_iter()
                         .flat_map(parse_duration::parse)
