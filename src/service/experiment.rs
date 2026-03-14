@@ -14,8 +14,9 @@ use crate::{
     store::Store,
 };
 
-use super::types::{
-    CreateExperimentOptions, ExperimentInfo, RunExperimentOptions, ServiceResult, TestInfo,
+use super::{
+    test_utils::{build_invalid_test_message, resolve_test_name},
+    types::{CreateExperimentOptions, ExperimentInfo, RunExperimentOptions, ServiceResult, TestInfo},
 };
 
 /// Create a new experiment
@@ -142,18 +143,6 @@ pub fn create_experiment(
             include_str!("../../templates/experimentation/Visualize.pyt"),
         ),
         (".gitignore", include_str!("../../templates/.gitignoret")),
-        (
-            "tests/bst.json",
-            include_str!("../../templates/tests/bst.json"),
-        ),
-        (
-            "tests/rbt.json",
-            include_str!("../../templates/tests/rbt.json"),
-        ),
-        (
-            "tests/stlc.json",
-            include_str!("../../templates/tests/stlc.json"),
-        ),
     ];
 
     tracing::trace!("creating template files in the experiment directory");
@@ -194,6 +183,15 @@ pub fn create_experiment(
         format!(
             "Failed to create scripts directory at '{}'",
             scripts_path.display()
+        )
+    })?;
+
+    let tests_path = experiment_path.join("tests");
+    tracing::trace!("creating tests directory at '{}'", tests_path.display());
+    std::fs::create_dir(&tests_path).with_context(|| {
+        format!(
+            "Failed to create tests directory at '{}'",
+            tests_path.display()
         )
     })?;
 
@@ -307,16 +305,32 @@ fn get_tests(tests: &[String], experiment: &ExperimentMetadata) -> anyhow::Resul
         anyhow::bail!("No tests provided. Please specify at least one test to run.");
     }
 
+    let available_tests = list_tests(&experiment.path)?
+        .into_iter()
+        .map(|t| t.name)
+        .collect::<Vec<_>>();
+
+    if available_tests.is_empty() {
+        anyhow::bail!(
+            "No tests found in '{}'. Add workloads first (for example: `etna workload add <lang> <workload>`).",
+            experiment.path.join("tests").display()
+        );
+    }
+
     let mut all_tests = Vec::new();
     for test in tests {
+        let resolved_name = resolve_test_name(test, &available_tests)
+            .with_context(|| build_invalid_test_message(test, &available_tests))?;
         let test_path = experiment
             .path
             .join("tests")
-            .join(test)
+            .join(&resolved_name)
             .with_extension("json");
-        let test: Vec<Test> = serde_json::from_str(&std::fs::read_to_string(&test_path)?).context(
-            format!("Failed to read test from '{}'", test_path.display()),
-        )?;
+
+        let content = std::fs::read_to_string(&test_path)
+            .with_context(|| format!("Failed to read test from '{}'", test_path.display()))?;
+        let test: Vec<Test> = serde_json::from_str(&content)
+            .with_context(|| format!("Failed to parse test from '{}'", test_path.display()))?;
         all_tests.extend(test);
     }
     Ok(all_tests)
@@ -386,18 +400,19 @@ pub fn run_experiment(
 pub fn list_tests(experiment_path: &std::path::Path) -> ServiceResult<Vec<TestInfo>> {
     let tests_dir = experiment_path.join("tests");
 
-    if !tests_dir.exists() {
-        return Ok(vec![]);
-    }
+    let entries = match fs::read_dir(&tests_dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
+        Err(e) => {
+            return Err(anyhow::anyhow!(
+                "Failed to read tests directory at '{}': {}",
+                tests_dir.display(),
+                e
+            ))
+        }
+    };
 
     let mut tests = Vec::new();
-
-    let entries = fs::read_dir(&tests_dir).with_context(|| {
-        format!(
-            "Failed to read tests directory at '{}'",
-            tests_dir.display()
-        )
-    })?;
 
     for entry in entries {
         let entry = entry?;
@@ -431,13 +446,11 @@ pub fn get_test_content(
         bail!("Test not found: {}", test_name);
     }
 
-    let content = fs::read_to_string(&test_path).with_context(|| {
-        format!("Failed to read test file at '{}'", test_path.display())
-    })?;
+    let content = fs::read_to_string(&test_path)
+        .with_context(|| format!("Failed to read test file at '{}'", test_path.display()))?;
 
-    let tests: Vec<crate::experiment::Test> = serde_json::from_str(&content).with_context(|| {
-        format!("Failed to parse test file at '{}'", test_path.display())
-    })?;
+    let tests: Vec<crate::experiment::Test> = serde_json::from_str(&content)
+        .with_context(|| format!("Failed to parse test file at '{}'", test_path.display()))?;
 
     Ok(tests)
 }
@@ -462,9 +475,8 @@ pub fn save_test(
 
     let content = serde_json::to_string_pretty(tests).context("Failed to serialize tests")?;
 
-    fs::write(&test_path, content).with_context(|| {
-        format!("Failed to write test file at '{}'", test_path.display())
-    })?;
+    fs::write(&test_path, content)
+        .with_context(|| format!("Failed to write test file at '{}'", test_path.display()))?;
 
     tracing::info!("Saved test '{}' at '{}'", test_name, test_path.display());
     Ok(())
@@ -481,9 +493,8 @@ pub fn delete_test(experiment_path: &std::path::Path, test_name: &str) -> Servic
         bail!("Test not found: {}", test_name);
     }
 
-    fs::remove_file(&test_path).with_context(|| {
-        format!("Failed to delete test file at '{}'", test_path.display())
-    })?;
+    fs::remove_file(&test_path)
+        .with_context(|| format!("Failed to delete test file at '{}'", test_path.display()))?;
 
     tracing::info!("Deleted test '{}' at '{}'", test_name, test_path.display());
     Ok(())

@@ -6,7 +6,7 @@ use tracing::info;
 use crate::service::mutations::set_mutation;
 
 pub fn invoke(path: PathBuf, variant: String, glob: Option<String>) -> Result<()> {
-    let path = if path == PathBuf::from(".") {
+    let path = if &path == "." {
         std::env::current_dir()?
     } else {
         path.canonicalize().unwrap_or(path)

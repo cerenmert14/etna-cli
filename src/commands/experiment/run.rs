@@ -12,25 +12,42 @@ use crate::{
     experiment::{ExperimentMetadata, Test},
     git_driver,
     manager::Manager,
+    service::{
+        experiment::list_tests,
+        test_utils::{build_invalid_test_message, resolve_test_name},
+    },
 };
 
 fn get_tests(tests: Vec<String>, experiment: &ExperimentMetadata) -> anyhow::Result<Vec<Test>> {
-    println!("tests: {:?}", tests);
-
     if tests.is_empty() {
         anyhow::bail!("No tests provided. Please specify at least one test to run. Try running `etna experiment list-tests` to see available tests.");
     }
 
+    let available_tests = list_tests(&experiment.path)?
+        .into_iter()
+        .map(|t| t.name)
+        .collect::<Vec<_>>();
+    if available_tests.is_empty() {
+        anyhow::bail!(
+            "No tests found in '{}'. Add workloads first (for example: `etna workload add <lang> <workload>`).",
+            experiment.path.join("tests").display()
+        );
+    }
+
     let mut all_tests = Vec::new();
     for test in tests {
+        let resolved_name = resolve_test_name(&test, &available_tests)
+            .with_context(|| build_invalid_test_message(&test, &available_tests))?;
         let test_path = experiment
             .path
             .join("tests")
-            .join(test)
+            .join(resolved_name)
             .with_extension("json");
-        let test: Vec<Test> = serde_json::from_str(&std::fs::read_to_string(&test_path)?).context(
-            format!("Failed to read test from '{}'", test_path.display()),
-        )?;
+
+        let content = std::fs::read_to_string(&test_path)
+            .with_context(|| format!("Failed to read test from '{}'", test_path.display()))?;
+        let test: Vec<Test> = serde_json::from_str(&content)
+            .with_context(|| format!("Failed to parse test from '{}'", test_path.display()))?;
         all_tests.extend(test);
     }
     Ok(all_tests)

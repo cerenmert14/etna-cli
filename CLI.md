@@ -1,125 +1,265 @@
 # ETNA CLI
 
-## Description
+## Overview
 
-ETNA CLI is a command line interface that allows you to interact with the ETNA Benchmarking and Analysis Platform. It provides a set of commands to manage your experiments, and results.
-
-## Installation
-
-To install the ETNA CLI, you can use the following CURL command:
-
-```bash
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/alpaylan/etna-cli/releases/download/v0.1.0/etna-installer.sh | sh
-```
-
-## Usage
-
-To get started, you can use the `etna-cli --help` command to see the list of available commands.
+ETNA is a CLI for creating experiments, adding workloads, running tests, and managing result data.
 
 ```bash
 etna --help
 ```
 
-The commands are organized in the following categories:
+Top-level commands:
 
-- `experiment`: Create, delete, move experiments
-- `workload`: Create, delete, move workloads within an experiment
-- `store`: Write a metric, or query the central etna storage
-- `check`: Run integrity checks on etna, apply fixes in cases.
-- `config`: Manage the global ETNA configuration
-- `setup`: Setup the ETNA CLI
+- `experiment` - manage experiments and run/visualize tests
+- `workload` - add/remove/list workloads in an experiment
+- `store` - write/query/remove metrics
+- `config` - show CLI configuration
+- `setup` - initialize global ETNA config
+- `check` - integrity checks and cleanup/restore helpers
+- `analyze` - analysis helpers
+- `mutation` - inspect and control mutation variants
+- `bash` - generate bash script from workload config
 
-### Experiment Commands
+---
 
-#### `experiment new`
+## Experiment Commands
 
-Creates a new experiment with `<NAME>`, and at location `[PATH]`.
-
-```txt
-Usage: etna experiment new [OPTIONS] <NAME> [PATH]
-
-Arguments:
-<NAME>  Name of the new experiment
-[PATH]  An optional root path, if not provided, the current directory is used
-
-Options:
--o, --overwrite                  Overwrite the existing experiment
--r, --register                   Register the experiment in the store [default: false]
--d, --description <DESCRIPTION>  Description of the experiment [default: A description of the experiment]
+```bash
+etna experiment --help
 ```
 
-#### `experiment run`
+### `experiment new`
 
-Runs a given set of `TESTS` for the experiment `NAME`.
+Create a new experiment directory.
 
-```txt
+```text
+Usage: etna experiment new [OPTIONS] <NAME> [PATH]
+
+Options:
+  -o, --overwrite
+  -r, --register
+  -s, --local-store
+```
+
+### `experiment run`
+
+Run one or more test files from the experiment `tests/` directory.
+
+```text
 Usage: etna experiment run [OPTIONS]
 
 Options:
-  -n, --name <NAME>    Name of the experiment to run [default: current directory]
-  -t, --tests <TESTS>  Tests to run
+  -n, --name <NAME>
+      --tests <TESTS>
+  -s, --short-circuit
+  -p, --parallel
+      --params <PARAMS>
 ```
 
-#### `experiment show`
+### `experiment show`
 
-Show the details of an experiment, either via `NAME` or by experiment hash `HASH`.
-Users cannot create multiple experiments with the same name, but experiments are
-uniquely identified by their hashes, which represents the current state of the experiment.
-When users create an experiment, every call to the `etna` interface saves a snapshot of the experiment,
-matching the experiment results with its current results.
+Show one experiment by name.
 
-```txt
-Usage: etna experiment show [OPTIONS]
+```text
+Usage: etna experiment show --name <NAME>
+```
+
+### `experiment amend-test`
+
+Amend an existing test file by assigning a strategy.
+
+```text
+Usage: etna experiment amend-test [OPTIONS] --test <TEST> --strategy <STRATEGY>
 
 Options:
-      --name <NAME>  Name
-      --hash <HASH>  Hash
-  -a, --show-all     Show all the experiments
+  -n, --name <NAME>
+      --test <TEST>
+      --strategy <STRATEGY>
+      --mutation <MUTATION>
+      --property <PROPERTY>
 ```
 
-### Workload Commands
+Behavior:
+- if task has no strategy: set it
+- if task has different strategy: duplicate task with new strategy
+- if task already has same strategy: no-op
 
-#### `workload add`
+### `experiment visualize`
 
-Add a workload to the experiment. This currently uses the workloads shipped with
-the binary etna distribution, may change to pull from a remote in the future for
-reducing coupling.
+Visualize experiment results.
 
-```txt
+```text
+Usage: etna experiment visualize [OPTIONS] --figure <FIGURE>
+
+Options:
+      --name <NAME>
+      --figure <FIGURE>
+  -t, --tests <TESTS>...
+  -g, --groupby <GROUPBY>
+  -a, --aggby <AGGBY>
+  -m, --metric <METRIC>              # discards | tests | shrinks | time
+  -b, --buckets <BUCKETS>...
+      --max <MAX>
+  -v, --visualization-type <TYPE>    # bucket | bar | line
+      --hatched [<HATCHED>...]
+```
+
+### `experiment visualize-json`
+
+```text
+Usage: etna experiment visualize-json --input <INPUT> --output <OUTPUT>
+```
+
+### `experiment list`
+
+```text
+Usage: etna experiment list
+```
+
+---
+
+## Workload Commands
+
+```bash
+etna workload --help
+```
+
+### `workload add`
+
+```text
 Usage: etna workload add [OPTIONS] <LANGUAGE> <WORKLOAD>
 
-Arguments:
-  <LANGUAGE>  Language of the workload [default: coq] [possible_values(coq, haskell, racket, ocaml)]
-  <WORKLOAD>  Workload to be added [default: bst] [possible_values(bst, rbt, stlc, systemf, ifc)]
-
 Options:
-  -e, --experiment <EXPERIMENT>  Name of the experiment [default: current directory]
+  -e, --experiment <EXPERIMENT>
 ```
 
-#### `workload remove`
+If `docs/workloads/<workload>.json` exists, ETNA auto-generates a test file:
+- `tests/<workload>-<language>.json` (lowercased)
 
-Remove a workload from the experiment
+### `workload remove`
 
-```txt
+```text
 Usage: etna workload remove [OPTIONS] <LANGUAGE> <WORKLOAD>
 
-Arguments:
-  <LANGUAGE>  Language of the workload [default: coq] [possible_values(coq, haskell, racket, ocaml)]
-  <WORKLOAD>  Workload to be added [default: bst] [possible_values(bst, rbt, stlc, systemf, ifc)]
-
 Options:
-  -e, --experiment <EXPERIMENT>  Name of the experiment [default: current directory]
+  -e, --experiment <EXPERIMENT>
 ```
 
-#### `workload list`
+### `workload list`
 
-List all workloads
-
-```txt
+```text
 Usage: etna workload list [OPTIONS]
 
 Options:
-  -e, --experiment <EXPERIMENT>  Name of the experiment [default: current directory]
-  -l, --language <LANGUAGE>      Language of the workload [possible_values(coq, haskell, racket)] [default: all]
-  -k, --kind <KIND>              Available or experiment workloads [possible_values(available, experiment)] [default: experiment]
+  -e, --experiment <EXPERIMENT>
+  -l, --language <LANGUAGE>
+  -k, --kind <KIND>   # available | experiment
+```
+
+---
+
+## Store Commands
+
+```bash
+etna store --help
+```
+
+### `store write`
+
+```text
+Usage: etna store write [OPTIONS] <EXPERIMENT_ID> <METRIC>
+```
+
+### `store query`
+
+```text
+Usage: etna store query [OPTIONS] <FILTER>
+```
+
+### `store remove`
+
+```text
+Usage: etna store remove [OPTIONS] <FILTER>
+```
+
+All store subcommands support:
+- `-e, --experiment <EXPERIMENT>`
+
+---
+
+## Mutation Commands
+
+```bash
+etna mutation --help
+```
+
+### `mutation list`
+
+```text
+Usage: etna mutation list [OPTIONS]
+  -p, --path <PATH>
+```
+
+### `mutation set`
+
+```text
+Usage: etna mutation set [OPTIONS] <VARIANT>
+  -p, --path <PATH>
+  -g, --glob <GLOB>
+```
+
+### `mutation reset`
+
+```text
+Usage: etna mutation reset [OPTIONS]
+  -p, --path <PATH>
+```
+
+---
+
+## Other Commands
+
+### `config show`
+
+```text
+Usage: etna config show
+```
+
+### `setup`
+
+```text
+Usage: etna setup [OPTIONS]
+  -o, --overwrite
+```
+
+### `check`
+
+```text
+Usage: etna check [OPTIONS]
+      --restore
+      --remove
+```
+
+### `analyze bucket`
+
+```text
+Usage: etna analyze bucket [OPTIONS]
+  -n, --name <NAME>
+```
+
+### `bash`
+
+```text
+Usage: etna bash [OPTIONS]
+  -p, --path <PATH>
+```
+
+---
+
+## Always Check Live Help
+
+CLI flags evolve. For exact current behavior, prefer:
+
+```bash
+etna <command> --help
 ```

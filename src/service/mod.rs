@@ -4,6 +4,7 @@ pub mod experiment;
 pub mod job;
 pub mod mutations;
 pub mod store;
+pub mod test_utils;
 pub mod types;
 pub mod workload;
 

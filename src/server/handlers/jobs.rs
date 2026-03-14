@@ -64,10 +64,7 @@ pub async fn get_job_metrics(
 
     // Build a JQ filter to get metrics for this experiment
     // Filter by experiment name
-    let filter = format!(
-        r#".[] | select(.experiment == "{}")"#,
-        experiment_name
-    );
+    let filter = format!(r#".[] | select(.experiment == "{}")"#, experiment_name);
 
     let mut manager = state.manager.write().unwrap();
     store_service::load_metrics(&mut manager.store)?;

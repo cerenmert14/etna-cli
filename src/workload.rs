@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt::Display,
-    hash::Hash,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fmt::Display, hash::Hash, path::PathBuf};
 
 use anyhow::Context as _;
 use itertools::Itertools as _;
@@ -263,24 +258,6 @@ impl Steps {
         None
     }
 
-    pub(crate) fn get_step(json: &serde_json::Value, step_index: &str) -> Option<Step> {
-        let step = json.get(step_index);
-
-        if let Some(step) = step {
-            let steps = serde_json::from_value::<Step>(step.clone());
-            if let Ok(steps) = steps {
-                return Some(steps);
-            } else {
-                tracing::error!("Failed to parse step: '{}'", step_index);
-                tracing::debug!("Step: {}", step);
-                tracing::debug!("Error: {}", steps.unwrap_err());
-            }
-        }
-
-        tracing::debug!("Step '{}' not found, using default step", step_index);
-        None
-    }
-
     pub(crate) fn with_default(json: &serde_json::Value, default: &Steps) -> Self {
         let setup = Self::get_steps(json, "setup_steps").unwrap_or(default.setup.clone());
         let build = Self::get_steps(json, "build_steps").unwrap_or(default.build.clone());
@@ -317,18 +294,6 @@ impl Steps {
             test,
             tags,
         })
-    }
-
-    pub(crate) fn from_path(path: &Path) -> anyhow::Result<Self> {
-        let steps_path = if path.is_dir() {
-            &path.join("steps.json")
-        } else {
-            path
-        };
-
-        let steps = serde_json::from_str(&std::fs::read_to_string(steps_path).unwrap()).unwrap();
-
-        Self::from_value(&steps)
     }
 }
 

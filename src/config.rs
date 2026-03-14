@@ -80,10 +80,6 @@ impl EtnaConfig {
 }
 
 impl EtnaConfig {
-    pub(crate) fn steps_path(&self) -> PathBuf {
-        self.etna_dir.join("steps.json")
-    }
-
     pub(crate) fn repo_dir(&self) -> PathBuf {
         self.etna_dir.join(".etna_cache")
     }

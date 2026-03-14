@@ -351,7 +351,7 @@ fn get_agg_metrics(
                     "time": f64::NAN,
                 });
                 tracing::trace!("Returning aborted data: {:#?}", data);
-                let _ = write_row(&mut raw_data_file, &data, &aggby);
+                let _ = write_row(&mut raw_data_file, &data, aggby);
                 return data.as_object().cloned();
             }
 

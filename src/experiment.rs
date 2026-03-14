@@ -88,22 +88,6 @@ impl ExperimentMetadata {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Hash, Eq, Clone)]
-pub(crate) struct Experiment {
-    pub name: String,
-    pub path: PathBuf,
-    pub store: PathBuf,
-
-    #[serde(default)]
-    pub readme: Option<String>,
-    #[serde(default)]
-    pub scripts: Vec<String>,
-    #[serde(default)]
-    pub tests: Vec<String>,
-    #[serde(default)]
-    pub workloads: Vec<WorkloadMetadata>,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Test {
     pub language: String,

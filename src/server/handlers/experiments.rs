@@ -204,11 +204,7 @@ pub async fn run_experiment(
         // Run the experiment on a blocking thread with cancel support.
         let cancel_for_run = cancel_flag.clone();
         let result = tokio::task::spawn_blocking(move || {
-            exp_service::run_experiment(
-                manager,
-                options_clone,
-                Some(cancel_for_run),
-            )
+            exp_service::run_experiment(manager, options_clone, Some(cancel_for_run))
         })
         .await;
 

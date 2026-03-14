@@ -166,6 +166,16 @@ pub(crate) fn run() -> anyhow::Result<()> {
             ExperimentCommand::Show {
                         name,
                     } => commands::experiment::show::invoke(mgr, name),
+            ExperimentCommand::AmendTest { name: _, test, strategy, mutation, property } => {
+                commands::experiment::amend_test::invoke(
+                    mgr,
+                    experiment.unwrap(),
+                    test,
+                    strategy,
+                    mutation,
+                    property,
+                )
+            }
             ExperimentCommand::Visualize { name: _, figure, tests, groupby, aggby, metric, buckets, max, visualization_type, hatched } => commands::experiment::visualize::invoke(mgr, experiment.unwrap(), figure, tests, groupby, aggby, metric, buckets, max, visualization_type, hatched),
             ExperimentCommand::VisualizeJson { input, output } => commands::experiment::visualize::draw_bucket_chart_from_json(&input, &output),
             ExperimentCommand::List {} => commands::experiment::list::invoke(mgr),
@@ -287,6 +297,28 @@ enum ExperimentCommand {
         /// Name
         #[clap(long)]
         name: String,
+    },
+    #[clap(
+        name = "amend-test",
+        about = "Amend an existing test file by adding/duplicating tasks with a strategy"
+    )]
+    AmendTest {
+        /// Name of the experiment
+        /// [default: current directory]
+        #[clap(short, long)]
+        name: Option<String>,
+        /// Test name from tests directory (with or without .json)
+        #[clap(long)]
+        test: String,
+        /// Strategy name to apply
+        #[clap(long)]
+        strategy: String,
+        /// Optional mutation filter(s)
+        #[clap(long)]
+        mutation: Vec<String>,
+        /// Optional property filter(s)
+        #[clap(long)]
+        property: Vec<String>,
     },
     #[clap(name = "visualize", about = "Visualize the results of the experiment")]
     Visualize {
@@ -522,6 +554,7 @@ impl Command {
                 ExperimentCommand::New { .. } => None,
                 ExperimentCommand::Run { name, .. } => name.as_ref(),
                 ExperimentCommand::Show { name, .. } => Some(name),
+                ExperimentCommand::AmendTest { name, .. } => name.as_ref(),
                 ExperimentCommand::Visualize { name, .. } => name.as_ref(),
                 ExperimentCommand::VisualizeJson { .. } => None,
                 ExperimentCommand::List { .. } => None,
@@ -546,6 +579,7 @@ impl Command {
                 ExperimentCommand::New { .. } => false,
                 ExperimentCommand::Run { .. } => true,
                 ExperimentCommand::Show { .. } => true,
+                ExperimentCommand::AmendTest { .. } => true,
                 ExperimentCommand::Visualize { .. } => true,
                 ExperimentCommand::VisualizeJson { .. } => false,
                 ExperimentCommand::List { .. } => false,

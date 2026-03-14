@@ -321,9 +321,25 @@ pub(crate) fn run(
         );
     }
     if run_config.parallel {
-        run_remaining_trials_parallel(mgr, run_config, test_steps, remaining_trials, params, tags, cancel_flag)
+        run_remaining_trials_parallel(
+            mgr,
+            run_config,
+            test_steps,
+            remaining_trials,
+            params,
+            tags,
+            cancel_flag,
+        )
     } else {
-        run_remaining_trials_sequential(mgr, run_config, test_steps, remaining_trials, params, tags, cancel_flag)
+        run_remaining_trials_sequential(
+            mgr,
+            run_config,
+            test_steps,
+            remaining_trials,
+            params,
+            tags,
+            cancel_flag,
+        )
     }
 }
 
@@ -1063,6 +1079,7 @@ pub(crate) fn run_experiment(
         vec![]
     };
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn aux(
         mgr: Arc<Mutex<Manager>>,
         test: &Test,

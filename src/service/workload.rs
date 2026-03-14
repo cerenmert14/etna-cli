@@ -1,9 +1,13 @@
-use std::{fs, path::Path, process::Command};
+use std::{collections::HashMap, fs, path::Path, process::Command};
 
 use anyhow::{bail, Context};
+use serde::Deserialize;
 
 use crate::{
-    experiment::ExperimentMetadata, git_driver, manager::Manager, workload::WorkloadMetadata,
+    experiment::{ExperimentMetadata, Test},
+    git_driver,
+    manager::Manager,
+    workload::WorkloadMetadata,
 };
 
 use super::types::ServiceResult;
@@ -77,6 +81,125 @@ fn copy_language(repo_dir: &Path, workloads_dir: &Path, language: &str) -> anyho
     Ok(())
 }
 
+#[derive(Debug, Deserialize)]
+struct DocTask {
+    property: String,
+    #[serde(default)]
+    counterexample: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct DocWorkloadEntry {
+    mutations: Vec<String>,
+    tasks: Vec<DocTask>,
+}
+
+fn generate_tests_from_docs(
+    repo_dir: &Path,
+    experiment: &ExperimentMetadata,
+    language: &str,
+    workload: &str,
+) -> anyhow::Result<()> {
+    let workload_slug = workload.to_lowercase();
+    let language_slug = language.to_lowercase();
+    let docs_path = repo_dir
+        .join("docs")
+        .join("workloads")
+        .join(format!("{workload_slug}.json"));
+
+    if !docs_path.exists() {
+        tracing::debug!(
+            "No docs workload definition found at '{}', skipping test generation",
+            docs_path.display()
+        );
+        return Ok(());
+    }
+
+    let docs_content = fs::read_to_string(&docs_path).with_context(|| {
+        format!(
+            "Failed to read workload docs file at '{}'",
+            docs_path.display()
+        )
+    })?;
+
+    if docs_content.trim().is_empty() {
+        tracing::debug!(
+            "Docs workload file '{}' is empty, skipping test generation",
+            docs_path.display()
+        );
+        return Ok(());
+    }
+
+    let entries: Vec<DocWorkloadEntry> =
+        serde_json::from_str(&docs_content).with_context(|| {
+            format!(
+                "Failed to parse workload docs file at '{}'",
+                docs_path.display()
+            )
+        })?;
+
+    if entries.is_empty() {
+        tracing::debug!(
+            "Docs workload file '{}' has no entries, skipping test generation",
+            docs_path.display()
+        );
+        return Ok(());
+    }
+
+    let test_path = experiment
+        .path
+        .join("tests")
+        .join(format!("{workload_slug}-{language_slug}"))
+        .with_extension("json");
+
+    let generated = entries.into_iter().map(|entry| {
+        let tasks = entry
+            .tasks
+            .into_iter()
+            .map(|task| {
+                let mut map = HashMap::new();
+                map.insert("property".to_string(), task.property);
+                if !task.counterexample.is_empty() {
+                    map.insert("counterexample".to_string(), task.counterexample);
+                }
+                map
+            })
+            .collect();
+
+        Test {
+            language: language.to_string(),
+            workload: workload.to_string(),
+            trials: 10,
+            timeout: 60.0,
+            mutations: entry.mutations,
+            cross: false,
+            params: None,
+            tasks,
+        }
+    });
+
+    let generated: Vec<Test> = generated.collect();
+
+    if let Some(parent) = test_path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create tests directory '{}'", parent.display()))?;
+    }
+
+    let content =
+        serde_json::to_string_pretty(&generated).context("Failed to serialize generated tests")?;
+    fs::write(&test_path, content)
+        .with_context(|| format!("Failed to write test file at '{}'", test_path.display()))?;
+
+    tracing::info!(
+        "Generated test file '{}' from docs/workloads for workload '{}/{}'",
+        test_path.display(),
+        language,
+        workload
+    );
+
+    Ok(())
+}
+
 /// Add a workload to an experiment
 pub fn add_workload(
     mgr: &Manager,
@@ -140,6 +263,9 @@ pub fn add_workload(
                 .display(),
             dest_path.display()
         ))?;
+
+    // Generate test definitions from docs/workloads/<workload>.json when available.
+    generate_tests_from_docs(&repo_dir, experiment, language, workload)?;
 
     // Create a commit
     git_driver::commit(
