@@ -1,0 +1,212 @@
+[
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_var_none"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "qcheck:bespoke"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "qcheck:bespoke"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_var_all"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "qcheck:bespoke"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "qcheck:bespoke"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_var_leq"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "qcheck:bespoke"
+      },
+      {
+        "strategy": "qcheck:bespoke",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_abs_no_incr"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "qcheck:bespoke"
+      },
+      {
+        "strategy": "qcheck:bespoke",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_var_all"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "qcheck:bespoke"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "qcheck:bespoke"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_var_none"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "qcheck:bespoke",
+        "property": "SinglePreserve"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "qcheck:bespoke"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_abs_no_shift"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "qcheck:bespoke"
+      },
+      {
+        "strategy": "qcheck:bespoke",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_abs_no_incr"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "qcheck:bespoke"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "qcheck:bespoke"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "substTop_no_shift"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "qcheck:bespoke",
+        "property": "SinglePreserve"
+      },
+      {
+        "strategy": "qcheck:bespoke",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "OCaml",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "substTop_no_shift_back"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "qcheck:bespoke",
+        "property": "SinglePreserve"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "qcheck:bespoke"
+      }
+    ]
+  }
+]

@@ -1,0 +1,212 @@
+[
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_var_none"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "rc"
+      },
+      {
+        "strategy": "rc",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_var_all"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "property": "SinglePreserve",
+        "strategy": "rc"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "rc"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_var_leq"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "strategy": "rc",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "shift_abs_no_incr"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "rc"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_var_all"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "strategy": "rc",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_var_none"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "property": "MultiPreserve",
+        "strategy": "rc"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_abs_no_shift"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "strategy": "rc",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "subst_abs_no_incr"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "strategy": "rc",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "substTop_no_shift"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "strategy": "rc",
+        "property": "MultiPreserve"
+      }
+    ]
+  },
+  {
+    "language": "Racket",
+    "workload": "STLC",
+    "trials": 10,
+    "timeout": 60.0,
+    "mutations": [
+      "substTop_no_shift_back"
+    ],
+    "cross": false,
+    "params": null,
+    "tasks": [
+      {
+        "strategy": "rc",
+        "property": "SinglePreserve"
+      },
+      {
+        "strategy": "rc",
+        "property": "MultiPreserve"
+      }
+    ]
+  }
+]
