@@ -429,7 +429,7 @@ fn get_agg_metrics(
                         .unwrap_or(0.0);
                     acc.3 += m
                         .data
-                        .get("search-time")
+                        .get("time")
                         .and_then(serde_json::Value::as_str)
                         .into_iter()
                         .flat_map(parse_duration::parse)

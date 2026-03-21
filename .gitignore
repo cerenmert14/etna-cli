@@ -5,3 +5,5 @@ etna*.log
 
 # Experiment folders 
 /exp*
+
+**/tyche-log.jsonl

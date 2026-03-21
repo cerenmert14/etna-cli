@@ -19,7 +19,7 @@ ETNA_DIR="." etna experiment run --name exp3 --tests bst # this runs all tests i
 ETNA_DIR="." etna experiment run --name exp3 --tests bst --cross # this runs all tests in `exp3/tests/bst.json` with cross language mode.
 
 ETNA_DIR="." etna experiment run --name exp3 --tests rbt
-ETNA_DIR="." etna experiment run --name exp3 --tests stlc
+ETNA_DIR="." etna experiment run --name exp3 --tests stlc-racket
 
 # visualize the results
 ETNA_DIR="." etna experiment visualize --name exp3 --figure bst --tests bst
