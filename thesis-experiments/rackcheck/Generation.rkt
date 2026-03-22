@@ -16,12 +16,14 @@
 
 (define/contract (list-pop ls index)
   (-> (listof any/c) exact-integer? (values any/c (listof any/c)))
-    (if (> (+ index 1) (length ls))
+  (let ([index (+ index 1)])
+    (if (> index (length ls))
         (values (raise-argument-error) ls)
-        (match-let ([(cons weight gen) (list-ref ls index)])
-          (if (= weight 1)
-            (values gen (drop ls index))
-            (values gen (list-set ls index (cons (- weight 1) gen)))))))
+        (match/values (split-at ls index)
+                      [(l1 l2) (values (last l1) (append (take l1 (- (length l1) 1)) l2))])
+    )
+  )
+)
 
 (define (backtrack gs)
   (define (backtrack-iter gs)
@@ -61,11 +63,12 @@
             nothing 
             (list 
               (gen:delay (gen:typ (quotient n 2)))
-              (gen:bind 
-                (gen:delay (gen:typ (quotient n 2)))
+              (gen:delay 
+                (gen:bind 
+                 (gen:typ (quotient n 2))
                   (lambda (T1) 
-                    (gen:bind (gen:delay (gen:typ (quotient n 2)))
-                      (lambda (T2) (gen:const (TFun T1 T2))))))))]))
+                    (gen:bind (gen:typ (quotient n 2))
+                      (lambda (T2) (gen:const (TFun T1 T2)))))))))]))
 
 (define/contract (gen:one-of-total fallback gs)
   (-> any/c (listof gen?) gen?)
@@ -82,21 +85,22 @@
                               (gen:one env tau)))]
   [n (backtrack  
      (list
-      (cons 1 (gen:one env tau))
-      (cons 1 (gen:one-of-total nothing (gen:vars env tau)))
-      (cons 1 (gen:bind (gen:bind (gen:delay (gen:typ (random 1 (+ 1 (min n 10)))))
+      (gen:delay (gen:one env tau))
+      (gen:delay (gen:one-of-total nothing (gen:vars env tau)))
+      (gen:delay 
+        (gen:bind (gen:typ (random 1 (+ 1 (min n 10))))
           (lambda (T1) 
-                  (gen:bind-opt 
-                    (gen:delay (gen:expr env (TFun T1 tau) (- n 1)))
-                     (lambda (e1) (gen:bind-opt (gen:delay (gen:expr env T1 (- n 1)))
-                        (lambda (e2) (gen:const (just (App e1 e2))))))))))                                            
-      (cons 1
+            (gen:bind-opt 
+              (gen:expr env (TFun T1 tau) (- n 1))
+                (lambda (e1) (gen:bind-opt (gen:expr env T1 (- n 1))
+                  (lambda (e2) (gen:const (just (App e1 e2))))))))))                                        
+      (gen:delay 
         (match tau
-         [(TBool) (gen:bind gen:boolean
+          [(TBool) (gen:bind gen:boolean
                     (lambda (b) (gen:const (just (Bool b)))))]
-         [(TFun T1 T2) (gen:bind-opt 
-                        (gen:delay (gen:expr (cons T1 env) T2 (- n 1)))
-                         (lambda (e) (gen:const (just (Abs T1 e)))))])))))]))
+          [(TFun T1 T2) (gen:bind-opt 
+                          (gen:expr (cons T1 env) T2 (- n 1))
+                          (lambda (e) (gen:const (just (Abs T1 e)))))]))))]))
 
 (define gSized
   (gen:bind (gen:typ 250)
