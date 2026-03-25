@@ -69,7 +69,7 @@ pub(crate) fn write_row<W: std::io::Write>(
         v.as_f64()
             .map_or("NaN".to_string(), |t| format!("{:.2}", t))
     }));
-     row.push(metric.get("tests").map_or("NaN".to_string(), |v| {
+    row.push(metric.get("tests").map_or("NaN".to_string(), |v| {
         v.as_f64()
             .map_or("NaN".to_string(), |t| format!("{:.2}", t))
     }));
