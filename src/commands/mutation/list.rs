@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use anyhow::Result;
 use tracing::info;
@@ -6,7 +6,7 @@ use tracing::info;
 use crate::service::mutations::list_mutations;
 
 pub fn invoke(path: PathBuf) -> Result<()> {
-    let path = if &path == "." {
+     let path = if path == Path::new(".") {
         std::env::current_dir()?
     } else {
         path.canonicalize().unwrap_or(path)

@@ -419,7 +419,7 @@ fn get_agg_metrics(
                         .unwrap_or(0.0);
                     acc.1 += m
                         .data
-                        .get("tests")
+                        .get("passed")
                         .and_then(serde_json::Value::as_f64)
                         .unwrap_or(0.0);
                     acc.2 += m
