@@ -2,8 +2,8 @@
 
 EXP_DIR="$PWD/exp3"
 WORKLOAD_DIR="$EXP_DIR/workloads/Racket/STLC"
-GEN_FILE="$EXP_DIR/workloads/Racket/STLC/src/Generation.rkt" 
-MAIN_FILE="$EXP_DIR/workloads/Racket/STLC/main.rkt" 
+GEN_FILE="$WORKLOAD_DIR/src/Generation.rkt" 
+MAIN_FILE="$WORKLOAD_DIR/main.rkt" 
 STORE_TYCHE="$PWD/thesis-experiments/rackcheck/tyche-experiments"
 
 # update main.rkt to run experiment
