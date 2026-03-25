@@ -18,4 +18,4 @@ Once you have the necessary packages / languages, first run `thesis-experiments/
     * This will populate results under `thesis-experiments/<qcheck || rackcheck>/etna-experiments`
 * Run `thesis-experiments/tyche-stlc-<qcheck || rackcheck>.sh` to get the Tyche log files which will be located under `thesis-experiments/<qcheck || rackcheck>/tyche-experiments`. Once you have them, you can upload them to the Tyche either through the VS Code extension or on its [website](https://tyche-pbt.github.io/tyche-extension/)
 
-Feel free to contact cmert@umd.edu with questions!
+Feel free to contact cmert@umd.edu for questions!
