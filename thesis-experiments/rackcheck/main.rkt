@@ -1,4 +1,4 @@
-#lang racket/base
+#lang racket
 
 (module+ main
   (require racket/cmdline)
@@ -24,7 +24,7 @@
    ; Dynamically load the property from the strategy file
 
    (define tests 50000)
-   (define config (make-config #:tests tests #:deadline (+ (current-inexact-milliseconds) (* 240 1000)) #:tyche #t #:features (list (cons "size" (lambda (e) (size-STLC e))))))
+   (define config (make-config #:tests tests #:deadline (+ (current-inexact-milliseconds) (* 240 1000)) #:tyche #t #:features (list (cons "size" (lambda args (size-STLC (first args)))))))
 
    (define (check-rackcheck-property p) (check-property config p))
    (define (check-tartarus-property p) (p tests))
